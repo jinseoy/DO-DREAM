@@ -1,0 +1,437 @@
+/* ===== Variables ===== */
+:root {
+  --primary-blue: #1e3a8a;
+  --primary-accent: #fae100;
+
+  --text-900: #111827;
+  --text-700: #374151;
+  --text-500: #6b7280;
+  --text-400: #9ca3af;
+
+  --bg-50: #f9fafb;
+  --bg-100: #f3f4f6;
+  --bg-200: #e5e7eb;
+
+  --border-color: rgba(209, 213, 219, 0.5);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 6px 12px rgba(0, 0, 0, 0.1);
+
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  --transition: all 0.3s ease;
+}
+
+/* ===== Global ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== Container ===== */
+.cr-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%);
+}
+
+/* ===== Header ===== */
+.cr-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.cr-header-content {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cr-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-900);
+}
+
+.cr-logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--primary-blue);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.cr-logout-btn:hover {
+  background: rgba(30, 58, 138, 0.08);
+}
+
+.cr-logout-btn:active {
+  transform: translateY(1px);
+}
+
+/* ===== Main ===== */
+.cr-main {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+/* ===== Profile Card ===== */
+.cr-profile-card {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  margin-bottom: 32px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.cr-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex: 1;
+}
+
+.cr-profile-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+  flex-shrink: 0;
+}
+
+.cr-profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cr-teacher-name {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-900);
+}
+
+.cr-subject {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-700);
+}
+
+.cr-email {
+  font-size: 13px;
+  color: var(--text-500);
+}
+
+.cr-student-badge {
+  text-align: center;
+}
+
+.cr-badge-number {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--primary-blue);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.cr-badge-label {
+  font-size: 13px;
+  color: var(--text-500);
+  font-weight: 600;
+}
+
+/* ===== Section Header ===== */
+.cr-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.cr-section-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 58, 138, 0.1);
+  color: var(--primary-blue);
+  flex-shrink: 0;
+}
+
+.cr-section-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-900);
+}
+
+/* ===== Materials Section ===== */
+.cr-materials-card {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  margin-bottom: 32px;
+  box-shadow: var(--shadow-sm);
+}
+
+.cr-materials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.cr-material-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-50);
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.cr-material-item:hover {
+  background: var(--bg-100);
+  border-color: rgba(30, 58, 138, 0.2);
+  box-shadow: var(--shadow-sm);
+}
+
+.cr-material-icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 58, 138, 0.1);
+  color: var(--primary-blue);
+  flex-shrink: 0;
+}
+
+.cr-material-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cr-material-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-900);
+}
+
+.cr-material-date {
+  font-size: 12px;
+  color: var(--text-500);
+}
+
+/* ===== Students Section ===== */
+.cr-students-card {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  box-shadow: var(--shadow-sm);
+}
+
+.cr-students-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.cr-student-item {
+  padding: 20px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.cr-student-item:hover {
+  border-color: rgba(30, 58, 138, 0.2);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.cr-student-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.cr-student-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cr-student-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  background: rgba(30, 58, 138, 0.08);
+  flex-shrink: 0;
+}
+
+.cr-student-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-900);
+}
+
+.cr-student-grade {
+  font-size: 12px;
+  color: var(--text-500);
+}
+
+.cr-chevron {
+  color: var(--text-400);
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.cr-student-item:hover .cr-chevron {
+  color: var(--primary-blue);
+  transform: translateX(4px);
+}
+
+/* ===== Progress ===== */
+.cr-progress-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cr-progress-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cr-progress-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-500);
+}
+
+.cr-progress-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-blue);
+}
+
+.cr-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-200);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.cr-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-accent) 0%, #ffe44d 100%);
+  border-radius: var(--radius-full);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1024px) {
+  .cr-profile-card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .cr-profile-header {
+    justify-content: center;
+  }
+
+  .cr-student-badge {
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .cr-main {
+    padding: 24px 16px;
+  }
+
+  .cr-profile-card,
+  .cr-materials-card,
+  .cr-students-card {
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .cr-section-header {
+    margin-bottom: 16px;
+  }
+
+  .cr-materials-grid,
+  .cr-students-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cr-profile-avatar {
+    width: 64px;
+    height: 64px;
+    font-size: 32px;
+  }
+
+  .cr-teacher-name {
+    font-size: 20px;
+  }
+
+  .cr-badge-number {
+    font-size: 28px;
+  }
+}
