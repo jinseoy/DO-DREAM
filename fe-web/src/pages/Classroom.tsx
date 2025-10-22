@@ -265,6 +265,10 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
     });
   };
 
+  const handleOpenStudent = (studentId: string) => {
+    navigate(`/student/${studentId}`);
+  };
+
   const handleLogout = () => {
     Swal.fire({
       icon: 'question',
@@ -408,7 +412,7 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
               <div className="cr-students-scroll cr-scroll-y">
                 <div className="cr-students-list">
                   {students.map((student) => (
-                    <div key={student.id} className="cr-student-card">
+                    <div key={student.id} className="cr-student-card" onClick={() => handleOpenStudent(student.id)}>
                       <div className="cr-student-header">
                         {student.avatarUrl ? (
                           <img

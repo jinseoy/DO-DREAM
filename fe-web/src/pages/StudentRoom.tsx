@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Book, Zap, TrendingUp } from 'lucide-react';
 import './StudentRoom.css';
 
@@ -19,6 +19,8 @@ type Activity = {
 
 export default function StudentRoom() {
   const navigate = useNavigate();
+  const { studentId } = useParams<{ studentId: string }>();
+
   const [students] = useState<Student[]>([
     { id: '1', name: '김민준', grade: '3학년 1반', avatar: '👦🏻', progressRate: 85 },
     { id: '2', name: '이서연', grade: '3학년 1반', avatar: '👧🏻', progressRate: 92 },
@@ -28,7 +30,10 @@ export default function StudentRoom() {
     { id: '6', name: '강서윤', grade: '3학년 3반', avatar: '👧🏻', progressRate: 81 },
   ]);
 
-  const student = students[0];
+  const student = useMemo(
+    () => students.find((s) => s.id === studentId) ?? students[0],
+    [students, studentId]
+  );
 
   const activities: Activity[] = [
     { title: '독서 감상문 제출', date: '2024.10.20', icon: '📝' },
@@ -37,7 +42,9 @@ export default function StudentRoom() {
   ];
 
   const handleBack = () => {
-    navigate('/classroom');
+    // 교실 목록으로
+    navigate('/classrooms');
+    // 또는 navigate(-1);
   };
 
   return (

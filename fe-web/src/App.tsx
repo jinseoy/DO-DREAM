@@ -91,14 +91,7 @@ export default function App() {
       />
 
       {/* 학생 페이지 */}
-      <Route 
-        path="/studentroom/:id" 
-        element={
-          isLoggedIn ? 
-          <StudentRoom /> : 
-          <Navigate to="/" replace />
-        } 
-      />
+      <Route path="/student/:studentId" element={<StudentRoom />} />
 
       {/* 기본 라우트 */}
       <Route path="*" element={<Navigate to="/" replace />} />
