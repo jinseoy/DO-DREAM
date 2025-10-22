@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Join from './pages/Join';
 import Classroom from './pages/Classroom';
 import StudentRoom from './pages/StudentRoom';
+import './index.css'
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
