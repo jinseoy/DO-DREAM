@@ -1,12 +1,15 @@
 :root {
-  --primary-color: #28427b;
-  --secondary-color: #28427b;
+  --primary-color: #192b55;
+  --secondary-color: #192b55;
   --black: #000000;
   --white: #ffffff;
   --gray: #efefef;
   --gray-2: #757575;
 }
 
+/* -------------------------------------------------- */
+/* 기본 리셋/레이아웃                                  */
+/* -------------------------------------------------- */
 * {
   margin: 0;
   padding: 0;
@@ -22,6 +25,10 @@ body {
   position: relative;
   min-height: 100vh;
   overflow: hidden;
+  background-image: url('../assets/join/background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .row {
@@ -48,7 +55,7 @@ body {
 
 .form {
   padding: 1rem;
-  background-color: var(--white);
+  /* background-color: var(--white); */
   border-radius: 1.5rem;
   width: 100%;
   transform: scale(0);
@@ -75,104 +82,69 @@ body {
   width: 100%;
   padding: 1rem 3rem;
   font-size: 1rem;
-  background-color: var(--gray);
+  /* background-color: var(--gray); */
   border-radius: 0.5rem;
-  border: 0.125rem solid var(--white);
+  /* border: 0.125rem solid var(--white); */
+  border: none;
   outline: none;
+  transition: all 0.3s ease;
 }
 
 .input-group input:focus {
   border: 0.125rem solid var(--primary-color);
+  box-shadow: 0 0 8px rgba(40, 66, 123, 0.2);
 }
 
 .form button {
   cursor: pointer;
   width: 100%;
-  padding: 0.6rem 0;
+  padding: 0.75rem 0;
   border-radius: 0.5rem;
   border: none;
   background-color: var(--primary-color);
   color: var(--white);
   font-size: 1.2rem;
+  font-weight: 600;
   outline: none;
+  transition: all 0.3s ease;
+}
+
+.form button:hover {
+  background-color: #FEC73D;
+  transform: translateY(-2px);
+}
+
+.form button:active {
+  transform: translateY(0);
 }
 
 .form p {
   margin: 1rem 0;
-  font-size: 0.8rem;
+  font-size: 1rem;
+  color: var(--gray-2);
+}
+
+.form p b {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.form p b:hover {
+  text-decoration: none;
 }
 
 .flex-col {
   flex-direction: column;
 }
 
-.social-list {
-  margin: 2rem 0;
-  padding: 1rem;
-  border-radius: 1.5rem;
-  width: 100%;
-  box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
-  transform: scale(0);
-  transition: 0.5s ease-in-out;
-  transition-delay: 1.2s;
-}
-
-.social-list > div {
-  color: var(--white);
-  margin: 0 0.5rem;
-  padding: 0.7rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transform: scale(0);
-  transition: 0.5s ease-in-out;
-}
-
-.social-list > div:nth-child(1) {
-  transition-delay: 1.4s;
-}
-.social-list > div:nth-child(2) {
-  transition-delay: 1.6s;
-}
-.social-list > div:nth-child(3) {
-  transition-delay: 1.8s;
-}
-.social-list > div:nth-child(4) {
-  transition-delay: 2s;
-}
-
-.social-list > div > i {
-  font-size: 1.5rem;
-  transition: 0.4s ease-in-out;
-}
-.social-list > div:hover i {
-  transform: scale(1.5);
-}
-
-.facebook-bg {
-  background-color: var(--facebook-color);
-}
-.google-bg {
-  background-color: var(--google-color);
-}
-.twitter-bg {
-  background-color: var(--twitter-color);
-}
-.insta-bg {
-  background-color: var(--insta-color);
-}
-
 .pointer {
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-/* React 상태로 .container에 sign-in or sign-up 이 토글됨 */
-.container.sign-in .form.sign-in,
-.container.sign-in .social-list.sign-in,
-.container.sign-in .social-list.sign-in > div,
-.container.sign-up .form.sign-up,
-.container.sign-up .social-list.sign-up,
-.container.sign-up .social-list.sign-up > div {
-  transform: scale(1);
+.pointer:hover {
+  text-decoration: underline;
+  color: var(--primary-color);
 }
 
 .content-row {
@@ -180,8 +152,9 @@ body {
   top: 0;
   left: 0;
   pointer-events: none;
-  z-index: 6;
+  z-index: 8; /* 텍스트가 그림 위 */
   width: 100%;
+  height: 100vh;
 }
 
 .text {
@@ -194,42 +167,14 @@ body {
   font-weight: 800;
   margin: 2rem 0;
   transition: 1s ease-in-out;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.text p {
-  font-weight: 600;
-  transition: 1s ease-in-out;
-  transition-delay: 0.2s;
-}
+/* -------------------------------------------------- */
+/* 배경: 그라디언트(::before) + 이미지(::after)        */
+/* -------------------------------------------------- */
 
-.img img {
-  width: 30vw;
-  transition: 1s ease-in-out;
-  transition-delay: 0.4s;
-}
-
-.text.sign-in h2,
-.text.sign-in p,
-.img.sign-in img {
-  transform: translateX(-250%);
-}
-
-.text.sign-up h2,
-.text.sign-up p,
-.img.sign-up img {
-  transform: translateX(250%);
-}
-
-.container.sign-in .text.sign-in h2,
-.container.sign-in .text.sign-in p,
-.container.sign-in .img.sign-in img,
-.container.sign-up .text.sign-up h2,
-.container.sign-up .text.sign-up p,
-.container.sign-up .img.sign-up img {
-  transform: translateX(0);
-}
-
-/* BACKGROUND */
+/* 남색 그라디언트 (곡면) */
 .container::before {
   content: '';
   position: absolute;
@@ -246,27 +191,112 @@ body {
   border-top-left-radius: max(20vw, 50vh);
 }
 
-.container.sign-in::before {
-  transform: translate(0, 0);
-  right: 50%;
+/* 이미지 캔버스 (곡면과 동일한 기하) */
+.container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+
+  height: 100vh;
+  width: 300vw;
+  transform: translate(35%, 0);
+
+  /* 공통 렌더 설정 */
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.18));
+  transition: 1s ease-in-out;
+  z-index: 7; /* 곡면 위, 폼/텍스트 아래 */
+  pointer-events: none;
+
+  border-bottom-right-radius: max(20vw, 50vh);
+  border-top-left-radius: max(20vw, 50vh);
+
+  /* 배경 사이징/포지션은 변수로 통일 */
+  background-size: var(--hero-size) auto;
+  background-position: var(--hero-pos-x) var(--hero-pos-y);
 }
 
-.container.sign-up::before {
-  transform: translate(100%, 0);
-  right: 50%;
+/* ===== 모드별 이미지 & 위치값 ===== */
+
+/* 로그인 모드 */
+.container.sign-in::after {
+  background-image: var(--hero-img-signin);
+
+  /* 로그인 추천값 */
+  --hero-size: min(520px, 42vw);
+  --hero-overlap: 28px;                 /* 하단 딱 붙게 약간 내려 꽂기 */
+  --hero-pos-x: calc(100% - 14rem);       /* 좌측 곡면 중심 쪽으로 당김 */
+  --hero-pos-y: calc(100% + var(--hero-overlap));
 }
 
-/* RESPONSIVE */
+/* 회원가입 모드 */
+.container.sign-up::after {
+  background-image: var(--hero-img-signup);
+
+  --hero-size: min(450px, 60vw);
+  --hero-overlap: 140px;                 /* 오른쪽 곡면은 살짝 더 */
+  --hero-pos-x: calc(0% + 16rem);       /* 우측 곡면 중심 쪽으로 밀기 */
+  --hero-pos-y: calc(71% + var(--hero-overlap));
+}
+
+/* 위치 전환(곡면과 같은 이동값) */
+.container.sign-in::before { transform: translate(0, 0); right: 50%; }
+.container.sign-in::after  { transform: translate(0, 0); right: 50%; }
+.container.sign-up::before { transform: translate(100%, 0); right: 50%; }
+.container.sign-up::after  { transform: translate(100%, 0); right: 50%; }
+
+/* 폼 스케일 인 */
+.container.sign-in .form.sign-in,
+.container.sign-up .form.sign-up {
+  transform: scale(1);
+}
+
+/* 텍스트 슬라이드 인/아웃 */
+.text.sign-in h2,
+.text.sign-in p {
+  transform: translateX(-250%);
+}
+
+.text.sign-up h2,
+.text.sign-up p {
+  transform: translateX(250%);
+}
+
+.container.sign-in .text.sign-in h2,
+.container.sign-in .text.sign-in p,
+.container.sign-up .text.sign-up h2,
+.container.sign-up .text.sign-up p {
+  transform: translateX(0);
+}
+
+/* (옵션) 부유 애니메이션 — 필요하면 주석 해제
+@keyframes hero-float {
+  0%   { transform: translate(35%, 0) translateY(0); }
+  100% { transform: translate(35%, 0) translateY(-10px); }
+}
+.container::after { animation: hero-float 9s ease-in-out infinite alternate; }
+*/
+
+/* -------------------------------------------------- */
+/* 반응형                                              */
+/* -------------------------------------------------- */
 @media only screen and (max-width: 425px) {
   .container::before,
   .container.sign-in::before,
-  .container.sign-up::before {
+  .container.sign-up::before,
+  .container::after,
+  .container.sign-in::after,
+  .container.sign-up::after {
     height: 100vh;
     border-bottom-right-radius: 0;
     border-top-left-radius: 0;
     z-index: 0;
-    transform: none;
+    transform: none !important;
     right: 0;
+    width: 100vw;
+    background-position: center 82%;
+    background-size: min(78vw, 520px) auto; /* 모바일에서 과도하게 커지지 않게 */
   }
 
   .container.sign-in .col.sign-in,
@@ -276,11 +306,7 @@ body {
 
   .content-row {
     align-items: flex-start !important;
-  }
-
-  .content-row .col {
-    transform: translateY(0);
-    background-color: unset;
+    z-index: 2;
   }
 
   .col {
@@ -299,8 +325,7 @@ body {
     justify-content: flex-end;
   }
 
-  .form,
-  .social-list {
+  .form {
     box-shadow: none;
     margin: 0;
     padding: 0;

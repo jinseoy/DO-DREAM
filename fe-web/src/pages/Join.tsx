@@ -1,7 +1,10 @@
-// src/pages/Join.tsx
 import { useEffect, useState, useCallback } from 'react';
 import Swal from 'sweetalert2';
 import './Join.css';
+
+// 각 모드별 이미지 (요구사항)
+import heroSigninImg from '../assets/join/signin.png';
+import heroSignupImg from '../assets/join/signup.png';
 
 type Mode = 'sign-in' | 'sign-up';
 
@@ -10,7 +13,8 @@ type JoinProps = {
 };
 
 export default function Join({ onLoginSuccess }: JoinProps) {
-  const [mode, setMode] = useState<Mode>('sign-up');
+  // 초기엔 sign-up을 보여주고, 살짝 뒤에 sign-in으로 전환하는 기존 UX 유지
+  const [mode, setMode] = useState<Mode>('sign-in');
 
   useEffect(() => {
     const t = setTimeout(() => setMode('sign-in'), 200);
@@ -34,12 +38,10 @@ export default function Join({ onLoginSuccess }: JoinProps) {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    
     const form = e.target as HTMLFormElement;
     const email = (form.elements.namedItem('email') as HTMLInputElement).value;
     const password = (form.elements.namedItem('password') as HTMLInputElement).value;
 
-    // 유효성 검사
     if (!email) {
       showErrorToast('이메일을 입력해주세요');
       return;
@@ -49,16 +51,15 @@ export default function Join({ onLoginSuccess }: JoinProps) {
       return;
     }
 
-    // 로그인 로직 (임시로 바로 성공 처리)
     Swal.fire({
       toast: true,
       position: 'top-end',
       icon: 'success',
-      title: '로그인 성공!',
+      title: '로그인 되었습니다',
       showConfirmButton: false,
       timer: 1500,
     });
-    
+
     setTimeout(() => {
       onLoginSuccess();
     }, 1500);
@@ -66,14 +67,12 @@ export default function Join({ onLoginSuccess }: JoinProps) {
 
   const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
-    
     const form = e.target as HTMLFormElement;
     const username = (form.elements.namedItem('username') as HTMLInputElement).value;
     const email = (form.elements.namedItem('email') as HTMLInputElement).value;
     const password = (form.elements.namedItem('password') as HTMLInputElement).value;
     const confirmPassword = (form.elements.namedItem('confirmPassword') as HTMLInputElement).value;
 
-    // 유효성 검사
     if (!username) {
       showErrorToast('사용자 이름을 입력해주세요');
       return;
@@ -99,7 +98,6 @@ export default function Join({ onLoginSuccess }: JoinProps) {
       return;
     }
 
-    // 회원가입 로직
     Swal.fire({
       toast: true,
       position: 'top-end',
@@ -108,14 +106,24 @@ export default function Join({ onLoginSuccess }: JoinProps) {
       showConfirmButton: false,
       timer: 2000,
     });
-    
+
     setTimeout(() => {
       setMode('sign-in');
     }, 2000);
   };
 
   return (
-    <div id="container" className={`container ${mode}`}>
+    <div
+      id="container"
+      className={`container ${mode}`}
+      // 이미지 URL을 CSS 변수로 주입 (모드별로 CSS에서 선택)
+      style={
+        {
+          ['--hero-img-signin' as any]: `url(${heroSigninImg})`,
+          ['--hero-img-signup' as any]: `url(${heroSignupImg})`,
+        } as React.CSSProperties
+      }
+    >
       <div className="row">
         {/* SIGN UP */}
         <div className="col align-items-center flex-col sign-up">
@@ -123,35 +131,19 @@ export default function Join({ onLoginSuccess }: JoinProps) {
             <form className="form sign-up" onSubmit={handleSignup}>
               <div className="input-group">
                 <i className="bx bxs-user" />
-                <input 
-                  type="text" 
-                  name="username"
-                  placeholder="사용자 이름"
-                />
+                <input type="text" name="username" placeholder="사용자 이름" />
               </div>
               <div className="input-group">
                 <i className="bx bx-mail-send" />
-                <input 
-                  type="email" 
-                  name="email"
-                  placeholder="이메일"
-                />
+                <input type="email" name="email" placeholder="이메일" />
               </div>
               <div className="input-group">
                 <i className="bx bxs-lock-alt" />
-                <input 
-                  type="password" 
-                  name="password"
-                  placeholder="비밀번호"
-                />
+                <input type="password" name="password" placeholder="비밀번호" />
               </div>
               <div className="input-group">
                 <i className="bx bxs-lock-alt" />
-                <input 
-                  type="password" 
-                  name="confirmPassword"
-                  placeholder="비밀번호 확인"
-                />
+                <input type="password" name="confirmPassword" placeholder="비밀번호 확인" />
               </div>
               <button type="submit">회원가입</button>
               <p>
@@ -170,19 +162,11 @@ export default function Join({ onLoginSuccess }: JoinProps) {
             <form className="form sign-in" onSubmit={handleLogin}>
               <div className="input-group">
                 <i className="bx bx-mail-send" />
-                <input 
-                  type="text" 
-                  name="email"
-                  placeholder="이메일"
-                />
+                <input type="text" name="email" placeholder="이메일" />
               </div>
               <div className="input-group">
                 <i className="bx bxs-lock-alt" />
-                <input 
-                  type="password" 
-                  name="password"
-                  placeholder="비밀번호"
-                />
+                <input type="password" name="password" placeholder="비밀번호" />
               </div>
               <button type="submit">로그인</button>
               <p>
@@ -196,21 +180,17 @@ export default function Join({ onLoginSuccess }: JoinProps) {
               </p>
             </form>
           </div>
-          <div className="form-wrapper"></div>
         </div>
       </div>
 
       <div className="row content-row">
         <div className="col align-items-center flex-col">
           <div className="text sign-in">
-            <h2>Do!dream</h2>
+            <h2>DO:DREAM</h2>
           </div>
-          <div className="img sign-in"></div>
         </div>
 
-        {/* SIGN UP CONTENT */}
         <div className="col align-items-center flex-col">
-          <div className="img sign-up"></div>
           <div className="text sign-up">
             <h2>가입하기</h2>
           </div>
