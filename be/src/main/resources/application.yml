@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: DODREAM
+  datasource:
+    url: jdbc:mysql://localhost:3306/dodream
+    username: dodream
+    password: dodream
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQL8Dialect
+
+  # File Upload Settings
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+      file-size-threshold: 2KB
+
+logging:
+  level:
+    org:
+      hibernate:
+        SQL: DEBUG
+        type:
+          descriptor:
+            sql:
+              BasicBinder: TRACE
+
+# File Storage Configuration
+file:
+  upload:
+    dir: ${user.home}/dodream/uploads
+    temp-dir: ${user.home}/dodream/temp
+
+# Naver Clova OCR Configuration
+clova:
+  ocr:
+    api-url: https://ibekw9jvth.apigw.ntruss.com/custom/v1/47166/f41b2297360318b1eb9098ae9fdbf37a4c0bdaefa716cf085a14f1f849831502/general
+    secret-key: a2xacGVqUW1LUG5vaGRPZ21GcEdQZEdMZGxLcUdZWEg=
