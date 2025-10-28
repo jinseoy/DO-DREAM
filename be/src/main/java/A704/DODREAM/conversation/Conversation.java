@@ -61,10 +61,4 @@ public class Conversation {
   @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true)
   @Builder.Default
   private List<Message> messages = new ArrayList<>();
-
-  // 편의 메서드
-  public void addMessage(Message message) {
-    messages.add(message);
-    message.setConversation(this);
-  }
 }

@@ -47,7 +47,7 @@ public class QuizAttempt {
   private User student;
 
   @Column(name = "score")
-  private Integer score;  // 44번째 줄: 맞은 개수
+  private Integer score;
 
   @Column(name = "total_questions")
   private Integer totalQuestions;
@@ -57,20 +57,13 @@ public class QuizAttempt {
   private LocalDateTime startedAt;
 
   @Column(name = "completed_at")
-  private LocalDateTime completedAt;  // 54번째 줄: 완료 시간
+  private LocalDateTime completedAt;
 
   // 양방향 관계
   @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true)
   @Builder.Default
   private List<StudentAnswer> answers = new ArrayList<>();
 
-  // 편의 메서드
-  public void addAnswer(StudentAnswer answer) {
-    answers.add(answer);
-    answer.setAttempt(this);
-  }
-
-  // 비즈니스 로직 (67번째 줄)
   public void complete() {
     this.completedAt = LocalDateTime.now();
     this.score = (int) answers.stream()

@@ -43,7 +43,7 @@ public class Material {
   @Column(name = "material_id")
   private Long materialId;
 
-  @ManyToOne(fetch = FetchType.LAZY)  // 36번째 줄: 지연 로딩
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "teacher_id", nullable = true)  // 테스트를 위해 nullable 허용
   private User teacher;
 
@@ -54,20 +54,20 @@ public class Material {
   private String originalFileName;
 
   @Column(name = "file_url", nullable = false, length = 500)
-  private String fileUrl;  // 46번째 줄: S3 URL
+  private String fileUrl;
 
   @Column(name = "file_size")
-  private Long fileSize;  // bytes
+  private Long fileSize;
 
   @Column(length = 50)
-  private String subject;  // 국어, 영어, 사회 등
+  private String subject;
 
   @Column(name = "grade_level", length = 20)
-  private String gradeLevel;  // 초등/중등/고등/성인
+  private String gradeLevel;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "content_type", length = 20)
-  @Builder.Default  // 58번째 줄: Builder 사용 시 기본값 설정
+  @Builder.Default
   private ContentType contentType = ContentType.TEXT;
 
   @Enumerated(EnumType.STRING)
@@ -79,11 +79,10 @@ public class Material {
   @Column(name = "created_at", updatable = false)
   private LocalDateTime createdAt;
 
-  @LastModifiedDate  // 70번째 줄: 수정 시간 자동 갱신
+  @LastModifiedDate
   @Column(name = "updated_at")
   private LocalDateTime updatedAt;
 
-  // 양방향 관계 설정 (74번째 줄)
   @OneToMany(mappedBy = "material", cascade = CascadeType.ALL, orphanRemoval = true)
   @Builder.Default
   private List<MaterialContent> contents = new ArrayList<>();
@@ -91,11 +90,4 @@ public class Material {
   @OneToMany(mappedBy = "material", cascade = CascadeType.ALL, orphanRemoval = true)
   @Builder.Default
   private List<MaterialSummary> summaries = new ArrayList<>();
-
-
-
-  public void addSummary(MaterialSummary summary) {
-    summaries.add(summary);
-    summary.setMaterial(this);
-  }
 }

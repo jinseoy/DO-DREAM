@@ -1,7 +1,7 @@
 package A704.DODREAM.material.controller;
 
-import A704.DODREAM.api.service.material.MaterialContentService;
 import A704.DODREAM.material.entity.MaterialContent;
+import A704.DODREAM.material.service.MaterialContentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

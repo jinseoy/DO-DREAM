@@ -1,7 +1,7 @@
 package A704.DODREAM.file.service;
 
-import A704.DODREAM.api.service.file.dto.ClovaOcrResponse;
-import A704.DODREAM.api.service.file.dto.PageOcrResult;
+import A704.DODREAM.file.dto.ClovaOcrResponse;
+import A704.DODREAM.file.dto.PageOcrResult;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;

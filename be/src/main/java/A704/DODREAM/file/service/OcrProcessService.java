@@ -1,11 +1,11 @@
 package A704.DODREAM.file.service;
 
-import A704.DODREAM.api.service.file.dto.PageOcrResult;
 import A704.DODREAM.file.OcrPage;
 import A704.DODREAM.file.OcrStatus;
 import A704.DODREAM.file.OcrWord;
 import A704.DODREAM.file.UploadedFile;
 import A704.DODREAM.file.UploadedFileRepository;
+import A704.DODREAM.file.dto.PageOcrResult;
 import java.io.File;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

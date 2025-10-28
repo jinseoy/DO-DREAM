@@ -1,13 +1,12 @@
 package A704.DODREAM.file.controller;
 
-
-import A704.DODREAM.api.service.file.FileStorageService;
-import A704.DODREAM.api.service.file.OcrProcessService;
 import A704.DODREAM.file.OcrStatus;
 import A704.DODREAM.file.UploadedFile;
 import A704.DODREAM.file.UploadedFileRepository;
 import A704.DODREAM.file.dto.FileUploadResponse;
 import A704.DODREAM.file.dto.OcrResultResponse;
+import A704.DODREAM.file.service.FileStorageService;
+import A704.DODREAM.file.service.OcrProcessService;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
