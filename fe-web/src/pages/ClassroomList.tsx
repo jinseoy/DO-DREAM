@@ -25,7 +25,6 @@ type ClassroomData = {
   class: string;
   studentCount: number;
   materialCount: number;
-  color: string;
 };
 
 type Material = {
@@ -142,7 +141,6 @@ export default function ClassroomList({
       class: '1반',
       studentCount: 28,
       materialCount: 5,
-      color: '#4a2d73',
     },
     {
       id: '2',
@@ -150,7 +148,6 @@ export default function ClassroomList({
       class: '2반',
       studentCount: 26,
       materialCount: 3,
-      color: '#0096A6',
     },
     {
       id: '3',
@@ -158,7 +155,6 @@ export default function ClassroomList({
       class: '1반',
       studentCount: 30,
       materialCount: 8,
-      color: '#DD1D5D',
     },
     {
       id: '4',
@@ -166,7 +162,6 @@ export default function ClassroomList({
       class: '3반',
       studentCount: 25,
       materialCount: 4,
-      color: '#EEBF00',
     },
   ];
 
@@ -206,13 +201,12 @@ export default function ClassroomList({
         ).join('')}
       </div>
     `,
-      // ✅ 더 작고 예쁜 사이즈 & 버튼 순서: 취소(왼쪽) / 저장(오른쪽)
       width: 420,
       padding: '18px',
       showCancelButton: true,
       confirmButtonText: '저장',
       cancelButtonText: '취소',
-      reverseButtons: true, // ← 현재 화면에서 저장이 왼쪽으로 나와있으니 뒤집어서 오른쪽으로
+      reverseButtons: true,
       confirmButtonColor: '#192b55',
       cancelButtonColor: '#d1d5db',
       customClass: {
@@ -233,9 +227,9 @@ export default function ClassroomList({
 
             buttons.forEach((b) => {
               if (b.getAttribute('data-label') === selectedLabel) {
-                b.innerHTML = '✓';
+                (b as HTMLElement).innerHTML = '✓';
               } else {
-                b.innerHTML = '';
+                (b as HTMLElement).innerHTML = '';
               }
             });
           });
@@ -348,10 +342,12 @@ export default function ClassroomList({
         <main className="cl-main-content">
           {/* 반 목록 */}
           <div className="cl-classrooms-section">
-            <h2 className="cl-section-title">담당 반 선택</h2>
-            <p className="cl-section-subtitle">
-              자료를 관리할 반을 선택해주세요
-            </p>
+            <div className="cl-section-header">
+              <h2 className="cl-section-title">담당 반 선택</h2>
+              <p className="cl-section-subtitle">
+                자료를 관리할 반을 선택해주세요
+              </p>
+            </div>
 
             <div className="cl-classrooms-grid">
               {classrooms.map((classroom) => (
@@ -359,13 +355,12 @@ export default function ClassroomList({
                   key={classroom.id}
                   className="cl-classroom-card"
                   onClick={() => handleSelectClassroom(classroom.id)}
-                  style={{ borderTopColor: classroom.color }}
                 >
                   <div className="cl-classroom-header">
-                    <div
+                    {/* <div
                       className="cl-classroom-color-badge"
                       style={{ backgroundColor: classroom.color }}
-                    />
+                    /> */}
                     <div className="cl-classroom-title">
                       <h3>{classroom.grade}</h3>
                       <p>{classroom.class}</p>
@@ -397,19 +392,41 @@ export default function ClassroomList({
           {/* 자료함 */}
           <div className="cl-materials-section">
             <div className="cl-materials-header">
-              <div>
+              <div className="cl-section-header">
                 <h2 className="cl-section-title">내 자료</h2>
                 <p className="cl-section-subtitle">
                   생성하거나 공유한 자료들을 관리하세요
                 </p>
               </div>
-              <button
-                className="cl-create-material-btn"
-                onClick={handleCreateMaterial}
-              >
-                <Plus size={20} />
-                <span>새 자료 만들기</span>
-              </button>
+
+              {/* ▼ 설명 박스(왼쪽) + 버튼(오른쪽)을 같은 행으로 */}
+              <div className="cl-cta-row">
+                <div className="cl-feature-explain">
+                  <p className="cl-feature-title">자료 만들기란?</p>
+                  <ul className="cl-feature-list">
+                    <li>
+                      <span>PDF나 TXT 파일 업로드 시 텍스트 자동 추출</span>
+                    </li>
+                    <li>
+                      <span>에디터에서 내용 편집 · 단원 분리</span>
+                    </li>
+                    <li>
+                      <span>완성된 자료를 반/학생에게 전송</span>
+                    </li>
+                    <li>
+                      <span>앱에서 음성 학습 지원</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <button
+                  className="cl-create-material-btn"
+                  onClick={handleCreateMaterial}
+                >
+                  <Plus size={20} />
+                  <span>새 자료 만들기</span>
+                </button>
+              </div>
             </div>
 
             <div className="cl-materials-list">

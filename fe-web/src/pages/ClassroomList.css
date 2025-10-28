@@ -7,7 +7,7 @@
 
 /* ===== Header ===== */
 .cl-header {
-  position: sticky;
+  position: fixed;
   top: 0;
   width: 100%;
   height: 70px;
@@ -43,7 +43,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: #f1f5f9;
+  background: none;
   border: none;
   border-radius: 8px;
   color: #475569;
@@ -54,8 +54,8 @@
 }
 
 .cl-logout-button:hover {
-  background: #e2e8f0;
-  color: #192b55;
+  color: #fff;
+  background: #192b55;
 }
 
 /* ===== Layout ===== */
@@ -63,6 +63,7 @@
   display: block;
   min-height: calc(100vh - 70px);
   position: relative;
+  padding-top: 70px;
 }
 
 /* ===== Sidebar ===== */
@@ -98,7 +99,6 @@
 }
 
 .cl-profile-avatar-mini {
-  width: 100px;
   height: 100px;
   border-radius: 12px;
   object-fit: cover;
@@ -179,32 +179,91 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
+.cl-section-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
 .cl-section-title {
   font-size: 20px;
   font-weight: 700;
   color: #1e293b;
-  margin: 0 0 8px 0;
 }
 
 .cl-section-subtitle {
   font-size: 14px;
   color: #64748b;
-  margin-bottom: 20px;
 }
 
 /* ===== Materials Header ===== */
+/* 제목/부제 + (설명박스+버튼) 2행 구조 */
 .cl-materials-header {
+  display: block;
+}
+
+.cl-materials-header > .cl-section-title + .cl-section-subtitle {
+  margin-bottom: 14px;
+}
+
+/* 설명박스(왼쪽) + 버튼(오른쪽)을 한 행에 정렬 */
+.cl-cta-row {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  background-color: #E8EEF3;
+  padding: 4px 20px 4px 10px;
+  margin-bottom: 20px;
+  border-radius: 12px;
 }
 
-.cl-materials-header > div {
+/* ===== Feature explain (left of create button) ===== */
+.cl-feature-explain {
   flex: 1;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border: none;
+  border-radius: 12px;
 }
 
-/* ===== Create Material Button ===== */
+.cl-feature-title {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: #192b55;
+  letter-spacing: -0.2px;
+}
+
+.cl-feature-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(200px, 1fr));
+  gap: 6px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cl-feature-list li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #475569;
+  letter-spacing: -0.2px;
+}
+.cl-feature-list li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: #192b55; /* 브랜드 블루 포인트 */
+  font-weight: 900;
+  line-height: 1;
+}
+
+/* 버튼은 고정 폭/높이 */
 .cl-create-material-btn {
   display: flex;
   align-items: center;
@@ -219,7 +278,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
-  flex-shrink: 0;
+  height: 40px;
 }
 .cl-create-material-btn:hover {
   background: #0f1f3a;
@@ -375,16 +434,14 @@
   flex-direction: column;
   padding: 20px;
   background: #f8fafc;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border-top: 3px solid #3b82f6;
+  border: 3px dotted #cbd5e1;
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 .cl-classroom-card:hover {
   background: white;
-  border-color: #cbd5e1;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 3px dotted #192b55;
   transform: translateY(-2px);
 }
 .cl-classroom-header {
@@ -642,16 +699,15 @@
 }
 
 /* ===== Responsive ===== */
+@media (max-width: 1200px) {
+  .cl-feature-list {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 1024px) {
   .cl-main-content {
     padding: 32px;
-  }
-  .cl-materials-header {
-    flex-direction: column;
-  }
-  .cl-create-material-btn {
-    width: 100%;
-    justify-content: center;
   }
 }
 
@@ -747,8 +803,13 @@
     gap: 10px;
   }
 
-  .cl-materials-header {
+  /* CTA 행: 세로 스택, 설명 박스는 공간 절약 위해 숨김 가능 */
+  .cl-cta-row {
     flex-direction: column;
+    gap: 10px;
+  }
+  .cl-feature-explain {
+    display: none;
   }
   .cl-create-material-btn {
     width: 100%;
@@ -833,36 +894,37 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  border: 2px solid rgba(0,0,0,0.06);
+  border: 2px solid rgba(0, 0, 0, 0.06);
   font-size: 16px;
   font-weight: 800;
   color: #fff;
   display: grid;
   place-items: center;
-  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .cl-label-modal .cl-label-option:hover {
   transform: translateY(-1px) scale(1.05);
-  border-color: rgba(0,0,0,0.16);
-  box-shadow: 0 6px 14px rgba(0,0,0,0.14);
+  border-color: rgba(0, 0, 0, 0.16);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.14);
 }
 
 .cl-label-modal .cl-label-option.active {
   outline: none;
-  border-color: rgba(0,0,0,0.28);
-  box-shadow: 0 6px 14px rgba(0,0,0,0.16);
+  border-color: rgba(0, 0, 0, 0.28);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.16);
 }
 
 /* 버튼 정렬은 reverseButtons 로 처리, 색상/호버만 미세 보정 */
 .cl-label-save {
   font-weight: 800 !important;
 }
-
 .cl-label-cancel {
   font-weight: 700 !important;
   color: #4b5563 !important;
   background: #eef2f7 !important;
 }
-
