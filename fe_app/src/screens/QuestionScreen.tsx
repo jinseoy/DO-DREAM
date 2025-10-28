@@ -136,8 +136,9 @@ export default function QuestionScreen() {
     }, 100);
 
     // 접근성 안내
-    const speaker = type === 'user' ? '사용자' : '두드림';
-    AccessibilityInfo.announceForAccessibility(`${speaker}: ${text}`);
+    if (type === 'bot') {
+      AccessibilityInfo.announceForAccessibility(text);
+    }
   };
 
   const formatTime = (date: Date) => {
@@ -168,7 +169,7 @@ export default function QuestionScreen() {
             isUser ? styles.userBubble : styles.botBubble,
           ]}
           accessible={true}
-          accessibilityLabel={`${isUser ? '내 질문' : '두드림 답변'}: ${message.text}`}
+          accessibilityLabel={message.text}
           accessibilityRole="text"
         >
           <Text
@@ -383,14 +384,15 @@ const styles = StyleSheet.create({
   },
   emptyStateContainer: {
     justifyContent: 'flex-start',
-    paddingHorizontal: 20,
-    paddingVertical: 40,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   welcomeBubble: {
     backgroundColor: '#FFF9C4',
     borderRadius: 12,
     padding: 20,
-    marginBottom: 20,
+    marginBottom: 12,
     alignSelf: 'flex-start',
     maxWidth: '95%',
   },
