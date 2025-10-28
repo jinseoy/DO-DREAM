@@ -229,3 +229,19 @@
 @media (max-width: 480px) {
   /* 이 구간은 Classroom 전용 요소가 거의 없어 최소화 */
 }
+
+.cl-student-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cl-student-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 28px rgba(25, 43, 85, 0.16);
+  background: #ffffff;
+  border-color: #192b55;
+}
+
+.cl-student-card:active {
+  transform: translateY(-2px);
+}

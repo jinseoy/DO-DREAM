@@ -520,7 +520,12 @@ export default function Classroom() {
 
             <div className="cl-section-scroll cl-students-grid">
               {filteredStudents.map((s) => (
-                <div key={s.id} className="cl-student-card">
+                <div
+                  key={s.id}
+                  className="cl-student-card"
+                  onClick={() => navigate(`/student/${s.id}`)} // ✅ 추가
+                  style={{ cursor: 'pointer' }} // ✅ 추가
+                >
                   <div className="cl-student-top">
                     <img
                       className="cl-student-avatar"
