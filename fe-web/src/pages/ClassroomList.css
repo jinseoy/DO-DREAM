@@ -1,7 +1,8 @@
 /* ===== Root ===== */
 .cl-root {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f0f4f8 0%, #e8f1f8 100%);
+  /* background: linear-gradient(135deg, #f0f4f8 0%, #e8f1f8 100%); */
+  background-image: url("../assets/join/background.jpg");
   overflow-y: auto;
 }
 
@@ -141,7 +142,7 @@
   display: inline-flex;
   gap: 6px;
   align-items: center;
-  font-weight: 800;
+  font-weight: 500;
   font-size: 13px;
   color: #fff;
 }
@@ -285,7 +286,7 @@
   flex-direction: column;
   padding: 20px;
   background: #f8fafc;
-  border: 3px dotted #cbd5e1;
+  border: 3px dotted #C7C8CA;
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.3s ease;
