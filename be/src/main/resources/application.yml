@@ -8,7 +8,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
@@ -19,8 +19,8 @@ spring:
   servlet:
     multipart:
       enabled: true
-      max-file-size: 50MB
-      max-request-size: 50MB
+      max-file-size: 100MB
+      max-request-size: 100MB
       file-size-threshold: 2KB
 
 logging:
@@ -42,5 +42,5 @@ file:
 # Naver Clova OCR Configuration
 clova:
   ocr:
-    api-url: https://ibekw9jvth.apigw.ntruss.com/custom/v1/47166/f41b2297360318b1eb9098ae9fdbf37a4c0bdaefa716cf085a14f1f849831502/general
-    secret-key: a2xacGVqUW1LUG5vaGRPZ21GcEdQZEdMZGxLcUdZWEg=
+    api-url: ${CLOVA.OCR.API-URL}
+    secret-key: ${CLOVA.OCR.SECRET-KEY}

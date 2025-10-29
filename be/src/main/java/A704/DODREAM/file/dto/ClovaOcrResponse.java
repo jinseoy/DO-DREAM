@@ -29,7 +29,7 @@ public class ClovaOcrResponse {
         private BoundingPoly boundingPoly;
         private String inferText;
         private Double inferConfidence;
-        private Integer lineBreak;
+        private Boolean lineBreak;
     }
 
     @Data

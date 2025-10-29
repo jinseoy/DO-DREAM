@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF OCR 테스트</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .upload-section {
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .drop-zone {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            background: #e8ebff;
+            border-color: #5568d3;
+            transform: scale(1.02);
+        }
+
+        .drop-zone-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+
+        .drop-zone-text {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .drop-zone-hint {
+            font-size: 14px;
+            color: #999;
+        }
+
+        .file-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f5e9;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .result-section {
+            margin-top: 40px;
+            padding-top: 40px;
+            border-top: 2px solid #eee;
+        }
+
+        .status-card {
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+        }
+
+        .status-processing {
+            background: #d1ecf1;
+            border-left: 5px solid #17a2b8;
+        }
+
+        .status-completed {
+            background: #d4edda;
+            border-left: 5px solid #28a745;
+        }
+
+        .status-failed {
+            background: #f8d7da;
+            border-left: 5px solid #dc3545;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .text-result {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            max-height: 500px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .info-value {
+            color: #333;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 PDF OCR 테스트</h1>
+        <p class="subtitle">Naver Clova OCR을 사용한 PDF 텍스트 추출</p>
+
+        <div class="upload-section">
+            <div class="input-group">
+                <label for="uploaderId">선생님 ID</label>
+                <input type="number" id="uploaderId" value="1" min="1" placeholder="업로더 ID를 입력하세요">
+            </div>
+
+            <div class="drop-zone" id="dropZone">
+                <div class="drop-zone-icon">📁</div>
+                <div class="drop-zone-text">PDF 파일을 여기에 드래그하거나 클릭하세요</div>
+                <div class="drop-zone-hint">최대 100MB까지 업로드 가능</div>
+                <input type="file" id="fileInput" accept=".pdf" style="display: none;">
+            </div>
+
+            <div class="file-info" id="fileInfo">
+                <strong>선택된 파일:</strong> <span id="fileName"></span>
+                <br>
+                <strong>파일 크기:</strong> <span id="fileSize"></span>
+            </div>
+
+            <button class="btn btn-primary" id="uploadBtn" disabled>PDF 업로드 및 OCR 시작</button>
+        </div>
+
+        <div class="result-section hidden" id="resultSection">
+            <h2>📊 OCR 결과</h2>
+
+            <div id="statusCard" class="status-card">
+                <div class="info-item">
+                    <span class="info-label">파일 ID:</span>
+                    <span class="info-value" id="fileId">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">파일명:</span>
+                    <span class="info-value" id="resultFileName">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">상태:</span>
+                    <span class="info-value" id="ocrStatus">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">업로드 시간:</span>
+                    <span class="info-value" id="uploadTime">-</span>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" id="checkStatusBtn">상태 확인</button>
+            <button class="btn btn-primary" id="getTextBtn" disabled>전체 텍스트 조회</button>
+
+            <div id="textResult" class="text-result hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploaderId = document.getElementById('uploaderId');
+        const resultSection = document.getElementById('resultSection');
+        const statusCard = document.getElementById('statusCard');
+        const checkStatusBtn = document.getElementById('checkStatusBtn');
+        const getTextBtn = document.getElementById('getTextBtn');
+        const textResult = document.getElementById('textResult');
+
+        let selectedFile = null;
+        let currentFileId = null;
+        let statusInterval = null;
+
+        // 드래그 앤 드롭 이벤트
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.name.toLowerCase().endsWith('.pdf')) {
+                alert('PDF 파일만 업로드 가능합니다!');
+                return;
+            }
+
+            if (file.size > 100 * 1024 * 1024) {
+                alert('파일 크기는 100MB를 초과할 수 없습니다!');
+                return;
+            }
+
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.classList.add('show');
+            uploadBtn.disabled = false;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        // 파일 업로드
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) {
+                alert('파일을 선택해주세요!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('uploaderId', uploaderId.value);
+
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = '업로드 중...';
+
+            try {
+                const response = await fetch('/api/files/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    currentFileId = result.fileId;
+                    showResult(result);
+                    startStatusPolling();
+                } else {
+                    alert('업로드 실패: ' + (result.message || result));
+                }
+            } catch (error) {
+                alert('업로드 중 오류 발생: ' + error.message);
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'PDF 업로드 및 OCR 시작';
+            }
+        });
+
+        function showResult(data) {
+            resultSection.classList.remove('hidden');
+            document.getElementById('fileId').textContent = data.fileId;
+            document.getElementById('resultFileName').textContent = data.originalFileName;
+            updateStatus(data.ocrStatus);
+            document.getElementById('uploadTime').textContent = new Date(data.uploadedAt).toLocaleString('ko-KR');
+        }
+
+        function updateStatus(status) {
+            const statusElement = document.getElementById('ocrStatus');
+            const statusTexts = {
+                'PENDING': '대기 중',
+                'PROCESSING': '처리 중...',
+                'COMPLETED': '완료',
+                'FAILED': '실패'
+            };
+
+            statusElement.innerHTML = status === 'PROCESSING'
+                ? '<span class="loading"></span>' + statusTexts[status]
+                : statusTexts[status];
+
+            statusCard.className = 'status-card status-' + status.toLowerCase();
+
+            getTextBtn.disabled = status !== 'COMPLETED';
+
+            if (status === 'COMPLETED' || status === 'FAILED') {
+                stopStatusPolling();
+            }
+        }
+
+        // 상태 폴링
+        function startStatusPolling() {
+            stopStatusPolling();
+            statusInterval = setInterval(checkStatus, 3000);
+        }
+
+        function stopStatusPolling() {
+            if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+            }
+        }
+
+        async function checkStatus() {
+            if (!currentFileId) return;
+
+            try {
+                const response = await fetch(`/api/files/${currentFileId}/status`);
+                const result = await response.json();
+                updateStatus(result.ocrStatus);
+            } catch (error) {
+                console.error('상태 확인 실패:', error);
+            }
+        }
+
+        checkStatusBtn.addEventListener('click', checkStatus);
+
+        // 전체 텍스트 조회
+        getTextBtn.addEventListener('click', async () => {
+            if (!currentFileId) return;
+
+            getTextBtn.disabled = true;
+            getTextBtn.textContent = '조회 중...';
+
+            try {
+                const response = await fetch(`/api/files/${currentFileId}/text`);
+                const text = await response.text();
+
+                if (response.ok) {
+                    textResult.textContent = text;
+                    textResult.classList.remove('hidden');
+                } else {
+                    alert('텍스트 조회 실패: ' + text);
+                }
+            } catch (error) {
+                alert('텍스트 조회 중 오류 발생: ' + error.message);
+            } finally {
+                getTextBtn.disabled = false;
+                getTextBtn.textContent = '전체 텍스트 조회';
+            }
+        });
+
+        // 페이지 떠날 때 폴링 중지
+        window.addEventListener('beforeunload', stopStatusPolling);
+    </script>
+</body>
+</html>
