@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { 
+import {
   PlayerScreenNavigationProp,
-  PlayerScreenRouteProp 
+  PlayerScreenRouteProp
 } from '../navigation/navigationTypes';
 import { getChapterById } from '../data/dummyChapters';
+import * as Haptics from 'expo-haptics';
+import { TriggerContext } from '../triggers/TriggerContext';
 
 export default function PlayerScreen() {
   const navigation = useNavigation<PlayerScreenNavigationProp>();
@@ -22,8 +24,25 @@ export default function PlayerScreen() {
 
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const { setMode, registerPlayPause } = useContext(TriggerContext);
 
   const chapter = getChapterById(chapterId);
+
+  // 화면 진입/이탈 시 전역 트리거 모드 설정
+  useEffect(() => {
+    // 이 화면에서는 Magic Tap / Android 볼륨 다운 더블 = 재생/정지
+    setMode('playpause');
+
+    // 전역에서 호출될 재생/정지 핸들러 등록
+    registerPlayPause(() => handlePlayPause());
+
+    return () => {
+      // 화면 떠날 때 원복
+      registerPlayPause(null);
+      setMode('voice');
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (chapter) {
@@ -39,28 +58,33 @@ export default function PlayerScreen() {
   };
 
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
-    AccessibilityInfo.announceForAccessibility(
-      isPlaying ? '일시정지' : '재생'
-    );
+    setIsPlaying((prev) => {
+      const next = !prev;
+      AccessibilityInfo.announceForAccessibility(next ? '재생' : '일시정지');
+      Haptics.selectionAsync();
+      return next;
+    });
   };
 
   const handlePrevious = () => {
     if (currentSectionIndex > 0) {
-      setCurrentSectionIndex(currentSectionIndex - 1);
+      setCurrentSectionIndex((i) => i - 1);
       AccessibilityInfo.announceForAccessibility('이전 문단');
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
 
   const handleNext = () => {
     if (chapter && currentSectionIndex < chapter.sections.length - 1) {
-      setCurrentSectionIndex(currentSectionIndex + 1);
+      setCurrentSectionIndex((i) => i + 1);
       AccessibilityInfo.announceForAccessibility('다음 문단');
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
 
   const handleQuestionPress = () => {
     AccessibilityInfo.announceForAccessibility('질문하기 화면으로 이동합니다');
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     navigation.navigate('Question');
   };
 
@@ -76,11 +100,11 @@ export default function PlayerScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      {/* 상단 헤더 */}
+      {/* 헤더 */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={handleGoBack}
-          accessible={true}
+          accessible
           accessibilityLabel="뒤로가기"
           accessibilityRole="button"
           style={styles.backButton}
@@ -94,35 +118,23 @@ export default function PlayerScreen() {
         </View>
       </View>
 
-      {/* 내용 영역 (저시력자를 위한 텍스트 표시) */}
-      <ScrollView 
-        style={styles.contentArea}
-        contentContainerStyle={styles.contentContainer}
-      >
-        <Text 
-          style={styles.contentText}
-          accessible={true}
-          accessibilityRole="text"
-        >
+      {/* 본문 */}
+      <ScrollView style={styles.contentArea} contentContainerStyle={styles.contentContainer}>
+        <Text style={styles.contentText} accessible accessibilityRole="text">
           {currentSection.text}
         </Text>
-
-        {/* 진행 상태 */}
         <Text style={styles.progressText}>
           {currentSectionIndex + 1} / {chapter.sections.length}
         </Text>
       </ScrollView>
 
-      {/* 컨트롤 버튼들 */}
+      {/* 컨트롤 */}
       <View style={styles.controlsContainer}>
         <TouchableOpacity
-          style={[
-            styles.controlButton,
-            currentSectionIndex === 0 && styles.disabledButton,
-          ]}
+          style={[styles.controlButton, currentSectionIndex === 0 && styles.disabledButton]}
           onPress={handlePrevious}
           disabled={currentSectionIndex === 0}
-          accessible={true}
+          accessible
           accessibilityLabel="이전 문단"
           accessibilityRole="button"
           accessibilityHint="이전 문단으로 이동합니다"
@@ -133,24 +145,23 @@ export default function PlayerScreen() {
         <TouchableOpacity
           style={[styles.controlButton, styles.playButton]}
           onPress={handlePlayPause}
-          accessible={true}
+          onLongPress={handleQuestionPress} // iOS 보조 트리거
+          accessible
           accessibilityLabel={isPlaying ? '일시정지' : '재생'}
           accessibilityRole="button"
+          accessibilityHint="두 손가락 두 번 탭으로도 제어할 수 있습니다"
         >
-          <Text style={styles.playButtonText}>
-            {isPlaying ? '⏸' : '▶'}
-          </Text>
+          <Text style={styles.playButtonText}>{isPlaying ? '⏸' : '▶'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[
             styles.controlButton,
-            currentSectionIndex === chapter.sections.length - 1 && 
-              styles.disabledButton,
+            currentSectionIndex === chapter.sections.length - 1 && styles.disabledButton,
           ]}
           onPress={handleNext}
           disabled={currentSectionIndex === chapter.sections.length - 1}
-          accessible={true}
+          accessible
           accessibilityLabel="다음 문단"
           accessibilityRole="button"
           accessibilityHint="다음 문단으로 이동합니다"
@@ -159,12 +170,12 @@ export default function PlayerScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* 음성 질문하기 버튼 */}
+      {/* 질문하기 버튼 */}
       <View style={styles.bottomButtons}>
         <TouchableOpacity
           style={styles.voiceQueryButton}
           onPress={handleQuestionPress}
-          accessible={true}
+          accessible
           accessibilityLabel="질문하기"
           accessibilityRole="button"
           accessibilityHint="음성으로 질문할 수 있는 화면으로 이동합니다"
