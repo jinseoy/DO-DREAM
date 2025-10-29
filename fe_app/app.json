@@ -32,18 +32,17 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "compileSdkVersion": 35,
-            "targetSdkVersion": 34,
-            "buildToolsVersion": "35.0.0",
-            "minSdkVersion": 24,
-            "kotlinVersion": "2.0.20"
-          }
+      ["expo-build-properties",
+      {
+        "android": {
+          "compileSdkVersion": 35,
+          "targetSdkVersion": 34,
+          "buildToolsVersion": "35.0.0",
+          "minSdkVersion": 24,
+          "kotlinVersion": "2.0.20"
         }
-      ]
+      }],
+      "./plugins/with-volume-key-triggers"
     ]
   }
 }
