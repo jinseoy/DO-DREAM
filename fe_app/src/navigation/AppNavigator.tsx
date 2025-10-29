@@ -8,11 +8,13 @@ import PlaybackChoiceScreen from '../screens/PlaybackChoiceScreen';
 import PlayerScreen from '../screens/PlayerScreen';
 import QuestionScreen from '../screens/QuestionScreen';
 
+import { navigationRef } from './RootNavigation';
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function AppNavigator() {
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
         initialRouteName="Library"
         screenOptions={{
@@ -20,29 +22,29 @@ export default function AppNavigator() {
           animation: 'slide_from_right',
         }}
       >
-        <Stack.Screen 
-          name="Library" 
+        <Stack.Screen
+          name="Library"
           component={LibraryScreen}
           options={{
             title: '나의 서재',
           }}
         />
-        <Stack.Screen 
-          name="PlaybackChoice" 
+        <Stack.Screen
+          name="PlaybackChoice"
           component={PlaybackChoiceScreen}
           options={{
             title: '재생 방법 선택',
           }}
         />
-        <Stack.Screen 
-          name="Player" 
+        <Stack.Screen
+          name="Player"
           component={PlayerScreen}
           options={{
             title: '교재 듣기',
           }}
         />
-        <Stack.Screen 
-          name="Question" 
+        <Stack.Screen
+          name="Question"
           component={QuestionScreen}
           options={{
             title: '질문하기',
