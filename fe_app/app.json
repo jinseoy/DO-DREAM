@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "fe_app",
-    "slug": "fe_app",
+    "name": "두드림",
+    "slug": "do-dream",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
