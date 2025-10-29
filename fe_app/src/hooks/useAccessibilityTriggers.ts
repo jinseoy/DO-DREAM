@@ -36,6 +36,3 @@ export function useDoublePress(intervalMs = 350) {
   const consume = () => setFired(false);
   return { fired, mark, consume };
 }
-
-export const isIOS = Platform.OS === 'ios';
-export const isAndroid = Platform.OS === 'android';

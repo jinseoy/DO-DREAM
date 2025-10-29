@@ -1,26 +1,23 @@
 import React, { useContext } from 'react';
 import { Platform, AccessibilityInfo } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { useScreenReaderEnabled } from '../hooks/useAccessibilityTriggers';
 import MagicTapCatcher from './MagicTapCatcher';
 import AndroidVolumeDoublePress from './AndroidVolumeDoublePress';
 import { TriggerContext } from '../triggers/TriggerContext';
 
 type Props = {
-  onVoiceCommand: () => void;             // 전역 질문 라우팅
+  onVoiceCommand: () => void;
   /**
    * TalkBack(스크린리더) 켜져 있어도 Android 볼륨 더블프레스를 허용할지 여부
    * - 기본값: true (요청사항 반영)
-   * - 사용자 옵션으로 끄고 싶으면 false로 내려주면 됨
+   * - 사용자 옵션으로, 끄고 싶으면 false로 변경
    */
   allowWithScreenReaderOn?: boolean;
 };
 
 export default function GlobalVoiceTriggers({
-  onVoiceCommand,
-  allowWithScreenReaderOn = true,
+  onVoiceCommand
 }: Props) {
-  const srEnabled = useScreenReaderEnabled();
   const { mode, getPlayPause } = useContext(TriggerContext);
 
   const fireVoice = async () => {
@@ -42,13 +39,13 @@ export default function GlobalVoiceTriggers({
   };
 
   // Android: TalkBack ON이어도 트리거 허용(옵션)
-  //  - 업 더블 = 질문(전역)
-  //  - 다운 더블 = 재생/정지 (playpause 모드에서만)
+  //  - 업 더블: 질문(전역)
+  //  - 다운 더블: 재생/정지 (playpause 모드에서만)
   const androidOverlay =
     Platform.OS === 'android' ? (
       <AndroidVolumeDoublePress
-        // TalkBack ON이어도 허용(옵션). 끄고 싶으면 allowWithScreenReaderOn=false로.
-        enabled={allowWithScreenReaderOn ? true : !srEnabled}
+        // TalkBack ON/OFF와 상관없이 항상 작동
+        enabled={true}
         onVolumeUpDouble={fireVoice}
         onVolumeDownDouble={mode === 'playpause' ? firePlayPause : undefined}
       />

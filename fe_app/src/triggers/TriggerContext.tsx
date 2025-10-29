@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useMemo, useRef, useState } from 'react';
 
-type TriggerMode = 'voice' | 'playpause' | 'none';
+type TriggerMode = 'voice' | 'playpause';
 
 type Ctx = {
   mode: TriggerMode;
