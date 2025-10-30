@@ -14,9 +14,9 @@ spring:
     import: vault://
 
   datasource:
-    url: jdbc:mysql://localhost:3306/dodream_test
-    username: root
-    password: ssafy1234
+    url: ${jdbc-url}
+    username: ${username}
+    password: ${password}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -68,6 +68,6 @@ clova:
     secret-key: ${CLOVA_SECRET_KEY}
 
 jwt:
-  secret: "fPv/sc/25zTF5LBJQcgLh0xvS117nJopIfN1mph5gUc="
+  secret: ${jwtSecret}
   access-exp-seconds: 900
   refresh-exp-seconds: 1209600
