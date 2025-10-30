@@ -1,27 +1,23 @@
 package A704.DODREAM.auth.service;
 
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import A704.DODREAM.auth.dto.request.TeacherLoginRequest;
 import A704.DODREAM.auth.dto.request.TeacherSignupRequest;
 import A704.DODREAM.auth.entity.PasswordCredential;
 import A704.DODREAM.auth.repository.PasswordCredentialRepository;
-import A704.DODREAM.registry.entity.TeacherRegistry;
-import A704.DODREAM.registry.repository.TeacherRegistryRepository;
 import A704.DODREAM.user.entity.Role;
 import A704.DODREAM.user.entity.TeacherProfile;
 import A704.DODREAM.user.entity.User;
 import A704.DODREAM.user.repository.TeacherProfileRepository;
 import A704.DODREAM.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class TeacherAuthService {
 
-	private final TeacherRegistryRepository teacherRegistryRepository;
 	private final UserRepository userRepository;
 	private final TeacherProfileRepository teacherProfileRepository;
 	private final PasswordCredentialRepository passwordCredentialRepository;
