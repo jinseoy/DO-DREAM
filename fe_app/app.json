@@ -12,6 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dodream.app"
@@ -27,23 +30,38 @@
       "compileSdkVersion": 35,
       "targetSdkVersion": 34,
       "buildToolsVersion": "35.0.0",
-      "minSdkVersion": 24
+      "minSdkVersion": 24,
+      "permissions": [
+        "INTERNET",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "POST_NOTIFICATIONS"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      ["expo-build-properties",
-      {
-        "android": {
-          "compileSdkVersion": 35,
-          "targetSdkVersion": 34,
-          "buildToolsVersion": "35.0.0",
-          "minSdkVersion": 24,
-          "kotlinVersion": "2.0.20"
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      "./plugins/withAndroidManifestFix",
+      "./plugins/withVolumeKeyTriggers",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 34,
+            "minSdkVersion": 24,
+            "buildToolsVersion": "35.0.0",
+            "kotlinVersion": "2.0.20",
+            "enableProguardInReleaseBuilds": false,
+            "enableShrinkResourcesInReleaseBuilds": false,
+            "extraProguardRules": "-keep class com.facebook.react.** { *; }"
+          }
         }
-      }],
-      "./plugins/with-volume-key-triggers"
+      ]
     ]
   }
 }
