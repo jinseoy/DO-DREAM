@@ -1,19 +1,5 @@
-export interface Chapter {
-  id: string;
-  bookId: string;
-  chapterNumber: number;
-  title: string;
-  content: string;
-  sections: Section[];
-}
+import { Chapter } from "../types/chapter";
 
-export interface Section {
-  id: string;
-  text: string;
-  type: 'paragraph' | 'heading' | 'formula' | 'image_description';
-}
-
-// 교재 더미 챕터 (영어, 생물)
 export const dummyChapters: Chapter[] = [
   {
     id: 'ch-1-1',
