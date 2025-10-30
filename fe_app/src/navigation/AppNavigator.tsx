@@ -7,6 +7,9 @@ import LibraryScreen from '../screens/LibraryScreen';
 import PlaybackChoiceScreen from '../screens/PlaybackChoiceScreen';
 import PlayerScreen from '../screens/PlayerScreen';
 import QuestionScreen from '../screens/QuestionScreen';
+import QuizListScreen from '../screens/QuizListScreen';
+import QuizScreen from '../screens/QuizScreen';
+import QuizResultScreen from '../screens/QuizResultScreen';
 
 import { navigationRef } from './RootNavigation';
 
@@ -18,7 +21,7 @@ export default function AppNavigator() {
       <Stack.Navigator
         initialRouteName="Library"
         screenOptions={{
-          headerShown: false, // 헤더 숨기기 (접근성을 위해 커스텀 헤더 사용)
+          headerShown: false,
           animation: 'slide_from_right',
         }}
       >
@@ -48,6 +51,27 @@ export default function AppNavigator() {
           component={QuestionScreen}
           options={{
             title: '질문하기',
+          }}
+        />
+        <Stack.Screen
+          name="QuizList"
+          component={QuizListScreen}
+          options={{
+            title: '퀴즈 목록',
+          }}
+        />
+        <Stack.Screen
+          name="Quiz"
+          component={QuizScreen}
+          options={{
+            title: '퀴즈',
+          }}
+        />
+        <Stack.Screen
+          name="QuizResult"
+          component={QuizResultScreen}
+          options={{
+            title: '퀴즈 결과',
           }}
         />
       </Stack.Navigator>
