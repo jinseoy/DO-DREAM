@@ -1,10 +1,22 @@
 spring:
   application:
     name: DODREAM
+
+  cloud:
+    vault:
+      token: ${vaultToken}
+      kv:
+        enabled: true
+        backend: secret
+
+      uri: ${vaultAddr}
+  config:
+    import: vault://
+
   datasource:
-    url: jdbc:mysql://localhost:3306/dodream
-    username: dodream
-    password: dodream
+    url: ${jdbc-url}
+    username: ${username}
+    password: ${password}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -22,6 +34,16 @@ spring:
       max-file-size: 100MB
       max-request-size: 100MB
       file-size-threshold: 2KB
+  data:
+    redis:
+      port: 6379
+
+server:
+  servlet:
+    session:
+      cookie:
+        same-site: lax
+
 
 logging:
   level:
@@ -42,5 +64,22 @@ file:
 # Naver Clova OCR Configuration
 clova:
   ocr:
-    api-url: ${CLOVA.OCR.API-URL}
-    secret-key: ${CLOVA.OCR.SECRET-KEY}
+    api-url: ${CLOVA_API_URL}
+    secret-key: ${CLOVA_SECRET_KEY}
+
+jwt:
+  secret: ${jwtSecret}
+  access-exp-seconds: 900
+  refresh-exp-seconds: 1209600
+
+aws:
+  s3:
+    bucket: ${awsS3Bucket}
+    region: ${awsRegion}
+    upload-prefix: pdf
+    presign-exp-minutes: 5
+  cloudfront:
+    domain: ${cloudFrontDomain}
+    key-pair-id: ${cloudFrontKeyId}
+    private-key-pem: ${privateKeyPem}
+

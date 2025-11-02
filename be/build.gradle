@@ -4,6 +4,10 @@ plugins {
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
+ext {
+	springCloudVersion = "2025.0.0"
+}
+
 group = 'A704'
 version = '0.0.1-SNAPSHOT'
 description = 'AI-based basic learning platform for people with disabilities'
@@ -40,10 +44,35 @@ dependencies {
 	// Database
 	runtimeOnly 'com.mysql:mysql-connector-j'
 
+	// Vault
+	implementation 'org.springframework.cloud:spring-cloud-starter-vault-config'
+
+	// AWS SDK v2
+	implementation platform('software.amazon.awssdk:bom:2.21.0')
+	implementation 'software.amazon.awssdk:s3'
+	implementation 'software.amazon.awssdk:cloudfront'
+
 	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    //redis
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+    //jwt
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
+    runtimeOnly   'io.jsonwebtoken:jjwt-impl:0.12.5'
+    runtimeOnly   'io.jsonwebtoken:jjwt-jackson:0.12.5'
+
+    //swagger
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:$springCloudVersion"
+	}
 }
 
 tasks.named('test') {

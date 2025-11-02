@@ -221,6 +221,92 @@
         .hidden {
             display: none;
         }
+
+        .file-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .file-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .file-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .file-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            word-break: break-all;
+        }
+
+        .file-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .file-detail-item {
+            color: #666;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .btn-download {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-download:hover:not(:disabled) {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+
+        .btn-view {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-view:hover:not(:disabled) {
+            background: #138496;
+            transform: translateY(-1px);
+        }
+
+        .btn-small:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
     </style>
 </head>
 <body>
@@ -276,6 +362,16 @@
             <button class="btn btn-primary" id="getTextBtn" disabled>전체 텍스트 조회</button>
 
             <div id="textResult" class="text-result hidden"></div>
+        </div>
+
+        <div class="result-section" style="margin-top: 60px;">
+            <h2>📁 업로드된 파일 목록</h2>
+
+            <button class="btn btn-primary" id="loadFilesBtn">내 파일 목록 불러오기</button>
+
+            <div id="fileListSection" class="hidden" style="margin-top: 20px;">
+                <div id="fileList"></div>
+            </div>
         </div>
     </div>
 
@@ -349,37 +445,74 @@
             return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
         }
 
-        // 파일 업로드
+        // 파일 업로드 (S3 플로우)
         uploadBtn.addEventListener('click', async () => {
             if (!selectedFile) {
                 alert('파일을 선택해주세요!');
                 return;
             }
 
-            const formData = new FormData();
-            formData.append('file', selectedFile);
-            formData.append('uploaderId', uploaderId.value);
-
             uploadBtn.disabled = true;
-            uploadBtn.textContent = '업로드 중...';
+            uploadBtn.textContent = '업로드 중... (1/3 Presigned URL 요청)';
 
             try {
-                const response = await fetch('/api/files/upload', {
+                // 1단계: Presigned URL 생성
+                const urlResponse = await fetch('/api/files/presigned-url', {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        fileName: selectedFile.name,
+                        contentType: 'application/pdf'
+                    })
                 });
 
-                const result = await response.json();
-
-                if (response.ok) {
-                    currentFileId = result.fileId;
-                    showResult(result);
-                    startStatusPolling();
-                } else {
-                    alert('업로드 실패: ' + (result.message || result));
+                if (!urlResponse.ok) {
+                    const error = await urlResponse.text();
+                    throw new Error('Presigned URL 생성 실패: ' + error);
                 }
+
+                const urlResult = await urlResponse.json();
+                currentFileId = urlResult.fileId;
+
+                // 2단계: S3에 직접 업로드
+                uploadBtn.textContent = '업로드 중... (2/3 S3 업로드)';
+
+                const s3Response = await fetch(urlResult.presignedUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/pdf'
+                    },
+                    body: selectedFile
+                });
+
+                if (!s3Response.ok) {
+                    throw new Error('S3 업로드 실패');
+                }
+
+                // 3단계: OCR 처리 시작
+                uploadBtn.textContent = '업로드 중... (3/3 OCR 시작)';
+
+                const processResponse = await fetch(`/api/files/${currentFileId}/process`, {
+                    method: 'POST'
+                });
+
+                if (!processResponse.ok) {
+                    const error = await processResponse.text();
+                    throw new Error('OCR 시작 실패: ' + error);
+                }
+
+                const result = await processResponse.json();
+
+                // 결과 표시
+                showResult(result);
+                startStatusPolling();
+                alert('업로드 성공! OCR 처리가 시작되었습니다.');
+
             } catch (error) {
                 alert('업로드 중 오류 발생: ' + error.message);
+                console.error('Upload error:', error);
             } finally {
                 uploadBtn.disabled = false;
                 uploadBtn.textContent = 'PDF 업로드 및 OCR 시작';
@@ -470,6 +603,148 @@
 
         // 페이지 떠날 때 폴링 중지
         window.addEventListener('beforeunload', stopStatusPolling);
+
+        // ===== 파일 목록 기능 =====
+        const loadFilesBtn = document.getElementById('loadFilesBtn');
+        const fileListSection = document.getElementById('fileListSection');
+        const fileList = document.getElementById('fileList');
+
+        // 파일 목록 불러오기
+        loadFilesBtn.addEventListener('click', async () => {
+            const userId = uploaderId.value;
+            if (!userId) {
+                alert('선생님 ID를 입력해주세요!');
+                return;
+            }
+
+            loadFilesBtn.disabled = true;
+            loadFilesBtn.textContent = '불러오는 중...';
+
+            try {
+                const response = await fetch(`/api/files/uploader/${userId}`);
+
+                if (!response.ok) {
+                    throw new Error('파일 목록 조회 실패');
+                }
+
+                const files = await response.json();
+
+                displayFileList(files);
+                fileListSection.classList.remove('hidden');
+
+            } catch (error) {
+                alert('파일 목록 조회 중 오류 발생: ' + error.message);
+                console.error('Load files error:', error);
+            } finally {
+                loadFilesBtn.disabled = false;
+                loadFilesBtn.textContent = '내 파일 목록 불러오기';
+            }
+        });
+
+        // 파일 목록 표시
+        function displayFileList(files) {
+            if (files.length === 0) {
+                fileList.innerHTML = '<div class="empty-state">업로드된 파일이 없습니다.</div>';
+                return;
+            }
+
+            fileList.innerHTML = files.map(file => `
+                <div class="file-card">
+                    <div class="file-header">
+                        <div class="file-title">📄 ${file.originalFileName}</div>
+                    </div>
+                    <div class="file-details">
+                        <div class="file-detail-item">
+                            <strong>파일 ID:</strong> ${file.fileId}
+                        </div>
+                        <div class="file-detail-item">
+                            <strong>파일 크기:</strong> ${formatFileSize(file.fileSize)}
+                        </div>
+                        <div class="file-detail-item">
+                            <strong>OCR 상태:</strong>
+                            <span class="status-badge status-${file.ocrStatus.toLowerCase()}">${getStatusText(file.ocrStatus)}</span>
+                        </div>
+                        <div class="file-detail-item">
+                            <strong>업로드 시간:</strong> ${new Date(file.uploadedAt).toLocaleString('ko-KR')}
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        <button class="btn-small btn-download"
+                                onclick="downloadFile(${file.fileId}, '${file.originalFileName}')"
+                                ${file.ocrStatus !== 'COMPLETED' ? 'disabled' : ''}>
+                            다운로드
+                        </button>
+                        <button class="btn-small btn-view"
+                                onclick="viewFile(${file.fileId})">
+                            상세보기
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 파일 다운로드
+        async function downloadFile(fileId, fileName) {
+            try {
+                // 다운로드 URL 받기
+                const urlResponse = await fetch(`/api/files/${fileId}/download-url`);
+
+                if (!urlResponse.ok) {
+                    throw new Error('다운로드 URL 생성 실패');
+                }
+
+                const result = await urlResponse.json();
+
+                // PDF 파일 다운로드
+                console.log('다운로드 시작:', fileName);
+
+                const fileResponse = await fetch(result.downloadUrl);
+
+                if (!fileResponse.ok) {
+                    throw new Error('파일 다운로드 실패');
+                }
+
+                const blob = await fileResponse.blob();
+
+                // Blob을 다운로드
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+
+                // 정리
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                alert(`다운로드가 완료되었습니다.\n파일: ${fileName}`);
+
+            } catch (error) {
+                alert('다운로드 중 오류 발생: ' + error.message);
+                console.error('Download error:', error);
+            }
+        }
+
+        // 파일 상세보기
+        function viewFile(fileId) {
+            currentFileId = fileId;
+            checkStatus();
+            resultSection.classList.remove('hidden');
+            resultSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 상태 텍스트 변환
+        function getStatusText(status) {
+            const statusTexts = {
+                'PENDING': '대기 중',
+                'PROCESSING': '처리 중',
+                'COMPLETED': '완료',
+                'FAILED': '실패'
+            };
+            return statusTexts[status] || status;
+        }
     </script>
 </body>
 </html>

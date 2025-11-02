@@ -26,12 +26,18 @@ public class PdfProcessService {
     private static final String IMAGE_FORMAT = "png";
 
     /**
-     * PDF 파일을 페이지별 이미지로 변환
+     * PDF 파일을 페이지별 이미지로 변환 (저장된 파일명 사용)
      */
     public List<File> convertPdfToImages(String storedFileName) throws IOException {
         Path pdfPath = fileStorageService.getFilePath(storedFileName);
         File pdfFile = pdfPath.toFile();
+        return convertPdfToImages(pdfFile);
+    }
 
+    /**
+     * PDF 파일을 페이지별 이미지로 변환 (File 객체 직접 사용)
+     */
+    public List<File> convertPdfToImages(File pdfFile) throws IOException {
         List<File> imageFiles = new ArrayList<>();
 
         try (PDDocument document = Loader.loadPDF(pdfFile)) {
