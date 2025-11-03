@@ -105,6 +105,6 @@ springdoc:
   api-docs:
     path: /api/v3/api-docs
   swagger-ui:
-    path: /api/swagger-ui/index.html
+    path: /api/swagger-ui
     url: /api/v3/api-docs      # 스펙 JSON은 이걸로 불러라
     config-url: /api/v3/api-docs/swagger-config
