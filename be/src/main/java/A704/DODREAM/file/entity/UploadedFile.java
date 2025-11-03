@@ -22,17 +22,21 @@ public class UploadedFile {
     @Column(nullable = false)
     private String originalFileName;
 
-    @Column(nullable = false)
+    // For local file storage
     private String storedFileName;
 
-    @Column(nullable = false)
     private String filePath;
 
-    @Column(nullable = false)
     private Long fileSize;
 
-    @Column(nullable = false)
     private String fileType;
+
+    // For S3 storage
+    private String s3Key;
+
+    private String s3Bucket;
+
+    private String contentType;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
