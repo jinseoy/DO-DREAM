@@ -18,11 +18,13 @@ import com.google.firebase.messaging.Notification;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Map;
@@ -39,14 +41,19 @@ public class FcmService {
     private final UserRepository userRepository;
     private final UserDevicesRepository userDevicesRepository;
 
+    @Value("${firebase-credentials-file}")
+    private String firebaseCredentials;
+
     @PostConstruct
     public void initialize() {
         try {
             if (FirebaseApp.getApps().isEmpty()) {
-                ClassPathResource resource = new ClassPathResource("firebase/dodream-25978-firebase-adminsdk-fbsvc-6a400c81d3.json");
+                ByteArrayInputStream serviceAccount = new ByteArrayInputStream(
+                        firebaseCredentials.getBytes(StandardCharsets.UTF_8)
+                );
 
                 FirebaseOptions options = FirebaseOptions.builder()
-                        .setCredentials(GoogleCredentials.fromStream(resource.getInputStream()))
+                        .setCredentials(GoogleCredentials.fromStream(serviceAccount))
                         .build();
 
                 FirebaseApp.initializeApp(options);
