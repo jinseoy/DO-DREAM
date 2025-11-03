@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,9 @@ import { getChapterById } from "../data/dummyChapters";
 import { getQuizzesByChapterId } from "../data/dummyQuizzes";
 import * as Haptics from "expo-haptics";
 import { TriggerContext } from "../triggers/TriggerContext";
+import ttsService from "../services/ttsService";
+import { saveProgress, getProgress } from "../services/storage";
+import { LocalProgress } from "../types/progress";
 
 export default function PlayerScreen() {
   const navigation = useNavigation<PlayerScreenNavigationProp>();
@@ -26,36 +29,90 @@ export default function PlayerScreen() {
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isChapterCompleted, setIsChapterCompleted] = useState(false);
+  const [ttsSpeed, setTtsSpeed] = useState(1.0);
   const { setMode, registerPlayPause } = useContext(TriggerContext);
 
   const chapter = getChapterById(chapterId);
   const quizzes = getQuizzesByChapterId(chapterId);
   const hasQuiz = quizzes.length > 0;
 
+  // 진행상황 자동 저장 타이머
+  const progressSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // 화면 진입/이탈 시 전역 트리거 모드 설정
   useEffect(() => {
     // 이 화면에서는 Magic Tap / Android 볼륨 다운 더블 = 재생/정지
     setMode("playpause");
-
-    // 전역에서 호출될 재생/정지 핸들러 등록
     registerPlayPause(() => handlePlayPause());
 
     return () => {
-      // 화면 떠날 때 원복
       registerPlayPause(null);
       setMode("voice");
+      // TTS 정리
+      ttsService.stop();
+      // 진행상황 저장 타이머 정리
+      if (progressSaveTimerRef.current) {
+        clearTimeout(progressSaveTimerRef.current);
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 초기 로드 및 TTS 초기화
   useEffect(() => {
     if (chapter) {
+      // 저장된 진행상황 불러오기
+      const savedProgress = getProgress(book.id, chapterId);
+      let startIndex = 0;
+
+      if (savedProgress && !fromStart) {
+        startIndex = savedProgress.currentSectionIndex;
+        setCurrentSectionIndex(startIndex);
+      }
+
+      // TTS 초기화
+      ttsService.initialize(chapter.sections, startIndex, {
+        rate: ttsSpeed,
+        onStart: () => {
+          setIsPlaying(true);
+        },
+        onDone: () => {
+          setIsPlaying(false);
+          // 마지막 섹션 완료 시
+          if (currentSectionIndex === chapter.sections.length - 1) {
+            setIsChapterCompleted(true);
+            saveProgressData(true);
+          }
+        },
+        onError: (error) => {
+          console.error('TTS Error:', error);
+          setIsPlaying(false);
+          AccessibilityInfo.announceForAccessibility("음성 재생 오류가 발생했습니다");
+        },
+      });
+
+      // 초기 안내 메시지
       const announcement = `${book.subject}, ${chapter.title}. ${
-        fromStart ? "처음부터 시작합니다" : "이어서 듣기를 시작합니다"
+        fromStart ? "처음부터 시작합니다" : savedProgress ? "이어서 듣기를 시작합니다" : "시작합니다"
       }`;
       AccessibilityInfo.announceForAccessibility(announcement);
     }
-  }, []);
+  }, [chapter]);
+
+  // 섹션 변경 시 TTS 업데이트
+  useEffect(() => {
+    if (chapter) {
+      const isSpeaking = ttsService.getStatus() === 'playing';
+      ttsService.goToSection(currentSectionIndex, isSpeaking);
+
+      // 진행상황 저장 (디바운스)
+      if (progressSaveTimerRef.current) {
+        clearTimeout(progressSaveTimerRef.current);
+      }
+      progressSaveTimerRef.current = setTimeout(() => {
+        saveProgressData(false);
+      }, 2000); // 2초 후 저장
+    }
+  }, [currentSectionIndex]);
 
   // 챕터 완료 체크
   useEffect(() => {
@@ -66,46 +123,87 @@ export default function PlayerScreen() {
     }
   }, [currentSectionIndex, chapter]);
 
+  // 진행상황 저장 함수
+  const saveProgressData = (isCompleted: boolean) => {
+    if (!chapter) return;
+
+    const progress: LocalProgress = {
+      materialId: book.id,
+      chapterId: chapterId,
+      currentSectionIndex: currentSectionIndex,
+      lastAccessedAt: new Date().toISOString(),
+      isCompleted: isCompleted,
+    };
+
+    saveProgress(progress);
+  };
+
   const handleGoBack = () => {
+    // 나가기 전 진행상황 저장
+    saveProgressData(false);
+    ttsService.stop();
     navigation.goBack();
   };
 
-  const handlePlayPause = () => {
-    setIsPlaying((prev) => {
-      const next = !prev;
-      AccessibilityInfo.announceForAccessibility(next ? "재생" : "일시정지");
+  const handlePlayPause = async () => {
+    if (isPlaying) {
+      await ttsService.pause();
+      setIsPlaying(false);
+      AccessibilityInfo.announceForAccessibility("일시정지");
       Haptics.selectionAsync();
-      return next;
-    });
+    } else {
+      await ttsService.play();
+      setIsPlaying(true);
+      AccessibilityInfo.announceForAccessibility("재생");
+      Haptics.selectionAsync();
+    }
   };
 
-  const handlePrevious = () => {
+  const handlePrevious = async () => {
     if (currentSectionIndex > 0) {
       setCurrentSectionIndex((i) => i - 1);
+      await ttsService.previous();
       AccessibilityInfo.announceForAccessibility("이전 문단");
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (chapter && currentSectionIndex < chapter.sections.length - 1) {
       setCurrentSectionIndex((i) => i + 1);
+      await ttsService.next();
       AccessibilityInfo.announceForAccessibility("다음 문단");
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } else if (chapter && currentSectionIndex === chapter.sections.length - 1) {
       // 마지막 섹션일 때
       AccessibilityInfo.announceForAccessibility("챕터를 완료했습니다. 퀴즈를 풀어보세요.");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      saveProgressData(true);
     }
   };
 
+  const handleSpeedChange = () => {
+    // 속도 변경: 0.8 -> 1.0 -> 1.2 -> 1.5 -> 0.8
+    const speeds = [0.8, 1.0, 1.2, 1.5, 2.0];
+    const currentIndex = speeds.indexOf(ttsSpeed);
+    const nextIndex = (currentIndex + 1) % speeds.length;
+    const nextSpeed = speeds[nextIndex];
+    
+    setTtsSpeed(nextSpeed);
+    ttsService.setRate(nextSpeed);
+    AccessibilityInfo.announceForAccessibility(`재생 속도 ${nextSpeed}배`);
+    Haptics.selectionAsync();
+  };
+
   const handleQuestionPress = () => {
+    ttsService.pause();
     AccessibilityInfo.announceForAccessibility("질문하기 화면으로 이동합니다");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     navigation.navigate("Question");
   };
 
   const handleQuizPress = () => {
+    ttsService.stop();
     if (quizzes.length === 1) {
       // 퀴즈가 1개면 바로 퀴즈 화면으로
       AccessibilityInfo.announceForAccessibility("퀴즈를 시작합니다");
@@ -133,15 +231,28 @@ export default function PlayerScreen() {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={handleGoBack}
-          accessible={true}
-          accessibilityLabel="뒤로가기"
-          accessibilityRole="button"
-          style={styles.backButton}
-        >
-          <Text style={styles.backButtonText}>← 뒤로</Text>
-        </TouchableOpacity>
+        <View style={styles.headerTop}>
+          <TouchableOpacity
+            onPress={handleGoBack}
+            accessible={true}
+            accessibilityLabel="뒤로가기"
+            accessibilityRole="button"
+            style={styles.backButton}
+          >
+            <Text style={styles.backButtonText}>← 뒤로</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleSpeedChange}
+            accessible={true}
+            accessibilityLabel={`재생 속도 ${ttsSpeed}배`}
+            accessibilityRole="button"
+            accessibilityHint="누르면 재생 속도가 변경됩니다"
+            style={styles.speedButton}
+          >
+            <Text style={styles.speedButtonText}>⚡ {ttsSpeed}x</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.headerInfo}>
           <Text style={styles.subjectText}>{book.subject}</Text>
@@ -202,7 +313,6 @@ export default function PlayerScreen() {
         <TouchableOpacity
           style={[styles.controlButton, styles.playButton]}
           onPress={handlePlayPause}
-          onLongPress={handleQuestionPress}
           accessible={true}
           accessibilityLabel={isPlaying ? "일시정지" : "재생"}
           accessibilityRole="button"
@@ -272,17 +382,35 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: "#e0e0e0",
   },
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
   backButton: {
     paddingVertical: 8,
-    alignSelf: "flex-start",
   },
   backButtonText: {
     fontSize: 20,
     color: "#2196F3",
     fontWeight: "600",
   },
+  speedButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: "#FFF3E0",
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: "#FF9800",
+  },
+  speedButtonText: {
+    fontSize: 18,
+    color: "#F57C00",
+    fontWeight: "bold",
+  },
   headerInfo: {
-    marginTop: 16,
+    marginTop: 8,
   },
   subjectText: {
     fontSize: 20,
