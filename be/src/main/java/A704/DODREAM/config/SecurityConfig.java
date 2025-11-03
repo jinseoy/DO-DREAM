@@ -2,7 +2,6 @@ package A704.DODREAM.config;
 
 import java.io.IOException;
 import java.util.List;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -12,7 +11,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.filter.OncePerRequestFilter;
-
 import A704.DODREAM.auth.util.JwtUtil;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
@@ -34,15 +32,16 @@ public class SecurityConfig {
 		http.cors(c -> {}); // WebMvcConfigurer로 allowedOrigins/credentials 설정
 
 		http.authorizeHttpRequests(auth -> auth
-			.requestMatchers("/auth/**","/v3/api-docs/**",
-				"/swagger-ui/**", "/swagger-ui.html").permitAll()
-			.requestMatchers(HttpMethod.GET, "/health").permitAll()
+        .requestMatchers("/**").permitAll()
+        .requestMatchers("/auth/**","/v3/api-docs/**",
+            "/swagger-ui/**", "/swagger-ui.html").permitAll()
+        .requestMatchers(HttpMethod.GET, "/health").permitAll()
 			.requestMatchers("/api/teacher/**").hasRole("TEACHER")
 			.anyRequest().authenticated()
 		);
 
-		http.addFilterBefore(new JwtAuthFilter(jwt),
-			org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+//		http.addFilterBefore(new JwtAuthFilter(jwt),
+//			org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
 
 		return http.build();
 	}
@@ -54,6 +53,9 @@ public class SecurityConfig {
 		@Override
 		protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
 			throws ServletException, IOException {
+      if (req.getRequestURI().startsWith("/"))
+        chain.doFilter(req, res);
+
 			String h = req.getHeader("Authorization");
 			if (h != null && h.startsWith("Bearer ")) {
 				String at = h.substring(7);

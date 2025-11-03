@@ -47,6 +47,11 @@ dependencies {
 	// Vault
 	implementation 'org.springframework.cloud:spring-cloud-starter-vault-config'
 
+	// AWS SDK v2
+	implementation platform('software.amazon.awssdk:bom:2.21.0')
+	implementation 'software.amazon.awssdk:s3'
+	implementation 'software.amazon.awssdk:cloudfront'
+
 	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
