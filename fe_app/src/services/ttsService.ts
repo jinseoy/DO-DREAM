@@ -1,7 +1,16 @@
 import * as Speech from 'expo-speech';
 import { Section } from '../types/chapter';
+import { PlayMode } from '../types/playMode';
 
 export type TTSStatus = 'idle' | 'playing' | 'paused' | 'stopped';
+
+export interface PauseSettings {
+  heading: number;
+  paragraph: number;
+  formula: number;
+  imageDescription: number;
+  default: number;
+}
 
 export interface TTSOptions {
   language?: string;
@@ -9,11 +18,15 @@ export interface TTSOptions {
   rate?: number;
   volume?: number;
   voice?: string;
+  pauseSettings?: Partial<PauseSettings>;
+  playMode?: PlayMode;
+  repeatCount?: number;
   onStart?: () => void;
   onDone?: () => void;
   onError?: (error: Error) => void;
   onBoundary?: (event: { charIndex: number; charLength: number }) => void;
   onSectionChange?: (index: number) => void;
+  onSectionComplete?: () => void;
 }
 
 class TTSService {
@@ -21,23 +34,64 @@ class TTSService {
   private sections: Section[] = [];
   private status: TTSStatus = 'idle';
   private options: TTSOptions = {};
-  private autoPlayNext: boolean = true;
+  private playMode: PlayMode = 'continuous';
+  private currentRepeatCount: number = 0;
+  private targetRepeatCount: number = 2;
+  
+  private defaultPauseSettings: PauseSettings = {
+    heading: 1500,
+    paragraph: 800,
+    formula: 1200,
+    imageDescription: 1000,
+    default: 500,
+  };
 
-  // TTS 초기화
   initialize(sections: Section[], startIndex: number = 0, options: TTSOptions = {}) {
     this.sections = sections;
     this.currentSectionIndex = startIndex;
+    this.playMode = options.playMode || 'continuous';
+    this.targetRepeatCount = options.repeatCount || 2;
+    this.currentRepeatCount = 0;
+    
     this.options = {
       language: 'ko-KR',
       pitch: 1.0,
       rate: 1.0,
       volume: 1.0,
+      pauseSettings: { ...this.defaultPauseSettings },
       ...options,
     };
     this.status = 'idle';
   }
 
-  // 현재 섹션 재생
+  private getPauseTime(sectionType: Section['type']): number {
+    const settings = this.options.pauseSettings || this.defaultPauseSettings;
+    const rate = this.options.rate || 1.0;
+    
+    let basePause: number;
+    switch (sectionType) {
+      case 'heading':
+        basePause = settings.heading ?? this.defaultPauseSettings.heading;
+        break;
+      case 'paragraph':
+        basePause = settings.paragraph ?? this.defaultPauseSettings.paragraph;
+        break;
+      case 'formula':
+        basePause = settings.formula ?? this.defaultPauseSettings.formula;
+        break;
+      case 'image_description':
+        basePause = settings.imageDescription ?? this.defaultPauseSettings.imageDescription;
+        break;
+      default:
+        basePause = settings.default ?? this.defaultPauseSettings.default;
+    }
+    
+    // TTS 속도에 반비례하여 pause 시간 조정
+    // 예: 1.5배속이면 pause도 1.5배 빠르게 (시간은 나누기)
+    // 0.8배속이면 pause도 0.8배 느리게 (시간은 곱하기)
+    return Math.round(basePause / rate);
+  }
+
   async play(): Promise<void> {
     if (this.sections.length === 0) {
       console.warn('No sections to play');
@@ -45,7 +99,6 @@ class TTSService {
     }
 
     if (this.status === 'paused') {
-      // 일시정지 상태에서는 resume
       await Speech.resume();
       this.status = 'playing';
       return;
@@ -60,29 +113,7 @@ class TTSService {
     const currentSection = this.sections[this.currentSectionIndex];
     this.status = 'playing';
 
-    // 섹션 타입에 따른 pause 시간 설정 (밀리초)
-    let pauseAfter = 0;
-    
-    switch (currentSection.type) {
-      case 'heading':
-        // 제목 뒤에 긴 pause (구분을 명확히)
-        pauseAfter = 1500; // 1.5초
-        break;
-      case 'paragraph':
-        // 일반 문단 뒤에 짧은 pause
-        pauseAfter = 800; // 0.8초
-        break;
-      case 'formula':
-        // 수식 뒤에 pause (이해할 시간 제공)
-        pauseAfter = 1200; // 1.2초
-        break;
-      case 'image_description':
-        // 이미지 설명 뒤에 pause (상상할 시간 제공)
-        pauseAfter = 1000; // 1초
-        break;
-      default:
-        pauseAfter = 500; // 기본 0.5초
-    }
+    const pauseAfter = this.getPauseTime(currentSection.type);
 
     try {
       await Speech.speak(currentSection.text, {
@@ -96,7 +127,6 @@ class TTSService {
           this.options.onStart?.();
         },
         onDone: () => {
-          // pause 후 다음 섹션 자동 재생
           if (pauseAfter > 0) {
             setTimeout(() => {
               this.handleDone();
@@ -120,8 +150,31 @@ class TTSService {
   }
 
   private handleDone(): void {
-    // 자동으로 다음 섹션 재생
-    if (this.autoPlayNext && this.currentSectionIndex < this.sections.length - 1) {
+    switch (this.playMode) {
+      case 'single':
+        this.status = 'idle';
+        this.options.onSectionComplete?.();
+        break;
+
+      case 'repeat':
+        this.currentRepeatCount++;
+        if (this.currentRepeatCount < this.targetRepeatCount) {
+          this.play();
+        } else {
+          this.currentRepeatCount = 0;
+          this.moveToNextSection();
+        }
+        break;
+
+      case 'continuous':
+      default:
+        this.moveToNextSection();
+        break;
+    }
+  }
+
+  private moveToNextSection(): void {
+    if (this.currentSectionIndex < this.sections.length - 1) {
       this.currentSectionIndex++;
       this.options.onSectionChange?.(this.currentSectionIndex);
       this.play();
@@ -131,7 +184,6 @@ class TTSService {
     }
   }
 
-  // 일시정지
   async pause(): Promise<void> {
     if (this.status === 'playing') {
       await Speech.pause();
@@ -139,7 +191,6 @@ class TTSService {
     }
   }
 
-  // 재개
   async resume(): Promise<void> {
     if (this.status === 'paused') {
       await Speech.resume();
@@ -147,13 +198,12 @@ class TTSService {
     }
   }
 
-  // 정지
   async stop(): Promise<void> {
     await Speech.stop();
     this.status = 'stopped';
+    this.currentRepeatCount = 0;
   }
 
-  // 특정 섹션으로 이동 후 재생
   async goToSection(index: number, autoPlay: boolean = false): Promise<void> {
     if (index < 0 || index >= this.sections.length) {
       console.warn('Invalid section index');
@@ -162,38 +212,50 @@ class TTSService {
 
     await this.stop();
     this.currentSectionIndex = index;
-    this.options.onSectionChange?.(index); // 섹션 변경 알림
+    this.currentRepeatCount = 0;
+    this.options.onSectionChange?.(index);
 
     if (autoPlay) {
       await this.play();
     }
   }
 
-  // 이전 섹션
   async previous(): Promise<void> {
     if (this.currentSectionIndex > 0) {
       await this.goToSection(this.currentSectionIndex - 1, true);
     }
   }
 
-  // 다음 섹션
   async next(): Promise<void> {
     if (this.currentSectionIndex < this.sections.length - 1) {
       await this.goToSection(this.currentSectionIndex + 1, true);
     }
   }
 
-  // 속도 변경
   setRate(rate: number): void {
     this.options.rate = rate;
   }
 
-  // 자동 재생 설정
-  setAutoPlayNext(enabled: boolean): void {
-    this.autoPlayNext = enabled;
+  setPauseSettings(settings: Partial<PauseSettings>): void {
+    this.options.pauseSettings = {
+      ...this.defaultPauseSettings,
+      ...this.options.pauseSettings,
+      ...settings,
+    };
   }
 
-  // 현재 상태 가져오기
+  setPlayMode(mode: PlayMode, repeatCount?: number): void {
+    this.playMode = mode;
+    if (repeatCount !== undefined) {
+      this.targetRepeatCount = repeatCount;
+    }
+    this.currentRepeatCount = 0;
+  }
+
+  getPlayMode(): PlayMode {
+    return this.playMode;
+  }
+
   getStatus(): TTSStatus {
     return this.status;
   }
@@ -206,7 +268,6 @@ class TTSService {
     return this.sections;
   }
 
-  // 사용 가능한 음성 목록 가져오기
   async getAvailableVoices(): Promise<Speech.Voice[]> {
     try {
       const voices = await Speech.getAvailableVoicesAsync();
@@ -217,22 +278,20 @@ class TTSService {
     }
   }
 
-  // TTS 엔진이 말하는 중인지 확인
   async isSpeaking(): Promise<boolean> {
     return await Speech.isSpeakingAsync();
   }
 
-  // 리소스 정리
   cleanup(): void {
     Speech.stop();
     this.sections = [];
     this.currentSectionIndex = 0;
     this.status = 'idle';
     this.options = {};
+    this.currentRepeatCount = 0;
   }
 }
 
-// 싱글톤 인스턴스
 const ttsService = new TTSService();
 
 export default ttsService;
