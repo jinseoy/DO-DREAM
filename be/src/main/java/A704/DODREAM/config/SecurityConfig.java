@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -44,25 +45,30 @@ public class SecurityConfig {
 	}
 
 	@Bean
+	@Order(0)
 	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http
 			.cors(cors -> cors.configurationSource(corsConfigurationSource())) // CORS 설정
 			.csrf(csrf -> csrf.disable())
 			.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+			// .authorizeHttpRequests(auth -> auth
+			// 	.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+			// 	// springdoc (프리픽스 유무 모두 허용)
+			// 	.requestMatchers("/api/swagger-ui/**", "/api/v3/api-docs/**",
+			// 		"/swagger-ui/**", "/v3/api-docs/**").permitAll()
+			// 	// 공개 엔드포인트
+			// 	.requestMatchers("/api/auth/**", "/auth/**", "/actuator/**", "/health").permitAll()
+			// 	// 교사 전용
+			// 	.requestMatchers("/api/teacher/**").hasRole("TEACHER")
+			// 	.anyRequest().authenticated()
+			// );
 			.authorizeHttpRequests(auth -> auth
-				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-				// springdoc (프리픽스 유무 모두 허용)
-				.requestMatchers("/api/swagger-ui/**", "/api/v3/api-docs/**",
-					"/swagger-ui/**", "/v3/api-docs/**").permitAll()
-				// 공개 엔드포인트
-				.requestMatchers("/api/auth/**", "/auth/**", "/actuator/**", "/health").permitAll()
-				// 교사 전용
-				.requestMatchers("/api/teacher/**").hasRole("TEACHER")
-				.anyRequest().authenticated()
-			);
+			.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+			.anyRequest().permitAll()   // ★ 전부 허용 (원인분리용)
+		);
 
-		http.addFilterBefore(new JwtAuthFilter(jwt),
-			org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+		// http.addFilterBefore(new JwtAuthFilter(jwt),
+		// 	org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
 
 		return http.build();
 	}
