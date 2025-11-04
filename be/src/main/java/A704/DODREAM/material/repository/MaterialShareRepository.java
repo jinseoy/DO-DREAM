@@ -12,7 +12,7 @@ import java.util.Set;
 public interface MaterialShareRepository extends JpaRepository<MaterialShare, Long> {
     @Query("SELECT ms.student.id FROM MaterialShare ms " +
             "WHERE ms.material.id = :materialId AND ms.student.id IN :studentIds")
-    Set<Long> findStudentIdsByMaterialIdAndStudentIdIn(Long materialId, List<Long> studentIds
+    Set<Long> findStudentIdsByMaterialIdAndStudentIdIn(Long materialId, Set<Long> studentIds
     );
 
     // 앱에서 공유받은 자료 목록 조회 (학생)

@@ -1,14 +1,10 @@
 package A704.DODREAM.user.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Builder;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "teacher_profiles")
@@ -22,6 +18,8 @@ public class TeacherProfile {
 	@JoinColumn(name = "user_id")
 	private User user;
 
+    @OneToMany(mappedBy = "teacher")
+    private List<Classroom> classrooms = new ArrayList<>();
 
 	public static TeacherProfile create(User user) {
 		TeacherProfile teacherProfile = new TeacherProfile();

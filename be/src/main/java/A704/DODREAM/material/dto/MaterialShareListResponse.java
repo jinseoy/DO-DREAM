@@ -42,7 +42,6 @@ public class MaterialShareListResponse {
         private Long teacherId;
         private String teacherName;
 
-        private String shareMessage;
         private LocalDateTime sharedAt;
         private LocalDateTime accessedAt;
         private boolean isAccessed;
@@ -61,7 +60,6 @@ public class MaterialShareListResponse {
                     .processingStatus(share.getMaterial().getProcessingStatus().name())
                     .teacherId(share.getTeacher().getId())
                     .teacherName(share.getTeacher().getName())
-                    .shareMessage(share.getShareMessage())
                     .sharedAt(share.getSharedAt())
                     .accessedAt(share.getAccessedAt())
                     .isAccessed(share.getAccessedAt() != null)
