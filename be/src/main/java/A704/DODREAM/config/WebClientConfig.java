@@ -20,4 +20,12 @@ public class WebClientConfig {
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
     }
+
+    @Bean
+    public WebClient branchWebClient(){
+        return WebClient.builder()
+                .baseUrl("https://api2.branch.io")
+                .defaultHeader("Content-Type", "application/json")
+                .build();
+    }
 }

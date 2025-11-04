@@ -57,6 +57,10 @@ dependencies {
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+    //firebase
+    implementation 'com.google.firebase:firebase-admin:9.3.0'
+    implementation 'com.google.auth:google-auth-library-oauth2-http:1.23.0'
+
     //redis
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
@@ -67,6 +71,9 @@ dependencies {
 
     //swagger
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13'
+
+	// https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-actuator
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 }
 
 dependencyManagement {

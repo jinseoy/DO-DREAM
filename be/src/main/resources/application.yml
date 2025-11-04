@@ -1,3 +1,21 @@
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, metrics
+
+  endpoint:
+    health:
+      show-details: always
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+  metrics:
+    tags:
+      application: monitoring
+
 spring:
   application:
     name: DODREAM
@@ -44,7 +62,6 @@ server:
       cookie:
         same-site: lax
 
-
 logging:
   level:
     org:
@@ -82,4 +99,13 @@ aws:
     domain: ${cloudFrontDomain}
     key-pair-id: ${cloudFrontKeyId}
     private-key-pem: ${privateKeyPem}
+
+springdoc:
+  api-docs:
+    path: /api/v3/api-docs
+  swagger-ui:
+    path: /api/swagger-ui
+    url: /api/v3/api-docs      # 스펙 JSON은 이걸로 불러라
+    config-url: /api/v3/api-docs/swagger-config
+
 
