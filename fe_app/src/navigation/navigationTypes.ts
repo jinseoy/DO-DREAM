@@ -13,13 +13,19 @@ export type RootStackParamList = {
     chapterId: string;
     fromStart: boolean;
   };
-  Question: undefined;
+  Question: {
+    book: Book;
+    chapterId: string;
+    sectionIndex: number;
+  };
   QuizList: {
     book: Book;
     chapterId: string;
   };
   Quiz: {
-    quiz: Quiz;
+    book: Book;
+    chapterId: string;
+    quizId: string;
   };
   QuizResult: {
     quiz: Quiz;
@@ -31,7 +37,6 @@ export type RootStackParamList = {
       isCorrect: boolean;
     }[];
   };
-  MMKVTest: undefined;
 };
 
 // Navigation prop 타입
@@ -70,11 +75,6 @@ export type QuizResultScreenNavigationProp = NativeStackNavigationProp<
   'QuizResult'
 >;
 
-export type MMKVTestScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
-  'MMKVTest'
->;
-
 // Route prop 타입
 export type PlaybackChoiceScreenRouteProp = RouteProp<
   RootStackParamList,
@@ -84,6 +84,11 @@ export type PlaybackChoiceScreenRouteProp = RouteProp<
 export type PlayerScreenRouteProp = RouteProp<
   RootStackParamList,
   'Player'
+>;
+
+export type QuestionScreenRouteProp = RouteProp<
+  RootStackParamList,
+  'Question'
 >;
 
 export type QuizListScreenRouteProp = RouteProp<
@@ -99,9 +104,4 @@ export type QuizScreenRouteProp = RouteProp<
 export type QuizResultScreenRouteProp = RouteProp<
   RootStackParamList,
   'QuizResult'
->;
-
-export type MMKVTestScreenRouteProp = RouteProp<
-  RootStackParamList,
-  'MMKVTest'
 >;
