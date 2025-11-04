@@ -13,8 +13,9 @@ import {
   QuizListScreenNavigationProp,
   QuizListScreenRouteProp,
 } from '../navigation/navigationTypes';
-import { getQuizzesByChapterId, Quiz } from '../data/dummyQuizzes';
+import { getQuizzesByChapterId } from '../data/dummyQuizzes';
 import { getChapterById } from '../data/dummyChapters';
+import { Quiz } from '../types/quiz';
 
 export default function QuizListScreen() {
   const navigation = useNavigation<QuizListScreenNavigationProp>();

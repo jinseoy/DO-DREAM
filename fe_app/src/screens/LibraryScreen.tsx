@@ -9,7 +9,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { LibraryScreenNavigationProp } from '../navigation/navigationTypes';
-import { dummyBooks, studentName, Book } from '../data/dummyBooks';
+import { dummyBooks, studentName } from '../data/dummyBooks';
+import { Book } from '../types/book';
 
 export default function LibraryScreen() {
   const navigation = useNavigation<LibraryScreenNavigationProp>();
