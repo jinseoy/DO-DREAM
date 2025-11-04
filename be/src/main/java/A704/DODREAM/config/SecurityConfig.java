@@ -10,6 +10,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 import A704.DODREAM.auth.util.JwtUtil;
 import io.jsonwebtoken.Claims;
@@ -26,20 +29,33 @@ public class SecurityConfig {
 	private final JwtUtil jwt;
 
 	@Bean
+	public CorsConfigurationSource corsConfigurationSource() {
+		CorsConfiguration config = new CorsConfiguration();
+
+		config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:8080", "https://www.dodream.io.kr"));
+		config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+		config.setAllowedHeaders(List.of("*"));
+		config.setAllowCredentials(true);
+		config.setMaxAge(3600L); // 3600초
+
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", config);
+		return source;
+	}
+
+	@Bean
 	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http
-			.cors(cors -> {})
+			.cors(cors -> cors.configurationSource(corsConfigurationSource())) // CORS 설정
 			.csrf(csrf -> csrf.disable())
 			.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-				// ★ springdoc 경로 모두 허용 (프리픽스 유무 둘 다)
-				.requestMatchers(
-					"/api/swagger-ui/**", "/api/v3/api-docs/**",
-					"/swagger-ui/**", "/v3/api-docs/**"
-				).permitAll()
-				// ★ 인증/헬스
-				.requestMatchers("/api/auth/**", "/actuator/**", "/health").permitAll()
+				// springdoc (프리픽스 유무 모두 허용)
+				.requestMatchers("/api/swagger-ui/**", "/api/v3/api-docs/**",
+					"/swagger-ui/**", "/v3/api-docs/**").permitAll()
+				// 공개 엔드포인트
+				.requestMatchers("/api/auth/**", "/auth/**", "/actuator/**", "/health").permitAll()
 				// 교사 전용
 				.requestMatchers("/api/teacher/**").hasRole("TEACHER")
 				.anyRequest().authenticated()
@@ -57,20 +73,20 @@ public class SecurityConfig {
 		JwtAuthFilter(JwtUtil jwt) { this.jwt = jwt; }
 
 		@Override
+		protected boolean shouldNotFilter(HttpServletRequest req) {
+			String u = req.getRequestURI();
+			return "OPTIONS".equalsIgnoreCase(req.getMethod())
+				|| u.startsWith("/api/auth/")
+				|| u.startsWith("/auth/")
+				|| u.startsWith("/api/swagger-ui/")
+				|| u.startsWith("/api/v3/api-docs/")
+				|| u.startsWith("/swagger-ui/")
+				|| u.startsWith("/v3/api-docs/");
+		}
+
+		@Override
 		protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
 			throws ServletException, IOException {
-
-			String uri = req.getRequestURI();
-			if ("OPTIONS".equalsIgnoreCase(req.getMethod())
-				|| uri.startsWith("/api/auth/")
-				|| uri.startsWith("/api/swagger-ui/")
-				|| uri.startsWith("/api/v3/api-docs/")
-				|| uri.startsWith("/swagger-ui/")
-				|| uri.startsWith("/v3/api-docs/")) {
-				chain.doFilter(req, res);
-				return; // ★ 조기 반환
-			}
-
 			String h = req.getHeader("Authorization");
 			if (h != null && h.startsWith("Bearer ")) {
 				String at = h.substring(7);
@@ -80,8 +96,7 @@ public class SecurityConfig {
 					String role = c.get("role", String.class);
 					var auth = new UsernamePasswordAuthenticationToken(
 						sub, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
-					org.springframework.security.core.context.SecurityContextHolder
-						.getContext().setAuthentication(auth);
+					org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(auth);
 				} catch (Exception ignored) {}
 			}
 			chain.doFilter(req, res);
