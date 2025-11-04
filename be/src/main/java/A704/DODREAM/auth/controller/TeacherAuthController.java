@@ -26,7 +26,7 @@ import java.time.Duration;
 
 @Tag(name = "Teacher Auth API", description = "교사 로그인/회원가입 API")
 @RestController
-@RequestMapping("/auth/teacher")
+@RequestMapping("/api/auth/teacher")
 @RequiredArgsConstructor
 public class TeacherAuthController {
 
