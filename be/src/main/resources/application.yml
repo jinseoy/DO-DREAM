@@ -61,7 +61,6 @@ server:
     session:
       cookie:
         same-site: lax
-  forward-headers-strategy: framework
 
 logging:
   level:
