@@ -10,6 +10,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 import A704.DODREAM.auth.util.JwtUtil;
 import io.jsonwebtoken.Claims;
@@ -24,6 +27,22 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 
 	private final JwtUtil jwt;
+
+	@Bean
+	public CorsConfigurationSource corsConfigurationSource() {
+		CorsConfiguration config = new CorsConfiguration();
+
+		config.setAllowedOrigins(List.of("http://localhost:5173", "https://www.dodream.io.kr"));
+		config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+		config.setAllowedHeaders(List.of("*"));
+		config.setAllowCredentials(true);
+		config.setMaxAge(3600L); // 3600초
+
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		// /api/** 경로에 대해 위 설정 적용
+		source.registerCorsConfiguration("/api/**", config);
+		return source;
+	}
 
 	@Bean
 	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
