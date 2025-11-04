@@ -2,6 +2,7 @@ package A704.DODREAM.auth.controller;
 
 import A704.DODREAM.auth.dto.request.TeacherLoginRequest;
 import A704.DODREAM.auth.dto.request.TeacherSignupRequest;
+import A704.DODREAM.auth.dto.request.TeacherVerifyRequest;
 import A704.DODREAM.auth.dto.response.TokenResponse;
 import A704.DODREAM.auth.service.RefreshTokenService;
 import A704.DODREAM.auth.service.TeacherAuthService;
@@ -10,6 +11,8 @@ import A704.DODREAM.auth.util.JwtUtil;
 import A704.DODREAM.user.entity.User;
 import A704.DODREAM.user.repository.UserRepository;
 import io.jsonwebtoken.Claims;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -21,8 +24,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 
+@Tag(name = "Teacher Auth API", description = "교사 로그인/회원가입 API")
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth/teacher")
 @RequiredArgsConstructor
 public class TeacherAuthController {
 
@@ -33,13 +37,32 @@ public class TeacherAuthController {
 
 	private static final int RT_MAX_AGE = 14 * 24 * 60 * 60;
 
-	@PostMapping("/teacher/register")
+	@Operation(
+		summary = "교사 사전 인증",
+		description = "교원번호와 이름으로 학사 더미레지스트리 일치 여부를 확인합니다."
+	)
+	@PostMapping("/verify")
+	public ResponseEntity<Void> verify(@RequestBody TeacherVerifyRequest req) {
+		teacherAuthService.verify(req);
+		return ResponseEntity.ok().build();
+	}
+
+	// 1) 회원가입 (레지스트리 재검증 포함)
+	@Operation(
+		summary = "교사 회원가입",
+		description = "사전 인증 정보(이름/교원번호)와 이메일/비밀번호로 회원가입을 완료합니다."
+	)
+	@PostMapping("/register")
 	public ResponseEntity<Void> register(@RequestBody TeacherSignupRequest req) {
 		teacherAuthService.signup(req);
 		return ResponseEntity.ok().build();
 	}
 
-	@PostMapping("/teacher/login")
+	@Operation(
+		summary = "교사 로그인",
+		description = "이메일과 비밀번호로 로그인합니다. AT는 응답 바디로, RT는 HttpOnly 쿠키로 발급됩니다."
+	)
+	@PostMapping("/login")
 	public ResponseEntity<TokenResponse> login(@RequestBody TeacherLoginRequest req,
 		HttpServletResponse res) {
 		User user = teacherAuthService.authenticate(req);
@@ -56,6 +79,10 @@ public class TeacherAuthController {
 	}
 
 	// 쿠키의 RT로 새 AT 발급 + RT 회전
+	@Operation(
+		summary = "토큰 재발급",
+		description = "쿠키에 담긴 Refresh Token으로 Access Token을 재발급하고, Refresh Token을 회전합니다."
+	)
 	@PostMapping("/refresh")
 	public ResponseEntity<TokenResponse> refresh(HttpServletRequest req, HttpServletResponse res) {
 		String rt = extractRefreshFromCookie(req);
@@ -95,6 +122,10 @@ public class TeacherAuthController {
 		return ResponseEntity.ok(new TokenResponse(newAT));
 	}
 
+	@Operation(
+		summary = "로그아웃",
+		description = "서버에 저장된 Refresh Token을 폐기하고, 쿠키의 RT를 삭제합니다."
+	)
 	@PostMapping("/logout")
 	public ResponseEntity<Void> logout(HttpServletRequest req, HttpServletResponse res) {
 		String rt = extractRefreshFromCookie(req);
