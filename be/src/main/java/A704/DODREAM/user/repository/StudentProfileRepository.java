@@ -13,4 +13,10 @@ public interface StudentProfileRepository extends JpaRepository<StudentProfile, 
             "JOIN FETCH s.user u " +
             "WHERE s.classroom.id = :classroomId")
     List<StudentProfile> findByClassroomIdWithUser(Long classroomId);
+
+    @Query("SELECT s FROM StudentProfile s " +
+            "JOIN FETCH s.user u " +
+            "WHERE s.classroom.id IN :classroomIds " +
+            "ORDER BY s.classroom.id, s.studentNumber")
+    List<StudentProfile> findByClassroomIdsWithUser(List<Long> classroomIds);
 }

@@ -14,7 +14,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -64,12 +67,39 @@ public class ClassroomService {
     }
 
     // 선생님의 담당 반별 학생 목록
-//    public List<StudentListResponse> getTeacherClassroomStudents(Long teacherId, List<Long> classroomIds){
-//        List<ClassroomTeacher> classroomTeachers =
-//                classroomTeacherRepository.findByTeacherIdWithClassroom(teacherId);
-//
-//        List<Classroom> targetClassrooms;
-//
-//
-//    }
+    public List<StudentListResponse> getTeacherClassroomStudents(Long teacherId, List<Long> classroomIds){
+        List<ClassroomTeacher> classroomTeachers =
+                classroomTeacherRepository.findByTeacherIdWithClassroom(teacherId);
+
+        List<Classroom> targetClassrooms;
+        if(classroomIds == null || classroomIds.isEmpty()){
+            targetClassrooms = classroomTeachers.stream()
+                    .map(ClassroomTeacher::getClassroom)
+                    .toList();
+        }
+        else {
+            targetClassrooms = classroomTeachers.stream()
+                    .map(ClassroomTeacher::getClassroom)
+                    .filter(c -> classroomIds.contains(c.getId()))
+                    .toList();
+        }
+
+        List<Long> targetClassroomIds = targetClassrooms.stream()
+                .map(Classroom::getId)
+                .toList();
+
+        List<StudentProfile> allStudents =
+                studentProfileRepository.findByClassroomIdsWithUser(targetClassroomIds);
+
+        Map<Long, List<StudentProfile>> studentsByClassroom = allStudents.stream()
+                .collect(Collectors.groupingBy(s -> s.getClassroom().getId()));
+
+        List<StudentListResponse> responses = new ArrayList<>();
+        for (Classroom classroom : targetClassrooms) {
+            List<StudentProfile> students = studentsByClassroom.getOrDefault(classroom.getId(), List.of());
+            responses.add(StudentListResponse.of(classroom, students));
+        }
+
+        return responses;
+    }
 }
