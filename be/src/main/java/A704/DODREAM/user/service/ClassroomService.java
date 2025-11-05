@@ -62,4 +62,14 @@ public class ClassroomService {
 
         return StudentListResponse.of(classroom, students);
     }
+
+    // 선생님의 담당 반별 학생 목록
+//    public List<StudentListResponse> getTeacherClassroomStudents(Long teacherId, List<Long> classroomIds){
+//        List<ClassroomTeacher> classroomTeachers =
+//                classroomTeacherRepository.findByTeacherIdWithClassroom(teacherId);
+//
+//        List<Classroom> targetClassrooms;
+//
+//
+//    }
 }

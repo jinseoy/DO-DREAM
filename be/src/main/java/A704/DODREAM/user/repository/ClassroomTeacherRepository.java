@@ -1,6 +1,7 @@
 package A704.DODREAM.user.repository;
 
 import A704.DODREAM.user.entity.ClassroomTeacher;
+import A704.DODREAM.user.entity.StudentProfile;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -13,4 +14,11 @@ public interface ClassroomTeacherRepository extends JpaRepository<ClassroomTeach
             "JOIN FETCH ct.classroom c " +
             "WHERE ct.teacher.id = :teacherId")
     List<ClassroomTeacher> findByTeacherIdWithClassroom(Long teacherId);
+
+    // 여러 반의 학생 목록
+    @Query("SELECT s FROM StudentProfile s " +
+            "JOIN FETCH s.user u " +
+            "WHERE s.classroom.id IN :classroomIds " +
+            "ORDER BY s.classroom.id, s.studentNumber")
+    List<StudentProfile> findByClassroomIdsWithUser(List<Long> classroomIds);
 }
