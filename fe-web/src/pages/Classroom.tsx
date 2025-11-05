@@ -196,29 +196,6 @@ export default function Classroom() {
     return list;
   }, [materials, matQuery, matSort, activeLabels]);
 
-  const handleLogout = async () => {
-    const r1 = await Swal.fire({
-      icon: 'question',
-      title: '로그아웃 하시겠습니까?',
-      showCancelButton: true,
-      confirmButtonText: '로그아웃',
-      cancelButtonText: '취소',
-      reverseButtons: true,
-      confirmButtonColor: '#192b55',
-      cancelButtonColor: '#d1d5db',
-    });
-
-    if (!r1.isConfirmed) return;
-
-    await Swal.fire({
-      icon: 'success',
-      title: '로그아웃 되었습니다',
-      confirmButtonColor: '#192b55',
-    });
-
-    navigate('/join', { replace: true }); // ✅ Join으로 이동
-  };
-
   /* ===== 라벨 변경 모달 ===== */
   const handleLabelMaterial = (materialId: string, currentLabel?: LabelId) => {
     let selectedLabel: LabelId | undefined = currentLabel;
@@ -338,16 +315,6 @@ export default function Classroom() {
             >
               <ArrowLeft size={18} />
               <span>목록으로</span>
-            </button>
-
-            {/* ✅ 로그아웃: Join으로 이동 */}
-            <button
-              type="button"
-              className="cl-logout-button"
-              onClick={handleLogout}
-            >
-              <LogOut size={18} />
-              <span>로그아웃</span>
             </button>
           </div>
         </div>
