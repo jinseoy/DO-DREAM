@@ -230,6 +230,19 @@ public class MaterialShareService {
                 .build();
     }
 
+    public MaterialShareListResponse getSharedMaterialByClass(Long classId, Long teacherId) {
+
+        Classroom classroom = classroomRepository.findById(classId)
+                .orElseThrow(() -> new IllegalArgumentException("반을 찾을 수 없습니다."));
+
+        List<MaterialShare> shares = materialShareRepository.findByClassIdAndTeacherId(classId, teacherId);
+
+        return MaterialShareListResponse.builder()
+                .totalCount(shares.size())
+                .materials(toInfoList(shares))
+                .build();
+    }
+
     private List<MaterialShareListResponse.SharedMaterialInfo> toInfoList(
             List<MaterialShare> shares){
         return shares.stream()

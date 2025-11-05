@@ -58,4 +58,16 @@ public class MaterialShareController {
                 .getSharedMaterialByStudentAndTeacher(studentId, teacherId);
         return ResponseEntity.ok(response);
     }
+
+    @Operation( summary = "반별 공유된 학습 조회")
+    @GetMapping("/shared/class/{classId}/teacher/{teacherId}")
+    public ResponseEntity<MaterialShareListResponse> getSharedMaterialsByClass(
+            @PathVariable Long classId,
+            @PathVariable Long teacherId
+    ){
+        MaterialShareListResponse response = materialShareService
+                .getSharedMaterialByClass(classId, teacherId);
+
+        return ResponseEntity.ok(response);
+    }
 }

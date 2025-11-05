@@ -32,4 +32,21 @@ public interface MaterialShareRepository extends JpaRepository<MaterialShare, Lo
             "ORDER BY ms.sharedAt DESC")
     List<MaterialShare> findByStudentIdAndTeacherId(Long studentId, Long teacherId);
 
+    //웹에서 공유한 자료 목록을 반별로 조회 (선생님)
+    @Query("SELECT ms FROM MaterialShare ms " +
+            "JOIN FETCH ms.material m " +
+            "JOIN FETCH ms.teacher t " +
+            "WHERE ms.sharedClass = :classId " +
+            "AND ms.teacher.id = :teacherId " +
+            "AND ms.id IN (" +
+            "  SELECT MAX(ms2.id) FROM MaterialShare ms2 " +
+            "  WHERE ms2.sharedClass = :classId " +
+            "  AND ms2.teacher.id = :teacherId " +
+            "  GROUP BY ms2.sharedClass, ms2.material.id" +
+            ") " +
+            "ORDER BY ms.sharedAt DESC")
+
+    List<MaterialShare> findByClassIdAndTeacherId(Long classId, Long teacherId);
+
+
 }
