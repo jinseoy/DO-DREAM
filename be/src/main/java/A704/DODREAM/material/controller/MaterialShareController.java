@@ -23,7 +23,7 @@ public class MaterialShareController {
     @Operation(
             summary = "학습 자료 공유 + 푸시 알림",
             description = "선생님이 학생들에게 학습 자료를 공유하면 학생의 등록된 디바이스로 푸시 알림이 전송됩니다.\n\n" +
-                    "additionalProp에는 classroom의 id를 넣으면 됩니다."
+                    "additionalProp에는 classroom의 id를 넣어주세요"
     )
     @PostMapping("/share")
     public ResponseEntity<MaterialShareResponse> shareMaterial(
