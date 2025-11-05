@@ -1,8 +1,18 @@
 package A704.DODREAM.material.entity;
 
-import A704.DODREAM.material.enums.ShareType;
 import A704.DODREAM.user.entity.User;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -41,19 +51,8 @@ public class MaterialShare {
   @JoinColumn(name = "student_id", nullable = false)
   private User student;
 
-  @Enumerated(EnumType.STRING)
-  @JoinColumn(name = "share_type", nullable = false)
-  @Builder.Default
-  private ShareType shareType = ShareType.INDIVIDUAL;
-
-  @Column(name = "shared_grade")
-  private Integer sharedGrade;
-
-  @Column(name = "shared_class")
-  private Integer sharedClass;
-
-  @Column(name = "shared_year")
-  private Integer sharedYear;
+  @Column(name = "share_message", columnDefinition = "TEXT")
+  private String shareMessage;
 
   @CreatedDate
   @Column(name = "shared_at", updatable = false)

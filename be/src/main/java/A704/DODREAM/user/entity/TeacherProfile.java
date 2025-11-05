@@ -21,14 +21,13 @@ public class TeacherProfile {
 	@OneToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "user_id")
 	private User user;
-
-    private String teacherNo;
-
-    public static TeacherProfile create(User user, String teacherNo) {
-        TeacherProfile teacherProfile = new TeacherProfile();
-        teacherProfile.user = user;
-        teacherProfile.teacherNo = teacherNo;
-        return teacherProfile;
-    }
-
+    
+	private String teacherNo;
+    
+	public static TeacherProfile create(User user, String teacherNo) {
+		TeacherProfile teacherProfile = new TeacherProfile();
+		teacherProfile.user = user;
+		teacherProfile.teacherNo = teacherNo;
+		return teacherProfile;
+	}
 }

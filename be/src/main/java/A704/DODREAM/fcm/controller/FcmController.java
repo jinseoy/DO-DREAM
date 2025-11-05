@@ -32,9 +32,9 @@ public class FcmController {
 
     @Operation(
             summary = "FCM 토큰 등록/갱신",
-            description = "앱 로그인 시 또는 앱 시작 시 호출해야 합니다.\n\n" +
-                    "사용자의 디바이스 FCM 토큰을 DB에 저장합니다.\n\n" +
-                    "기존 토큰 있음: lastUsedAt 업데이트 + 재활성화\n\n" +
+            description = "앱 로그인 시 또는 앱 시작 시 호출해야 합니다.\n" +
+                    "사용자의 디바이스 FCM 토큰을 DB에 저장합니다.\n" +
+                    "기존 토큰 있음: lastUsedAt 업데이트 + 재활성화\n" +
                     "기존 토큰 없음: 새로 등록"
     )
     @PostMapping("/token")
@@ -46,7 +46,7 @@ public class FcmController {
 
     @Operation(
             summary = "FCM 토큰 삭제 (로그아웃 시)",
-            description = "로그아웃 시 호출해야 합니다.\n\n" +
+            description = "로그아웃 시 호출해야 합니다.\n" +
                     "디바이스의 FCM 토큰을 비활성화하여 더 이상 알림을 받지 않도록 합니다."
     )
     @DeleteMapping("/token")

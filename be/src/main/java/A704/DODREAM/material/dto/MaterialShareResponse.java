@@ -15,6 +15,7 @@ public class MaterialShareResponse {
     private String materialTitle;
     private Long teacherId;
     private String teacherName;
+    private String shareMessage;
     private LocalDateTime sharedAt;
 
     private Integer totalShared;

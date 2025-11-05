@@ -8,12 +8,9 @@ import A704.DODREAM.material.dto.MaterialShareRequest;
 import A704.DODREAM.material.dto.MaterialShareResponse;
 import A704.DODREAM.material.entity.Material;
 import A704.DODREAM.material.entity.MaterialShare;
-import A704.DODREAM.material.enums.ShareType;
 import A704.DODREAM.material.repository.MaterialRepository;
 import A704.DODREAM.material.repository.MaterialShareRepository;
-import A704.DODREAM.user.entity.Classroom;
 import A704.DODREAM.user.entity.User;
-import A704.DODREAM.user.repository.ClassroomRepository;
 import A704.DODREAM.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +18,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -37,103 +33,64 @@ public class MaterialShareService {
     private final MaterialShareRepository materialShareRepository;
     private final MaterialRepository materialRepository;
     private final UserRepository userRepository;
-    private final ClassroomRepository classroomRepository;
-
     private final FcmService fcmService;
 
-    // 자료 공유
+    //자료 공유
     @Transactional
     public MaterialShareResponse shareMaterial(MaterialShareRequest request){
 
-        // 자료 조회
+        //자료 조회
         Material material = materialRepository.findById(request.getMaterialId())
                 .orElseThrow(() -> new IllegalArgumentException("자료를 찾을 수 없습니다."));
 
-        // 선생님 조회
+        //선생님 조회
         User teacher = userRepository.findById(request.getTeacherId())
                 .orElseThrow(() -> new IllegalArgumentException("선생님을 찾을 수 없습니다."));
 
-        // classroom 정보 조회
-        Set<Long> classIds = request.getShares().keySet();
-        Map<Long, Classroom> classroomMap = classroomRepository.findAllById(classIds)
-                .stream()
-                .collect(Collectors.toMap(Classroom::getId, Function.identity()));
-
-        // 모든 학생 ID 수집
-        Set<Long> studentIds = request.getShares().values().stream()
-                .flatMap(info -> info.getStudentIds().stream())
-                .collect(Collectors.toSet());
-
-        // 학생 조회
-        Map<Long, User> students = userRepository.findAllById(studentIds)
-                .stream()
+        //학생 조회
+        List<User> students = userRepository.findAllById(request.getStudentIds());
+        Map<Long, User> studentMap = students.stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
 
-        // 이미 공유된 학생 조회
-        Set<Long> sharedIds = materialShareRepository.findStudentIdsByMaterialIdAndStudentIdIn(material.getId(), studentIds);
+        //이미 공유된 학생 조회
+        Set<Long> sharedIds = materialShareRepository.findStudentIdsByMaterialIdAndStudentIdIn(material.getId(), request.getStudentIds());
 
         List<MaterialShare> sharesToSave = new ArrayList<>();
         List<MaterialShareResponse.ShareResult> results = new ArrayList<>();
 
-        for (Map.Entry<Long, MaterialShareRequest.ClassShareInfo> entry : request.getShares().entrySet()) {
-            Long classId = entry.getKey();
-            MaterialShareRequest.ClassShareInfo info = entry.getValue();
+        for (Long studentId : request.getStudentIds()) {
+            User student = studentMap.get(studentId);
 
-            Classroom classroom = classroomMap.get(classId);
-            if(classroom == null){
-                log.error("반 정보를 찾을 수 없습니다. calssId={}", classId);
+            // 학생을 찾을 수 없는 경우
+            if (student == null) {
+                results.add(MaterialShareResponse.ShareResult.builder()
+                        .studentId(studentId)
+                        .studentName("알 수 없음")
+                        .success(false)
+                        .message("학생을 찾을 수 없습니다")
+                        .build());
                 continue;
             }
 
-            Integer sharedGrade = null;
-            Integer sharedClass = null;
-            Integer sharedYear = null;
-
-            if(info.getType() == ShareType.CLASS){
-                sharedGrade = classroom.getGradeLevel();
-                sharedClass = classroom.getClassNumber();
-                sharedYear = classroom.getYear();
+            // 이미 공유된 경우
+            if (sharedIds.contains(studentId)) {
+                results.add(MaterialShareResponse.ShareResult.builder()
+                        .studentId(studentId)
+                        .studentName(student.getName())
+                        .success(false)
+                        .message("이미 공유된 자료입니다")
+                        .build());
+                continue;
             }
 
-            for (Long studentId : info.getStudentIds()) {
-                User student = students.get(studentId);
-
-                // 학생을 찾을 수 없는 경우
-                if (student == null) {
-                    results.add(MaterialShareResponse.ShareResult.builder()
-                            .studentId(studentId)
-                            .studentName("알 수 없음")
-                            .success(false)
-                            .message("학생을 찾을 수 없습니다")
-                            .build());
-                    continue;
-                }
-
-                // 이미 공유된 경우
-                if (sharedIds.contains(studentId)) {
-                    results.add(MaterialShareResponse.ShareResult.builder()
-                            .studentId(studentId)
-                            .studentName(student.getName())
-                            .success(false)
-                            .message("이미 공유된 자료입니다")
-                            .build());
-                    continue;
-                }
-
-                // MaterialShare 생성
-                MaterialShare share = MaterialShare.builder()
-                        .material(material)
-                        .teacher(teacher)
-                        .student(student)
-                        .shareType(info.getType())
-                        .sharedGrade(sharedGrade)
-                        .sharedClass(sharedClass)
-                        .sharedYear(sharedYear)
-                        .sharedAt(LocalDateTime.now())
-                        .build();
-
-                sharesToSave.add(share);
-            }
+            // 공유할 데이터 추가
+            MaterialShare share = MaterialShare.builder()
+                    .material(material)
+                    .teacher(teacher)
+                    .student(student)
+                    .shareMessage(request.getShareMessage())
+                    .build();
+            sharesToSave.add(share);
         }
 
         List<MaterialShare> savedShares = materialShareRepository.saveAll(sharesToSave);
@@ -159,6 +116,7 @@ public class MaterialShareService {
                 .materialTitle(material.getTitle())
                 .teacherId(teacher.getId())
                 .teacherName(teacher.getName())
+                .shareMessage(request.getShareMessage())
                 .totalShared((int) successCount)
                 .results(results)
                 .message(String.format("%d명의 학생에게 공유되었습니다", successCount))
