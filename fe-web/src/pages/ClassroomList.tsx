@@ -106,6 +106,9 @@ export default function ClassroomList({
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+  const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   // ✅ 파일 추출 시뮬레이터 (demo)
   const simulateExtract = async (file: File): Promise<string> => {
     // 간단한 확장자 판별
@@ -382,8 +385,9 @@ export default function ClassroomList({
     });
   };
 
-  const handleLogout = () => {
-    Swal.fire({
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    const ask = await Swal.fire({
       icon: 'question',
       title: '로그아웃 하시겠습니까?',
       showCancelButton: true,
@@ -392,18 +396,48 @@ export default function ClassroomList({
       reverseButtons: true,
       confirmButtonText: '로그아웃',
       cancelButtonText: '취소',
-    }).then((result) => {
-      if (result.isConfirmed) {
-        Swal.fire({
-          icon: 'success',
-          title: '로그아웃 되었습니다',
-          confirmButtonColor: '#192b55',
-        }).then(() => {
-          onLogout?.(); // (있으면 실행)
-          navigate('/join', { replace: true }); // ✅ Join 화면으로
-        });
-      }
     });
+    if (!ask.isConfirmed) return;
+
+    setIsLoggingOut(true);
+    void Swal.fire({
+      title: '로그아웃 중…',
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/teacher/logout`, {
+        method: 'POST',
+        credentials: 'include', // 🔴 RT가 HttpOnly 쿠키이므로 필수
+      });
+
+      // 일부 서버는 바디가 없음 → ok만 체크
+      if (!res.ok) throw new Error('로그아웃 실패');
+
+      await Swal.close();
+      await Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: '로그아웃 되었습니다',
+        timer: 1200,
+        showConfirmButton: false,
+      });
+
+      onLogout?.(); // App.tsx: isLoggedIn=false
+      navigate('/', { replace: true }); // 🔁 Join 화면(루트)으로
+    } catch (err: any) {
+      await Swal.close();
+      Swal.fire({
+        icon: 'error',
+        title: err?.message || '로그아웃 중 오류가 발생했습니다',
+        confirmButtonColor: '#192b55',
+      });
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   // (참고) 가장 최근 업로드 "날짜"만 필요할 때
@@ -427,9 +461,13 @@ export default function ClassroomList({
       <header className="cl-header">
         <div className="cl-header-wrapper">
           <h1 className="cl-header-title">DO:DREAM</h1>
-          <button className="cl-logout-button" onClick={handleLogout}>
+          <button
+            className="cl-logout-button"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+          >
             <LogOut size={18} />
-            <span>로그아웃</span>
+            <span>{isLoggingOut ? '로그아웃 중…' : '로그아웃'}</span>
           </button>
         </div>
       </header>
@@ -478,9 +516,9 @@ export default function ClassroomList({
               <h2 className="cl-section-title">
                 {classrooms.length}개 반 담당
               </h2>
-              <p className="cl-section-subtitle">
+              {/* <p className="cl-section-subtitle">
                 자료를 관리할 반을 선택해주세요
-              </p>
+              </p> */}
             </div>
 
             <div className="cl-classrooms-grid">
@@ -526,9 +564,9 @@ export default function ClassroomList({
             <div className="cl-materials-header">
               <div className="cl-section-header" style={{ flex: 1 }}>
                 <h2 className="cl-section-title">내 자료</h2>
-                <p className="cl-section-subtitle">
+                {/* <p className="cl-section-subtitle">
                   생성하거나 공유한 자료들을 관리하세요
-                </p>
+                </p> */}
               </div>
               <div className="cl-last-updated">
                 최근 업데이트: {formatKST(lastUpdatedAt, true)}
