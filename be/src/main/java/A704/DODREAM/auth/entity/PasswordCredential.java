@@ -13,7 +13,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 
 @Entity
-@Table
+@Table(name = "password_credentials")
 @Getter
 public class PasswordCredential extends BaseTimeEntity {
 	@Id
