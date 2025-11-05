@@ -1,6 +1,7 @@
 import * as Speech from 'expo-speech';
 import { Section } from '../types/chapter';
 import { PlayMode } from '../types/playMode';
+import { Platform } from 'react-native';
 
 export type TTSStatus = 'idle' | 'playing' | 'paused' | 'stopped';
 
@@ -70,6 +71,8 @@ class TTSService {
     // 초기화 시 기존 예약 타이머/토큰 정리
     this.clearPauseAfterTimer();
     this.bumpSpeakToken();
+    
+    console.log('[TTS] Initialized with options:', this.options);
   }
 
   private bumpSpeakToken() {
@@ -111,21 +114,18 @@ class TTSService {
 
   async play(): Promise<void> {
     if (this.sections.length === 0) {
-      console.warn('No sections to play');
+      console.warn('[TTS] No sections to play');
       return;
     }
 
     // 이미 실제로 말하는 중이면 중복 재생 방지
     if (this.status === 'playing') {
       try {
-        if (await Speech.isSpeakingAsync()) return;
+        if (await Speech.isSpeakingAsync()) {
+          console.log('[TTS] Already playing, skipping duplicate play call');
+          return;
+        }
       } catch {}
-    }
-
-    if (this.status === 'paused') {
-      await Speech.resume();
-      this.status = 'playing';
-      return;
     }
 
     if (this.currentSectionIndex >= this.sections.length) {
@@ -136,25 +136,48 @@ class TTSService {
     const currentSection = this.sections[this.currentSectionIndex];
     this.status = 'playing';
 
+    console.log('=== TTS Play Debug ===');
+    console.log('Platform:', Platform.OS);
+    console.log('Section index:', this.currentSectionIndex);
+    console.log('Section type:', currentSection.type);
+    console.log('Text length:', currentSection.text.length);
+    console.log('Text preview:', currentSection.text.substring(0, 100));
+    console.log('Language:', this.options.language);
+    console.log('Rate:', this.options.rate);
+    console.log('Volume:', this.options.volume);
+    console.log('Pitch:', this.options.pitch);
+
+    // Android TTS 엔진 사용 가능 여부 확인
+    if (Platform.OS === 'android') {
+      try {
+        const available = await Speech.isSpeakingAsync();
+        console.log('[TTS] Speech available check:', available);
+      } catch (error) {
+        console.error('[TTS] Speech availability check failed:', error);
+      }
+    }
+
     const pauseAfter = this.getPauseTime(currentSection.type);
-    const myToken = ++this.speakToken; // 이 호출에 대한 토큰
+    const myToken = ++this.speakToken;
 
     try {
+      console.log('[TTS] Calling Speech.speak()...');
+      
       await Speech.speak(currentSection.text, {
         language: this.options.language,
         pitch: this.options.pitch,
         rate: this.options.rate,
-        volume: this.options.volume,
+        volume: 1.0,
         voice: this.options.voice,
         onStart: () => {
-          // 토큰 검사: 기존 호출 잔여 콜백 무시
           if (this.speakToken !== myToken) return;
+          console.log('[TTS] ✓ onStart callback fired');
           this.status = 'playing';
           this.options.onStart?.();
         },
         onDone: () => {
           if (this.speakToken !== myToken) return;
-          // 섹션 종료 후 지연을 주고 다음 단계
+          console.log('[TTS] ✓ onDone callback fired');
           this.clearPauseAfterTimer();
           if (pauseAfter > 0) {
             this.pauseAfterTimer = setTimeout(() => {
@@ -167,15 +190,17 @@ class TTSService {
         },
         onError: (error) => {
           if (this.speakToken !== myToken) return;
+          console.error('[TTS] ✗ onError callback fired:', error);
           this.status = 'idle';
           const errorMessage =
             typeof error === 'string' ? error : (error as any)?.message || 'TTS error occurred';
           this.options.onError?.(new Error(errorMessage));
         },
-        onBoundary: this.options.onBoundary,
       });
+      
+      console.log('[TTS] Speech.speak() call completed successfully');
     } catch (error) {
-      // speak 호출 자체가 실패
+      console.error('[TTS] ✗ Speech.speak() threw error:', error);
       this.status = 'idle';
       this.options.onError?.(error as Error);
     }
@@ -222,30 +247,43 @@ class TTSService {
   async pause(): Promise<void> {
     if (this.status === 'playing') {
       this.clearPauseAfterTimer();
-      await Speech.pause();
-      this.status = 'paused';
+      try {
+        // Android에서는 pause()가 지원되지 않으므로 stop() 사용
+        await Speech.stop();
+        this.status = 'paused';
+        console.log('[TTS] Paused (stopped)');
+      } catch (error) {
+        console.warn('[TTS] Pause failed:', error);
+        await Speech.stop();
+        this.status = 'paused';
+      }
     }
   }
 
   async resume(): Promise<void> {
     if (this.status === 'paused') {
-      await Speech.resume();
-      this.status = 'playing';
+      try {
+        console.log('[TTS] Resuming (replaying)');
+        await this.play();
+      } catch (error) {
+        console.warn('[TTS] Resume failed:', error);
+        await this.play();
+      }
     }
   }
 
   async stop(): Promise<void> {
     this.clearPauseAfterTimer();
-    this.bumpSpeakToken(); // 이후 들어올 onDone 무시
+    this.bumpSpeakToken();
     await Speech.stop();
     this.status = 'stopped';
     this.currentRepeatCount = 0;
-    // 섹션 인덱스는 유지(재개를 위해)
+    console.log('[TTS] Stopped');
   }
 
   async goToSection(index: number, autoPlay: boolean = false): Promise<void> {
     if (index < 0 || index >= this.sections.length) {
-      console.warn('Invalid section index');
+      console.warn('[TTS] Invalid section index:', index);
       return;
     }
 
@@ -271,34 +309,24 @@ class TTSService {
     }
   }
 
-  /**
-   * 재생 속도 변경.
-   * - 항상 옵션 값을 갱신
-   * - 재생/일시정지 상태에서도 현재 섹션에 즉시 반영되도록 재시작 처리
-   *   (expo-speech는 진행 중 rate 변경이 즉시 반영되지 않을 수 있음)
-   */
   async setRate(rate: number): Promise<void> {
     this.options.rate = rate;
+    console.log('[TTS] Rate changed to:', rate);
 
     if (this.status === 'playing' || this.status === 'paused') {
       const wasPlaying = this.status === 'playing';
       const currentIndex = this.currentSectionIndex;
 
-      // 진행 중 예약된 후처리 제거 & 토큰 증가로 기존 콜백 무효화
       this.clearPauseAfterTimer();
       this.bumpSpeakToken();
 
-      // 말하던 걸 멈추고 동일 섹션을 새 속도로 다시 시작
       await Speech.stop();
       this.status = 'idle';
 
-      // 바로 같은 섹션 재생
       this.currentSectionIndex = currentIndex;
       if (wasPlaying) {
         await this.play();
       } else {
-        // 일시정지 상태였다면 재생은 하지 않되 상태 유지
-        // (필요시 resume()에서 새 속도로 시작됨)
         this.status = 'paused';
       }
     }
@@ -318,6 +346,7 @@ class TTSService {
       this.targetRepeatCount = repeatCount;
     }
     this.currentRepeatCount = 0;
+    console.log('[TTS] Play mode changed to:', mode);
   }
 
   getPlayMode(): PlayMode {
@@ -339,9 +368,11 @@ class TTSService {
   async getAvailableVoices(): Promise<Speech.Voice[]> {
     try {
       const voices = await Speech.getAvailableVoicesAsync();
-      return voices.filter((voice) => voice.language?.startsWith('ko'));
+      const koVoices = voices.filter((voice) => voice.language?.startsWith('ko'));
+      console.log('[TTS] Available Korean voices:', koVoices.length);
+      return koVoices;
     } catch (error) {
-      console.error('Failed to get voices:', error);
+      console.error('[TTS] Failed to get voices:', error);
       return [];
     }
   }
@@ -363,6 +394,7 @@ class TTSService {
     this.status = 'idle';
     this.options = {};
     this.currentRepeatCount = 0;
+    console.log('[TTS] Cleaned up');
   }
 }
 
