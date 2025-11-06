@@ -11,18 +11,19 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 
 @Entity
-@Table(name = "teacher_registries")
+@Table(name = "classroom_teacher_registries")
 @Getter
-public class TeacherRegistry {
+public class ClassroomTeacherRegistry {
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	private String name;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "classroom_id", nullable = false)
+	private ClassroomRegistry classroomRegistry;
 
-	private String teacherNumber;
-
-	@ManyToOne(fetch= FetchType.LAZY)
-	@JoinColumn(name="school_id")
-	private SchoolRegistry school;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "teacher_id", nullable = false)
+	private TeacherRegistry teacherRegistry;
 }

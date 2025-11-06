@@ -21,4 +21,6 @@ public interface ClassroomTeacherRepository extends JpaRepository<ClassroomTeach
             "WHERE s.classroom.id IN :classroomIds " +
             "ORDER BY s.classroom.id, s.studentNumber")
     List<StudentProfile> findByClassroomIdsWithUser(List<Long> classroomIds);
+
+	boolean existsByClassroomIdAndTeacherId(Long classroomId, Long teacherId);
 }

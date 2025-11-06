@@ -1,7 +1,6 @@
 package A704.DODREAM.user.entity;
 
 import jakarta.persistence.*;
-import lombok.Builder;
 import lombok.Getter;
 
 import java.util.ArrayList;
@@ -20,15 +19,15 @@ public class TeacherProfile {
 	@JoinColumn(name = "user_id")
 	private User user;
     
-	private String teacherNo;
+	private String teacherNumber;
 
     @OneToMany(mappedBy = "teacher")
     private List<ClassroomTeacher> classroomTeachers = new ArrayList<>();
 
-    public static TeacherProfile create(User user, String teacherNo) {
+    public static TeacherProfile create(User user, String teacherNumber) {
 		TeacherProfile teacherProfile = new TeacherProfile();
 		teacherProfile.user = user;
-		teacherProfile.teacherNo = teacherNo;
+		teacherProfile.teacherNumber = teacherNumber;
 		return teacherProfile;
 	}
 }

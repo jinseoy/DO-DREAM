@@ -32,4 +32,12 @@ public class StudentProfile {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "classroom_id")
     private Classroom classroom;
+
+	public static StudentProfile create(User user, String schoolName, String studentNumber) {
+		StudentProfile studentProfile = new StudentProfile();
+		studentProfile.user = user;
+		studentProfile.schoolName = schoolName;
+		studentProfile.studentNumber = studentNumber;
+		return studentProfile;
+	}
 }

@@ -21,6 +21,10 @@ public class Classroom {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+	@ManyToOne(optional = false, fetch = FetchType.LAZY)
+	@JoinColumn(name = "school_id")
+	private School school;
+
     @Column(nullable = false)
     private Integer year;
 
