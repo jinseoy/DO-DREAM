@@ -83,8 +83,7 @@ public class StudentAuthService {
 
 		// 7) 프로필 생성(+ Classroom 연결)
 		//    StudentProfile.create(...)는 classroom 세팅이 없어 setter로 연결
-		StudentProfile profile = StudentProfile.create(user, schoolName, req.studentNumber());
-		profile.setClassroom(classroom);
+		StudentProfile profile = StudentProfile.create(user, schoolName, req.studentNumber(), classroom);
 		studentProfileRepository.save(profile);
 
 		// 8) 기기 크리덴셜 저장 (secret -> BCrypt)
@@ -97,36 +96,6 @@ public class StudentAuthService {
 		return user.getId();
 	}
 
-	/**
-	 * 검증 + 가입을 분리했으니, 회원가입 시에도 한 번 더 재검증
-	 */
-	// @Transactional
-	// public Long signup(StudentSignupRequest req) {
-	// 	// 1) 레지스트리 재검증
-	// 	studentRegistryRepository.findByNameAndStudentNumber(req.name(), req.studentNumber())
-	// 		.orElseThrow(() -> new IllegalArgumentException("학번/이름이 일치하지 않습니다."));
-	//
-	// 	// 2) 이미 같은 deviceId가 가입된 경우 방지(선택)
-	// 	if (deviceCredentialRepository.existsByDeviceId(req.deviceId()))
-	// 		throw new IllegalArgumentException("이미 등록된 기기입니다.");
-	//
-	// 	// 3) User 생성 (학생)
-	// 	User user = User.create(req.name(), Role.STUDENT);
-	// 	user = userRepository.save(user);
-	//
-	// 	// 4) 프로필 생성
-	// 	StudentProfile profile = StudentProfile.create(user, req.name(), req.studentNumber());
-	// 	studentProfileRepository.save(profile);
-	//
-	// 	// 5) 기기 크리덴셜 저장 (secret -> BCrypt)
-	// 	String hash = encoder.encode(req.deviceSecret());
-	// 	DeviceCredential cred = DeviceCredential.create(
-	// 		user, req.deviceId(), req.platform(), hash
-	// 	);
-	// 	deviceCredentialRepository.save(cred);
-	//
-	// 	return user.getId();
-	// }
 	@Transactional(readOnly = true)
 	public User authenticate(StudentLoginRequest req) {
 		DeviceCredential cred = deviceCredentialRepository.findByDeviceId(req.deviceId())

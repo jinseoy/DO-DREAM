@@ -14,7 +14,7 @@ public class CookieUtil {
 		ResponseCookie cookie = ResponseCookie.from(REFRESH_COOKIE, token)
 			.httpOnly(true)
 			.secure(true)
-			.path("/auth")
+			.path("/api/auth")
 			.maxAge(Duration.ofSeconds(maxAgeSeconds))
 			.sameSite("Lax")   // <- 여기서 SameSite 지정 가능
 			.build();
@@ -25,7 +25,7 @@ public class CookieUtil {
 		ResponseCookie cookie = ResponseCookie.from(REFRESH_COOKIE, "")
 			.httpOnly(true)
 			.secure(true)
-			.path("/auth")
+			.path("/api/auth")
 			.maxAge(Duration.ZERO)
 			.sameSite("Lax")
 			.build();

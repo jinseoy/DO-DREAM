@@ -73,27 +73,4 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 			return null;
 		}
 	}
-
-	// @Override
-	// protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
-	// 	throws ServletException, IOException {
-	// 	String h = req.getHeader("Authorization");
-	// 	if (h != null && h.startsWith("Bearer ")) {
-	// 		try {
-	// 			Claims c = jwt.parse(h.substring(7)).getBody();
-	// 			String sub = c.getSubject();
-	// 			String role = c.get("role", String.class);
-	//
-	// 			if (SecurityContextHolder.getContext().getAuthentication() == null) {
-	// 				var auth = new UsernamePasswordAuthenticationToken(
-	// 					sub, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
-	// 				SecurityContextHolder.getContext().setAuthentication(auth);
-	// 			}
-	// 		} catch (Exception e) {
-	// 			res.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
-	// 			return;
-	// 		}
-	// 	}
-	// 	chain.doFilter(req, res);
-	// }
 }

@@ -43,7 +43,7 @@ public class StudentProfile {
 	@JoinColumn(name = "classroom_id")
 	private Classroom classroom;
 
-	public static StudentProfile create(User user, String schoolName, String studentNumber) {
+	public static StudentProfile create(User user, String schoolName, String studentNumber, Classroom classroom) {
 		StudentProfile studentProfile = new StudentProfile();
 		studentProfile.user = user;
 		studentProfile.schoolName = schoolName;
