@@ -3,11 +3,11 @@
  */
 export interface Student {
   id: number;
-  studentId: string; // 학번
-  name: string;
-  grade?: number; // 학년
-  classNumber?: number; // 반
-  createdAt?: string;
+  studentNumber: string;       // 학번
+  name: string;                // 이름
+  isVisuallyImpaired?: boolean; // 시각장애 여부
+  classroomId?: number | null; // 소속 반 (선택)
+  createdAt: string;           // 등록일 (ISO string)
 }
 
 /**
