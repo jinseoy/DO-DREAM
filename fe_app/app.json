@@ -4,7 +4,7 @@
     "slug": "do-dream",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon_student_male.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -17,11 +17,12 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.dodream.app"
+      "bundleIdentifier": "com.dodream.app",
+      "icon": "./assets/icon_student_male.png"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon_student_male.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
