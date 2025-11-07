@@ -3,20 +3,38 @@ import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { SplashScreenNavigationProp } from "../../navigation/navigationTypes";
+import { useAuthStore } from "../../stores/authStore";
 
 export default function SplashScreen() {
   const navigation = useNavigation<SplashScreenNavigationProp>();
+  const { accessToken } = useAuthStore();
 
   useEffect(() => {
+    console.log('[SplashScreen] Mounted');
+    console.log('[SplashScreen] AccessToken:', accessToken ? 'EXISTS' : 'NULL');
+
+    // 2초 후 자동 이동
     const timer = setTimeout(() => {
-      navigation.replace("AuthStart");
+      if (accessToken) {
+        console.log('[SplashScreen] Navigating to Library');
+        navigation.replace("Library");
+      } else {
+        console.log('[SplashScreen] Navigating to AuthStart');
+        navigation.replace("AuthStart");
+      }
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [navigation]);
+  }, [accessToken, navigation]);
 
   const handleSkip = () => {
-    navigation.replace("AuthStart");
+    console.log('[SplashScreen] Skip button pressed');
+    
+    if (accessToken) {
+      navigation.replace("Library");
+    } else {
+      navigation.replace("AuthStart");
+    }
   };
 
   return (
