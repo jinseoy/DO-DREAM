@@ -1,5 +1,7 @@
 package A704.DODREAM.user.service;
 
+import A704.DODREAM.global.exception.CustomException;
+import A704.DODREAM.global.exception.constant.ErrorCode;
 import A704.DODREAM.material.repository.MaterialShareRepository;
 import A704.DODREAM.user.dto.StudentListResponse;
 import A704.DODREAM.user.dto.ClassroomResponse;
@@ -35,10 +37,10 @@ public class ClassroomService {
     public ClassroomResponse getTeacherClassrooms(Long teacherId) {
 
         TeacherProfile teacherProfile = teacherProfileRepository.findByUserId(teacherId)
-                .orElseThrow(() -> new IllegalArgumentException("선생님을 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         TeacherProfile teacher = teacherProfileRepository.findById(teacherProfile.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Teacher not found"));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         List<ClassroomTeacher> classroomTeachers =
                 classroomTeacherRepository.findByTeacherIdWithClassroom(teacherProfile.getId());
@@ -68,13 +70,13 @@ public class ClassroomService {
     // 반별 학생 목록
     public StudentListResponse getClassroomStudents(Long classroomId, Long teacherId) {
         Classroom classroom = classroomRepository.findById(classroomId)
-                .orElseThrow(() -> new IllegalArgumentException("Classroom not found"));
+                .orElseThrow(() -> new CustomException(ErrorCode.CLASSROOM_NOT_FOUND));
 
         TeacherProfile teacher = teacherProfileRepository.findByUserId(teacherId)
-                .orElseThrow(() -> new IllegalArgumentException("선생님을 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         if(!classroomTeacherRepository.existsByClassroomIdAndTeacherId(classroomId, teacher.getId())){
-            throw new IllegalArgumentException("해당 반의 학생 목록을 조회할 권한이 없습니다.");
+            throw new CustomException(ErrorCode.FORBIDDEN);
         }
 
         List<StudentProfile> students =
@@ -86,7 +88,7 @@ public class ClassroomService {
     // 선생님의 담당 반별 학생 목록
     public List<StudentListResponse> getTeacherClassroomStudents(Long teacherId, List<Long> classroomIds){
         TeacherProfile teacher = teacherProfileRepository.findByUserId(teacherId)
-                .orElseThrow(() -> new IllegalArgumentException("선생님을 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         List<ClassroomTeacher> classroomTeachers =
                 classroomTeacherRepository.findByTeacherIdWithClassroom(teacher.getId());

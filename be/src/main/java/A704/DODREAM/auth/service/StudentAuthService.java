@@ -3,6 +3,8 @@ package A704.DODREAM.auth.service;
 import java.time.Year;
 import java.time.ZoneId;
 
+import A704.DODREAM.global.exception.CustomException;
+import A704.DODREAM.global.exception.constant.ErrorCode;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,7 +41,7 @@ public class StudentAuthService {
 	@Transactional(readOnly = true)
 	public void verify(StudentVerifyRequest req) {
 		studentRegistryRepository.findByNameAndStudentNumber(req.name(), req.studentNumber())
-			.orElseThrow(() -> new IllegalArgumentException("학번/이름이 일치하지 않습니다."));
+			.orElseThrow(() -> new CustomException(ErrorCode.STUDENT_INFO_MISMATCH));
 	}
 
 	@Transactional
@@ -48,11 +50,11 @@ public class StudentAuthService {
 		// 1) 레지스트리 재검증 + 학교 로드
 		StudentRegistry sr = studentRegistryRepository
 			.findByNameAndStudentNumberFetchSchool(req.name(), req.studentNumber())
-			.orElseThrow(() -> new IllegalArgumentException("학번/이름이 일치하지 않습니다."));
+			.orElseThrow(() -> new CustomException(ErrorCode.STUDENT_INFO_MISMATCH));
 
 		// 2) 이미 같은 deviceId가 가입된 경우 방지(선택)
 		if (deviceCredentialRepository.existsByDeviceId(req.deviceId())) {
-			throw new IllegalArgumentException("이미 등록된 기기입니다.");
+			throw new CustomException(ErrorCode.DUPLICATE_DEVICE);
 		}
 
 		// 3) 연도 산정(Asia/Seoul 기준 현재 연도)
@@ -99,11 +101,11 @@ public class StudentAuthService {
 	@Transactional(readOnly = true)
 	public User authenticate(StudentLoginRequest req) {
 		DeviceCredential cred = deviceCredentialRepository.findByDeviceId(req.deviceId())
-			.orElseThrow(() -> new IllegalArgumentException("등록되지 않은 기기입니다."));
+			.orElseThrow(() -> new CustomException(ErrorCode.DEVICE_NOT_FOUND));
 
 		// 생체인증은 "클라에서 secret을 꺼낼 권한"을 줬다는 의미. 서버는 secret 검증만 수행.
 		if (!encoder.matches(req.deviceSecret(), cred.getSecretHash()))
-			throw new IllegalArgumentException("기기 인증에 실패했습니다.");
+			throw new CustomException(ErrorCode.DEVICE_AUTHENTICATION_FAILED);
 
 		return cred.getUser();
 	}

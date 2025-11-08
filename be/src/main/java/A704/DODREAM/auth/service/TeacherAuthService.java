@@ -2,6 +2,8 @@ package A704.DODREAM.auth.service;
 
 import java.util.List;
 
+import A704.DODREAM.global.exception.CustomException;
+import A704.DODREAM.global.exception.constant.ErrorCode;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,7 +49,7 @@ public class TeacherAuthService {
 	public void verify(TeacherVerifyRequest req) {
 		boolean ok = teacherRegistryRepository.existsByNameAndTeacherNumber(req.name(), req.teacherNumber());
 		if (!ok)
-			throw new IllegalArgumentException("학사정보(이름/교원번호)가 일치하지 않습니다.");
+			throw new CustomException(ErrorCode.TEACHER_INFO_MISMATCH);
 	}
 
 	@Transactional
@@ -55,11 +57,11 @@ public class TeacherAuthService {
 		// 1) 레지스트리 재검증
 		boolean ok = teacherRegistryRepository.existsByNameAndTeacherNumber(req.name(), req.teacherNumber());
 		if (!ok)
-			throw new IllegalArgumentException("학사정보(이름/교원번호)가 일치하지 않습니다.");
+			throw new CustomException(ErrorCode.TEACHER_INFO_MISMATCH);
 
 		// 2) 이메일 중복 검사
 		if (passwordCredentialRepository.existsByEmail(req.email())) {
-			throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+			throw new CustomException(ErrorCode.DUPLICATED_EMAIL);
 		}
 
 		// 3) User 생성(교사)
@@ -78,7 +80,7 @@ public class TeacherAuthService {
 		// 6-1) 교사 레지스트리 with 학교 로드
 		TeacherRegistry teacherRegistry = teacherRegistryRepository
 			.findByNameAndTeacherNumberFetchSchool(req.name(), req.teacherNumber())
-			.orElseThrow(() -> new IllegalStateException("교사 레지스트리를 찾을 수 없습니다."));
+			.orElseThrow(() -> new CustomException(ErrorCode.TEACHER_INFO_MISMATCH));
 
 		// 6-2) School upsert (현재는 이름 기준)
 		School school = schoolRepository.findByName(teacherRegistry.getSchool().getName())
@@ -155,13 +157,13 @@ public class TeacherAuthService {
 	@Transactional(readOnly = true)
 	public User authenticate(TeacherLoginRequest req) {
 		PasswordCredential cred = passwordCredentialRepository.findByEmail(req.email())
-			.orElseThrow(() -> new IllegalArgumentException("이메일 혹은 비밀번호가 올바르지 않습니다."));
+			.orElseThrow(() -> new CustomException(ErrorCode.TEACHER_INVALID_CREDENTIALS));
 		if (!encoder.matches(req.password(), cred.getPasswordHash()))
-			throw new IllegalArgumentException("이메일 혹은 비밀번호가 올바르지 않습니다.");
+			throw new CustomException(ErrorCode.TEACHER_INVALID_CREDENTIALS);
 
 		User user = cred.getUser();
 		if (user.getRole() != Role.TEACHER)
-			throw new IllegalStateException("교사 계정이 아닙니다.");
+			throw new CustomException(ErrorCode.NOT_TEACHER_ACCOUNT);
 		return user;
 	}
 }

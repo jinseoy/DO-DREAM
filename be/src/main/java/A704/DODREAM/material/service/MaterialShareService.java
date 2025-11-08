@@ -8,6 +8,8 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import A704.DODREAM.global.exception.CustomException;
+import A704.DODREAM.global.exception.constant.ErrorCode;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -19,7 +21,6 @@ import A704.DODREAM.material.dto.MaterialShareRequest;
 import A704.DODREAM.material.dto.MaterialShareResponse;
 import A704.DODREAM.material.entity.Material;
 import A704.DODREAM.material.entity.MaterialShare;
-import A704.DODREAM.material.enums.ShareType;
 import A704.DODREAM.material.repository.MaterialRepository;
 import A704.DODREAM.material.repository.MaterialShareRepository;
 import A704.DODREAM.user.entity.Classroom;
@@ -50,7 +51,7 @@ public class MaterialShareService {
 
 		// 자료 조회
 		Material material = materialRepository.findById(request.getMaterialId())
-			.orElseThrow(() -> new IllegalArgumentException("자료를 찾을 수 없습니다."));
+			.orElseThrow(() -> new CustomException(ErrorCode.MATERIAL_NOT_FOUND));
 
         // classroom 정보 조회
         Set<Long> classIds = request.getShares().keySet();
@@ -202,7 +203,7 @@ public class MaterialShareService {
 		Long studentId, Long teacherId) {
 
 		User student = userRepository.findById(studentId)
-			.orElseThrow(() -> new IllegalArgumentException("학생을 찾을 수 없습니다."));
+			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         List<MaterialShare> shares = materialShareRepository.findByStudentIdAndTeacherId(studentId, teacherId);
 
@@ -217,7 +218,7 @@ public class MaterialShareService {
 	public MaterialShareListResponse getSharedMaterialByClass(Long classId, Long teacherId) {
 
 		Classroom classroom = classroomRepository.findById(classId)
-			.orElseThrow(() -> new IllegalArgumentException("반을 찾을 수 없습니다."));
+			.orElseThrow(() -> new CustomException(ErrorCode.CLASSROOM_NOT_FOUND));
 
         List<MaterialShare> shares = materialShareRepository.findByClassIdAndTeacherId(classId, teacherId);
 
