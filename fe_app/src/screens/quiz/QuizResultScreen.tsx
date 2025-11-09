@@ -23,8 +23,8 @@ export default function QuizResultScreen() {
   const [showAllQuestions, setShowAllQuestions] = useState(false);
 
   const percentage = Math.round((score / totalQuestions) * 100);
-  const wrongAnswers = answers.filter((a) => !a.isCorrect);
-  const correctAnswers = answers.filter((a) => a.isCorrect);
+  const wrongAnswers = answers.filter((a) => a.isCorrect === false);
+  const correctAnswers = answers.filter((a) => a.isCorrect === true);
 
   useEffect(() => {
     const announcement = `퀴즈 완료. ${totalQuestions}문제 중 ${score}문제 정답. 정답률 ${percentage}퍼센트. ${
@@ -62,9 +62,20 @@ export default function QuizResultScreen() {
     emphasize: boolean = false
   ) => {
     const question = quiz.questions[questionIndex];
+    if (!question) {
+      console.error(`Question at index ${questionIndex} not found`);
+      return null;
+    }
+
     const answer = answers[questionIndex];
+    if (!answer) {
+      console.error(`Answer at index ${questionIndex} not found`);
+      return null;
+    }
+
+    // 옵션 찾기
     const selectedOption = question.options.find(
-      (opt) => opt.id === answer?.selectedOptionId
+      (opt) => opt.id === answer.selectedOptionId
     );
     const correctOption = question.options.find((opt) => opt.isCorrect);
 
@@ -134,7 +145,7 @@ export default function QuizResultScreen() {
                 ]}
               >
                 {isCorrect ? '✓ ' : '✗ '}
-                {selectedOption?.optionText}
+                {selectedOption?.optionText || '(선택 없음)'}
               </Text>
             </View>
           </View>
@@ -147,7 +158,7 @@ export default function QuizResultScreen() {
                 <Text
                   style={[styles.answerBoxText, styles.answerBoxTextCorrect]}
                 >
-                  ✓ {correctOption?.optionText}
+                  ✓ {correctOption?.optionText || '(정답 없음)'}
                 </Text>
               </View>
             </View>
@@ -219,11 +230,12 @@ export default function QuizResultScreen() {
 
             {/* 틀린 문제 카드들 */}
             <View style={styles.cardsContainer}>
-              {answers.map(
-                (answer, index) =>
-                  !answer.isCorrect &&
-                  renderQuestionCard(index, false, true)
-              )}
+              {answers.map((answer, index) => {
+                if (answer && !answer.isCorrect && quiz.questions[index]) {
+                  return renderQuestionCard(index, false, true);
+                }
+                return null;
+              })}
             </View>
           </View>
         ) : (
@@ -271,10 +283,13 @@ export default function QuizResultScreen() {
 
             {showAllQuestions && (
               <View style={styles.cardsContainer}>
-                {answers.map(
-                  (answer, index) =>
-                    answer.isCorrect && renderQuestionCard(index, true, false)
-                )}
+                {answers.map((answer, index) => {
+                  // 안전성 체크: index가 유효하고 맞은 답인 경우에만 렌더링
+                  if (answer && answer.isCorrect && quiz.questions[index]) {
+                    return renderQuestionCard(index, true, false);
+                  }
+                  return null;
+                })}
               </View>
             )}
           </View>
@@ -304,7 +319,7 @@ export default function QuizResultScreen() {
               accessible={true}
               accessibilityRole="text"
             >
-              좋아요! 틀린 문제를 다시 확인해보세요!
+              좋아요! 틀린 문제를 다시 복습해보세요!
             </Text>
           ) : (
             <Text
@@ -312,7 +327,7 @@ export default function QuizResultScreen() {
               accessible={true}
               accessibilityRole="text"
             >
-              괜찮아요! 다시 한번 복습하고 도전해봐요!
+              괜찮아요! 다시 한 번 복습하고 도전해보세요!
             </Text>
           )}
         </View>
