@@ -12,6 +12,7 @@ const AUTH_ENDPOINTS = {
   REGISTER: '/api/auth/student/register',   // 회원가입 (기기 등록)
   LOGIN: '/api/auth/student/login',         // 로그인
   REFRESH: '/api/auth/student/refresh',     // 토큰 재발급
+  LOGOUT: '/api/auth/student/logout',       // 로그아웃 [향후]
 };
 
 export const authApi = {
@@ -49,5 +50,12 @@ export const authApi = {
   refresh: async (data: StudentLoginRequest): Promise<AuthResponse> => {
     const response = await apiClient.post(AUTH_ENDPOINTS.REFRESH, data);
     return response.data;
+  },
+
+  /**
+   * 로그아웃 (향후 구현 예정)
+   */
+  logout: async (): Promise<void> => {
+    await apiClient.post(AUTH_ENDPOINTS.LOGOUT);
   },
 };
