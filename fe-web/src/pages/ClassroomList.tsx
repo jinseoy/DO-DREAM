@@ -101,7 +101,7 @@ export default function ClassroomList({
   onNavigateToEditor,
 }: ClassroomListProps) {
   const [selectedLabel, setSelectedLabel] = useState<string | undefined>();
-  
+
   const navigate = useNavigate();
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -289,68 +289,75 @@ export default function ClassroomList({
     LABEL_OPTIONS.find((l) => l.id === label)?.color || 'transparent';
 
   // 라벨 변경
+  // 라벨 변경
   const handleLabelMaterial = (materialId: string, currentLabel?: string) => {
-    let selectedLabel = currentLabel;
+    let picked: string | undefined = currentLabel; // ← 로컬 변수로 관리
 
     Swal.fire({
       title: '라벨 선택',
       html: `
-        <div class="ae-label-grid" id="labelGrid">
-          ${LABEL_OPTIONS.map(
-            (label) => `
-            <button 
-              class="ae-label-option ${selectedLabel === label.id ? 'active' : ''}" 
-              data-label="${label.id}"
-              style="background-color: ${label.color}; ${
-                selectedLabel === label.id
-                  ? `border: 3px solid ${label.color};`
-                  : ''
-              }" 
-              title="${label.name}"
-            >
-              <span>${selectedLabel === label.id ? '✓' : ''}</span>
-            </button>
-          `,
-          ).join('')}
-        </div>
-      `,
+      <div class="ae-label-grid" id="labelGrid">
+        ${LABEL_OPTIONS.map(
+          (label) => `
+          <button 
+            class="ae-label-option ${picked === label.id ? 'active' : ''}" 
+            data-label="${label.id}"
+            style="background-color: ${label.color}; ${
+              picked === label.id ? `border: 3px solid #000;` : ''
+            }" 
+            title="${label.name}"
+          >
+            <span>${picked === label.id ? '✓' : ''}</span>
+          </button>
+        `,
+        ).join('')}
+      </div>
+    `,
       showCancelButton: true,
       confirmButtonText: '저장',
       cancelButtonText: '취소',
       confirmButtonColor: '#192b55',
       cancelButtonColor: '#d1d5db',
       reverseButtons: true,
+
       didOpen: () => {
         const grid = document.getElementById('labelGrid');
         if (!grid) return;
 
-        const buttons = grid.querySelectorAll('.ae-label-option');
-        buttons.forEach((btn) => {
-          btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const label = (e.currentTarget as HTMLElement).getAttribute(
-              'data-label',
-            );
-            if (!label) return;
+        const buttons = Array.from(
+          grid.querySelectorAll('.ae-label-option'),
+        ) as HTMLElement[];
 
-            buttons.forEach((b) => {
-              const htmlElement = b as HTMLElement;
-              const isActive = htmlElement.getAttribute('data-label') === label;
-              if (isActive) {
-                htmlElement.classList.add('active');
-                htmlElement.style.border = '3px solid #000';
-                htmlElement.innerHTML = '<span>✓</span>';
-              } else {
-                htmlElement.classList.remove('active');
-                htmlElement.style.border = '';
-                htmlElement.innerHTML = '<span></span>';
-              }
-            });
-
-            setSelectedLabel(label);
+        const render = () => {
+          buttons.forEach((btn) => {
+            const id = btn.getAttribute('data-label');
+            const active = id === picked;
+            btn.classList.toggle('active', active);
+            btn.style.border = active ? '3px solid #000' : '';
+            btn.innerHTML = `<span>${active ? '✓' : ''}</span>`;
           });
+        };
+
+        grid.addEventListener('click', (e) => {
+          const target = (e.target as HTMLElement).closest(
+            '.ae-label-option',
+          ) as HTMLElement | null;
+          if (!target) return;
+          picked = target.getAttribute('data-label') || undefined; // ← 로컬 변수 갱신
+          render();
         });
       },
+
+      preConfirm: () => picked, // ← 여기서 선택값 반환!
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      const value = result.value as string | undefined; // 선택 해제 가능
+
+      setMaterials((prev) =>
+        prev.map((mat) =>
+          mat.id === materialId ? { ...mat, label: value } : mat,
+        ),
+      );
     });
   };
 
