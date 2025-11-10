@@ -100,6 +100,8 @@ export default function ClassroomList({
   onLogout,
   onNavigateToEditor,
 }: ClassroomListProps) {
+  const [selectedLabel, setSelectedLabel] = useState<string | undefined>();
+  
   const navigate = useNavigate();
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -293,63 +295,62 @@ export default function ClassroomList({
     Swal.fire({
       title: '라벨 선택',
       html: `
-      <div class="cl-label-grid">
-        ${LABEL_OPTIONS.map(
-          (label) => `
-          <button
-            class="cl-label-option ${currentLabel === label.id ? 'active' : ''}"
-            data-label="${label.id}"
-            style="background-color: ${label.color};"
-            title="${label.name}"
-          >
-            ${currentLabel === label.id ? '✓' : ''}
-          </button>
-        `,
-        ).join('')}
-      </div>
-    `,
-      width: 420,
-      padding: '18px',
+        <div class="ae-label-grid" id="labelGrid">
+          ${LABEL_OPTIONS.map(
+            (label) => `
+            <button 
+              class="ae-label-option ${selectedLabel === label.id ? 'active' : ''}" 
+              data-label="${label.id}"
+              style="background-color: ${label.color}; ${
+                selectedLabel === label.id
+                  ? `border: 3px solid ${label.color};`
+                  : ''
+              }" 
+              title="${label.name}"
+            >
+              <span>${selectedLabel === label.id ? '✓' : ''}</span>
+            </button>
+          `,
+          ).join('')}
+        </div>
+      `,
       showCancelButton: true,
       confirmButtonText: '저장',
       cancelButtonText: '취소',
-      reverseButtons: true,
       confirmButtonColor: '#192b55',
       cancelButtonColor: '#d1d5db',
-      customClass: {
-        popup: 'cl-label-modal',
-        title: 'cl-label-title',
-        confirmButton: 'cl-label-save',
-        cancelButton: 'cl-label-cancel',
-      },
+      reverseButtons: true,
       didOpen: () => {
-        const buttons = document.querySelectorAll('.cl-label-option');
+        const grid = document.getElementById('labelGrid');
+        if (!grid) return;
+
+        const buttons = grid.querySelectorAll('.ae-label-option');
         buttons.forEach((btn) => {
           btn.addEventListener('click', (e) => {
             e.preventDefault();
-            buttons.forEach((b) => b.classList.remove('active'));
-            const el = e.currentTarget as HTMLElement;
-            el.classList.add('active');
-            selectedLabel = el.getAttribute('data-label') || undefined;
+            const label = (e.currentTarget as HTMLElement).getAttribute(
+              'data-label',
+            );
+            if (!label) return;
 
             buttons.forEach((b) => {
-              (b as HTMLElement).innerHTML =
-                b.getAttribute('data-label') === selectedLabel ? '✓' : '';
+              const htmlElement = b as HTMLElement;
+              const isActive = htmlElement.getAttribute('data-label') === label;
+              if (isActive) {
+                htmlElement.classList.add('active');
+                htmlElement.style.border = '3px solid #000';
+                htmlElement.innerHTML = '<span>✓</span>';
+              } else {
+                htmlElement.classList.remove('active');
+                htmlElement.style.border = '';
+                htmlElement.innerHTML = '<span></span>';
+              }
             });
+
+            setSelectedLabel(label);
           });
         });
       },
-      preConfirm: () => selectedLabel,
-    }).then((result) => {
-      if (result.isConfirmed) {
-        setMaterials((prev) =>
-          prev.map((mat) =>
-            mat.id === materialId
-              ? { ...mat, label: result.value as string | undefined }
-              : mat,
-          ),
-        );
-      }
     });
   };
 

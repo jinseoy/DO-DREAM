@@ -336,7 +336,7 @@ export default function AdvancedEditor({
               class="ae-label-option ${selectedLabel === label.id ? 'active' : ''}" 
               data-label="${label.id}"
               style="background-color: ${label.color}; ${
-                selectedLabel === label.id ? 'border: 3px solid #000;' : ''
+                selectedLabel === label.id ? `border: 3px solid ${label.color};` : ''
               }" 
               title="${label.name}"
             >
