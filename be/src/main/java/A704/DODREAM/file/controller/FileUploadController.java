@@ -4,6 +4,8 @@ import A704.DODREAM.auth.dto.request.UserPrincipal;
 import A704.DODREAM.file.dto.DownloadUrlResponse;
 import A704.DODREAM.file.dto.PresignedUrlRequest;
 import A704.DODREAM.file.dto.PresignedUrlResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,6 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "File API ", description = "File 업로드 API")
 @Slf4j
 @RestController
 @RequestMapping("/api/files")
@@ -57,6 +60,12 @@ public class FileUploadController {
      * 2. 클라이언트가 받은 URL로 S3에 직접 업로드
      * 3. 업로드 완료 후 /files/{fileId}/process 호출하여 OCR 시작
      */
+    @Operation(
+        summary = "S3 Presigned URL 생성",
+        description = "PDF 파일을 S3에 직접 업로드하기 위한 Presigned URL을 생성합니다. " +
+                "클라이언트는 반환된 uploadUrl을 사용하여 PUT 메서드로 S3에 파일을 직접 업로드할 수 있습니다. " +
+                "PDF 파일만 허용됩니다."
+    )
     @PostMapping("/presigned-url")
     public ResponseEntity<?> generatePresignedUrl(@RequestBody PresignedUrlRequest request) {
         try {
