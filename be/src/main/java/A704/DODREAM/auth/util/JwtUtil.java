@@ -1,6 +1,5 @@
 package A704.DODREAM.auth.util;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 
@@ -33,8 +32,13 @@ public class JwtUtil {
 		this.refreshExpSeconds = refreshExpSeconds;
 	}
 
-	public String createAccessToken(User u) { return createToken(u, accessExpSeconds); }
-	public String createRefreshToken(User u) { return createToken(u, refreshExpSeconds); }
+	public String createAccessToken(User u) {
+		return createToken(u, accessExpSeconds);
+	}
+
+	public String createRefreshToken(User u) {
+		return createToken(u, refreshExpSeconds);
+	}
 
 	private String createToken(User u, long expSeconds) {
 		Instant now = Instant.now();

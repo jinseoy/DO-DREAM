@@ -12,7 +12,9 @@ import lombok.RequiredArgsConstructor;
 public class RefreshTokenService {
 	private final StringRedisTemplate redis;
 
-	private String key(long userId) { return "refresh:%d".formatted(userId); }
+	private String key(long userId) {
+		return "refresh:%d".formatted(userId);
+	}
 
 	public void save(long userId, String token, Duration ttl) {
 		redis.opsForValue().set(key(userId), token, ttl);
@@ -20,10 +22,13 @@ public class RefreshTokenService {
 
 	public boolean validateAndRotate(long userId, String presented, String newToken, Duration ttl) {
 		String stored = redis.opsForValue().get(key(userId));
-		if (stored == null || !stored.equals(presented)) return false;
+		if (stored == null || !stored.equals(presented))
+			return false;
 		redis.opsForValue().set(key(userId), newToken, ttl);
 		return true;
 	}
 
-	public void revoke(long userId) { redis.delete(key(userId)); }
+	public void revoke(long userId) {
+		redis.delete(key(userId));
+	}
 }

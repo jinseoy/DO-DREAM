@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PresignedUrlResponse {
-    private String presignedUrl;
-    private String s3Key;
-    private String fileId;  // 나중에 OCR 처리 시작할 때 사용
-    private Long expiresIn; // 초 단위
+	private String presignedUrl;
+	private String s3Key;
+	private String fileId;  // 나중에 OCR 처리 시작할 때 사용
+	private Long expiresIn; // 초 단위
 }

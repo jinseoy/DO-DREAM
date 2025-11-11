@@ -1,5 +1,10 @@
 package A704.DODREAM.material.entity;
 
+import java.time.LocalDateTime;
+
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -11,14 +16,15 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-import java.time.LocalDateTime;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "material_contents", indexes = {
-    @Index(name = "idx_material", columnList = "material_id")
+	@Index(name = "idx_material", columnList = "material_id")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -27,21 +33,21 @@ import java.time.LocalDateTime;
 @Builder
 public class MaterialContent {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "material_id", nullable = false)
-  private Material material;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "material_id", nullable = false)
+	private Material material;
 
-  @Column(name = "page_number")
-  private Integer pageNumber;
+	@Column(name = "page_number")
+	private Integer pageNumber;
 
-  @Column(name = "text_content", nullable = false, columnDefinition = "TEXT")
-  private String textContent;
+	@Column(name = "text_content", nullable = false, columnDefinition = "TEXT")
+	private String textContent;
 
-  @CreatedDate
-  @Column(name = "created_at", updatable = false)
-  private LocalDateTime createdAt;
+	@CreatedDate
+	@Column(name = "created_at", updatable = false)
+	private LocalDateTime createdAt;
 }

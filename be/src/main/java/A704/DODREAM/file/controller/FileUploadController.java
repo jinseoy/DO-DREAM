@@ -1,29 +1,40 @@
 package A704.DODREAM.file.controller;
 
+import A704.DODREAM.auth.dto.request.UserPrincipal;
 import A704.DODREAM.file.dto.DownloadUrlResponse;
 import A704.DODREAM.file.dto.PresignedUrlRequest;
 import A704.DODREAM.file.dto.PresignedUrlResponse;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
 import A704.DODREAM.file.dto.DocumentSectionResponse;
 import A704.DODREAM.file.dto.DocumentStructureResponse;
+import A704.DODREAM.file.dto.FileUploadResponse;
+import A704.DODREAM.file.dto.OcrResultResponse;
 import A704.DODREAM.file.entity.DocumentSection;
 import A704.DODREAM.file.entity.OcrStatus;
 import A704.DODREAM.file.entity.UploadedFile;
 import A704.DODREAM.file.repository.DocumentSectionRepository;
 import A704.DODREAM.file.repository.UploadedFileRepository;
-import A704.DODREAM.file.dto.FileUploadResponse;
-import A704.DODREAM.file.dto.OcrResultResponse;
 import A704.DODREAM.file.service.CloudFrontService;
 import A704.DODREAM.file.service.FileStorageService;
 import A704.DODREAM.file.service.OcrProcessService;
 import A704.DODREAM.file.service.S3Service;
-import java.util.List;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @RestController
@@ -146,10 +157,12 @@ public class FileUploadController {
      */
     @PostMapping("/upload")
     public ResponseEntity<?> uploadFile(
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("uploaderId") Long uploaderId) {
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @RequestParam("file") MultipartFile file) {
 
         try {
+            Long uploaderId = userPrincipal.userId();
+
             // 1. 파일 검증
             if (file.isEmpty()) {
                 return ResponseEntity.badRequest()
@@ -230,9 +243,11 @@ public class FileUploadController {
     /**
      * 업로더의 파일 목록 조회
      */
-    @GetMapping("/uploader/{uploaderId}")
-    public ResponseEntity<?> getFilesByUploader(@PathVariable Long uploaderId) {
+    @GetMapping
+    public ResponseEntity<?> getFilesByUploader(
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
         try {
+            Long uploaderId = userPrincipal.userId();
             List<UploadedFile> files = uploadedFileRepository.findByUploaderId(uploaderId);
 
             List<FileUploadResponse> responses = files.stream()

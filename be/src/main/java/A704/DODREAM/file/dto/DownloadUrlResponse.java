@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DownloadUrlResponse {
-    private String downloadUrl;
-    private Long expiresIn; // seconds
-    private String fileName;
-    private Long fileId;
+	private String downloadUrl;
+	private Long expiresIn; // seconds
+	private String fileName;
+	private Long fileId;
 }

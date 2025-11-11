@@ -26,7 +26,9 @@ public class PasswordCredential extends BaseTimeEntity {
 
 	private String email;
 
-	/** BCrypt 해시 */
+	/**
+	 * BCrypt 해시
+	 */
 	private String passwordHash;
 
 	public static PasswordCredential create(User user, String email, String passwordHash) {

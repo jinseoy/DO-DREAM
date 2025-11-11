@@ -4,5 +4,5 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "aws")
 public record S3Properties(String awsRegion, String awsS3Bucket, String cloudFrontDomain, String cloudFrontId,
-                           String privateKeyPem) {
+						   String privateKeyPem) {
 }
