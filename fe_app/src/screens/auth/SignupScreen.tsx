@@ -164,6 +164,11 @@ export default function SignupScreen() {
   const renderStepContent = () => {
     switch (currentStep) {
       case "input":
+        // isLoading 상태에 따라 버튼 레이블 동적 변경
+        const inputButtonLabel = isLoading 
+          ? "다음 단계로 처리 중입니다. 잠시 기다려주세요." 
+          : "다음";
+
         return (
           <KeyboardAvoidingView
             style={styles.keyboardAvoidingView}
@@ -234,14 +239,17 @@ export default function SignupScreen() {
                   ]}
                   onPress={handleInputComplete}
                   disabled={!studentNumber || !name || isLoading}
-                  accessibilityLabel="다음"
+                  // 로딩 상태에 따라 Label 변경
+                  accessibilityLabel={inputButtonLabel} 
                   accessibilityHint="입력한 정보를 확인합니다"
                   accessibilityState={{ disabled: !studentNumber || !name }}
                 >
                   {isLoading ? (
-                    <ActivityIndicator color="#FFF" />
+                    // ActivityIndicator 접근성 비활성화
+                    <ActivityIndicator color="#FFF" accessible={false} /> 
                   ) : (
-                    <Text style={styles.primaryButtonText}>다음</Text>
+                    // Text 접근성 비활성화
+                    <Text style={styles.primaryButtonText} accessible={false}>다음</Text> 
                   )}
                 </TouchableOpacity>
               </View>
@@ -250,6 +258,11 @@ export default function SignupScreen() {
         );
 
       case "verify":
+        // isLoading 상태에 따라 버튼 레이블 동적 변경
+        const verifyButtonLabel = isLoading
+          ? "정보 확인 중입니다. 잠시 기다려주세요."
+          : "확인";
+        
         return (
           <View style={styles.container}>
             <Text style={styles.title}>정보 확인</Text>
@@ -277,13 +290,16 @@ export default function SignupScreen() {
               style={styles.primaryButton}
               onPress={handleVerify}
               disabled={isLoading}
-              accessibilityLabel="확인"
+              // 로딩 상태에 따라 Label 변경
+              accessibilityLabel={verifyButtonLabel} 
               accessibilityHint="정보를 확인하고 생체인증을 등록합니다"
             >
               {isLoading ? (
-                <ActivityIndicator color="#FFF" />
+                // ActivityIndicator 접근성 비활성화
+                <ActivityIndicator color="#FFF" accessible={false} /> 
               ) : (
-                <Text style={styles.primaryButtonText}>확인</Text>
+                // Text 접근성 비활성화
+                <Text style={styles.primaryButtonText} accessible={false}>확인</Text> 
               )}
             </TouchableOpacity>
 
