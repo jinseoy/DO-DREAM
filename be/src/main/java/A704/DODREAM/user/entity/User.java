@@ -15,14 +15,14 @@ import lombok.Getter;
 @Getter
 public class User extends BaseTimeEntity {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-  private String name;
+	private String name;
 
-  @Enumerated(EnumType.STRING)
-  private Role role;
+	@Enumerated(EnumType.STRING)
+	private Role role;
 
 	public static User create(String name, Role role) {
 		User user = new User();

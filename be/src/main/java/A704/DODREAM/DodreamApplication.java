@@ -12,8 +12,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @ConfigurationPropertiesScan(basePackages = "A704.DODREAM.config.vault")
 public class DodreamApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(DodreamApplication.class, args);
-    }
+	public static void main(String[] args) {
+		SpringApplication.run(DodreamApplication.class, args);
+	}
 
 }

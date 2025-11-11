@@ -10,11 +10,15 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "quiz_options", indexes = {
-    @Index(name = "idx_question", columnList = "question_id")
+	@Index(name = "idx_question", columnList = "question_id")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -22,21 +26,21 @@ import lombok.*;
 @Builder
 public class QuizOption {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "question_id", nullable = false)
-  private QuizQuestion question;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "question_id", nullable = false)
+	private QuizQuestion question;
 
-  @Column(name = "option_text", nullable = false, length = 500)
-  private String optionText;
+	@Column(name = "option_text", nullable = false, length = 500)
+	private String optionText;
 
-  @Column(name = "option_order", nullable = false)
-  private Integer optionOrder;
+	@Column(name = "option_order", nullable = false)
+	private Integer optionOrder;
 
-  @Column(name = "is_correct", nullable = false)
-  @Builder.Default
-  private Boolean isCorrect = false;
+	@Column(name = "is_correct", nullable = false)
+	@Builder.Default
+	private Boolean isCorrect = false;
 }
