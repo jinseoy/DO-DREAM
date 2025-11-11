@@ -35,7 +35,7 @@ export default function BookmarkListScreen() {
   const [isPlaying, setIsPlaying] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const chapter = getChapterById(chapterId);
+  const chapter = chapterId !== undefined ? getChapterById(chapterId) : null;
 
   // 북마크 목록 로드
   useEffect(() => {
@@ -64,6 +64,7 @@ export default function BookmarkListScreen() {
   }, [isReviewMode]);
 
   const loadBookmarks = () => {
+    if (!material || chapterId === undefined) return;
     const loaded = getBookmarksByChapter(material.id.toString(), chapterId);
     setBookmarks(loaded);
   };
@@ -87,7 +88,7 @@ export default function BookmarkListScreen() {
       // TTS 초기화 및 재생
       const section = chapter.sections[bookmark.sectionIndex];
       if (section) {
-        ttsService.initialize([section], 0, {
+        await ttsService.initialize([section], 0, {
           rate: 1.0,
           playMode: 'single',
           onStart: () => {
@@ -141,7 +142,7 @@ export default function BookmarkListScreen() {
       }
 
       // TTS 초기화 - 북마크 복습 모드
-      ttsService.initialize(bookmarkedSections, 0, {
+      await ttsService.initialize(bookmarkedSections, 0, {
         rate: 1.0,
         playMode: 'repeat', // 각 북마크를 2회씩 반복
         repeatCount: 2,
@@ -239,6 +240,8 @@ export default function BookmarkListScreen() {
       return;
     }
 
+    if (!material || chapterId === undefined) return;
+
     // PlayerScreen으로 돌아가면서 해당 섹션으로 이동
     navigation.navigate('Player', {
       material,
@@ -315,8 +318,8 @@ export default function BookmarkListScreen() {
 
       {/* 챕터 정보 */}
       <View style={styles.chapterInfo}>
-        <Text style={styles.subjectText}>{material.title}</Text>
-        <Text style={styles.chapterTitle}>{chapter.title}</Text>
+        <Text style={styles.subjectText}>{material?.title || ''}</Text>
+        <Text style={styles.chapterTitle}>{chapter?.title || ''}</Text>
       </View>
 
       {/* 북마크 목록 */}
