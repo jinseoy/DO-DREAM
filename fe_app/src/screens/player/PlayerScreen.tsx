@@ -30,6 +30,7 @@ import {
   getBookmarkIdBySection, 
   deleteBookmark 
 } from "../../services/bookmarkStorage";
+import { useAppSettingsStore } from "../../stores/appSettingsStore";
 
 export default function PlayerScreen() {
   const navigation = useNavigation<PlayerScreenNavigationProp>();
@@ -37,6 +38,9 @@ export default function PlayerScreen() {
   const { material, chapterId, fromStart } = route.params;
 
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
+
+  const appSettings = useAppSettingsStore((state) => state.settings);
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [isChapterCompleted, setIsChapterCompleted] = useState(false);
   const [playMode, setPlayMode] = useState<PlayMode>("single");
@@ -258,10 +262,12 @@ const quizzes = getQuizzesByChapterId(chapterId.toString());
       setPlayMode(savedPlayMode);
     }
     
-    const currentRate = ttsService.getOptions().rate || 1.0; 
 
     ttsService.initialize(chapter.sections, startIndex, {
-      rate: currentRate, // 로드된 속도 사용
+      rate: appSettings.ttsRate,
+      pitch: appSettings.ttsPitch,
+      volume: appSettings.ttsVolume,
+      voice: appSettings.ttsVoiceId || undefined,
       playMode: savedPlayMode,
       onStart: () => {
         setIsPlaying(true);
@@ -586,8 +592,6 @@ const quizzes = getQuizzesByChapterId(chapterId.toString());
     ...styles.contentContainer,
     paddingBottom: controlsHeight + 24,
   };
-  
-  const currentTtsRate = ttsService.getOptions().rate || 1.0; 
 
   return (
     <SafeAreaView style={styles.container}>
@@ -640,13 +644,13 @@ const quizzes = getQuizzesByChapterId(chapterId.toString());
               style={styles.settingsButton}
               onPress={handleSettingsPress}
               accessible={true}
-              accessibilityLabel={`설정. 현재 속도 ${currentTtsRate}배속`}
+              accessibilityLabel={`설정. 현재 속도 ${appSettings.ttsRate.toFixed(1)}배속`}
               accessibilityRole="button"
               accessibilityHint="TTS 속도, 음성 등 학습 설정을 변경합니다."
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Text style={styles.settingsButtonText}>
-                ⚙️ {currentTtsRate}x
+                ⚙️ {appSettings.ttsRate.toFixed(1)}x
               </Text>
             </TouchableOpacity>
           </View>
