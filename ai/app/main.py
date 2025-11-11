@@ -12,12 +12,12 @@ app = FastAPI(
 # --- 라우터 임포트 ---
 # 각 기능별 라우터 파일을 임포트합니다.
 from app.user import router as user_router
-
+from app.document_processor.router import router as document_router
 
 # --- 라우터 포함 ---
 # 각 라우터에 prefix를 지정하여 URL 경로를 분리합니다.
 app.include_router(user_router.router, prefix="/users", tags=["Users"])
-
+app.include_router(document_router)
 
 # --- 루트 엔드포인트 ---
 # 서버가 살아있는지 확인하는 헬스 체크용 엔드포인트
