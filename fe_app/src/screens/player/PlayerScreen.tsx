@@ -8,6 +8,7 @@ import {
   AccessibilityInfo,
   findNodeHandle,
   LayoutChangeEvent,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -38,7 +39,6 @@ export default function PlayerScreen() {
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isChapterCompleted, setIsChapterCompleted] = useState(false);
-  const [ttsSpeed, setTtsSpeed] = useState(1.0);
   const [playMode, setPlayMode] = useState<PlayMode>("single");
   const [bookmarked, setBookmarked] = useState(false);
   const { setMode, registerPlayPause } = useContext(TriggerContext);
@@ -106,8 +106,9 @@ const quizzes = getQuizzesByChapterId(chapterId.toString());
         }
         
         // 말하고 있지 않으면서 idle이 아닌 경우에만 재생 시도
-        if (status === 'idle' || status === 'stopped') {
-          console.log('[ensureAutoPlay] Not speaking and idle/stopped, starting playback...');
+        // RN Tts는 stop()을 호출하면 isSpeaking이 false가 되므로, status를 기준으로 판단
+        if (status === 'idle' || status === 'stopped' || status === 'paused') {
+          console.log('[ensureAutoPlay] Not speaking and idle/stopped/paused, starting playback...');
           
           // TalkBack ON 시 재시도 로직
           if (screenReaderEnabled) {
@@ -116,7 +117,8 @@ const quizzes = getQuizzesByChapterId(chapterId.toString());
             
             while (retryCount < maxRetries) {
               await new Promise(resolve => setTimeout(resolve, 300));
-              await ttsService.play();
+              // paused 상태였다면 resume, 아니면 play
+              status === 'paused' ? await ttsService.resume() : await ttsService.play();
               
               await new Promise(resolve => setTimeout(resolve, 500));
               const actuallyPlaying = await ttsService.isSpeaking();
@@ -146,8 +148,8 @@ const quizzes = getQuizzesByChapterId(chapterId.toString());
             }, 500);
           }
         } else {
-          console.log('[ensureAutoPlay] Status is playing/paused but not speaking - likely just finished');
-          setIsPlaying(false);
+          console.log('[ensureAutoPlay] Status is playing but not speaking - likely just finished or error');
+          // setIsPlaying(false); // TTS Service의 onDone/onError 콜백에 맡김
         }
       } catch (err) {
         console.error('[ensureAutoPlay] Error:', err);
@@ -172,12 +174,19 @@ const quizzes = getQuizzesByChapterId(chapterId.toString());
     
     try {
       if (isPlaying) {
-        // Android에서는 pause가 지원되지 않으므로 stop 사용
-        await ttsService.stop();
+        // 일시정지 (RN Tts는 stop()으로 처리)
+        await ttsService.pause(); // pause()는 내부적으로 stop() 호출 후 상태를 'paused'로 변경
         setIsPlaying(false);
         Haptics.selectionAsync();
       } else {
-        await ttsService.play();
+        // 재생/재개
+        const status = ttsService.getStatus();
+        
+        if (status === 'paused') {
+            await ttsService.resume();
+        } else {
+            await ttsService.play();
+        }
         
         // TalkBack ON 시에는 재생 검증 없이 바로 상태 업데이트
         if (screenReaderEnabled) {
@@ -248,9 +257,11 @@ const quizzes = getQuizzesByChapterId(chapterId.toString());
       setCurrentSectionIndex(startIndex);
       setPlayMode(savedPlayMode);
     }
+    
+    const currentRate = ttsService.getOptions().rate || 1.0; 
 
     ttsService.initialize(chapter.sections, startIndex, {
-      rate: ttsSpeed,
+      rate: currentRate, // 로드된 속도 사용
       playMode: savedPlayMode,
       onStart: () => {
         setIsPlaying(true);
@@ -271,8 +282,8 @@ const quizzes = getQuizzesByChapterId(chapterId.toString());
         }, 50);
 
         // TalkBack 켜진 경우: 안내 음성 뒤 보증 재생
-        // TalkBack ON일 때는 더 긴 지연 사용 (TalkBack이 TTS를 중단시키지 않도록)
-        ensureAutoPlay(screenReaderEnabled ? 3000 : 400);
+        const delay = screenReaderEnabled ? 3000 : 400;
+        ensureAutoPlay(delay);
       },
       onSectionComplete: () => {
         setIsPlaying(false);
@@ -364,7 +375,7 @@ const quizzes = getQuizzesByChapterId(chapterId.toString());
     }
 
     return () => clearTimeout(autoPlayTimer);
-  }, [chapter, material.id, chapterId, fromStart, ttsSpeed, screenReaderEnabled, ensureAutoPlay]);
+  }, [chapter, material.id, chapterId, fromStart, screenReaderEnabled, ensureAutoPlay]);
 
   // 진행도 저장(디바운스)
   useEffect(() => {
@@ -412,7 +423,6 @@ const quizzes = getQuizzesByChapterId(chapterId.toString());
     Haptics.selectionAsync();
 
     // TalkBack ON 상태에서는 포커스를 재생 버튼으로 이동
-    // 이렇게 하면 TalkBack이 "학습내용"만 읽지 않고, TTS가 제대로 재생됨
     if (screenReaderEnabled) {
       setTimeout(() => {
         if (playButtonRef.current) {
@@ -491,17 +501,6 @@ const quizzes = getQuizzesByChapterId(chapterId.toString());
     }
   };
 
-  const handleSpeedChange = async () => {
-    const speeds = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
-    const currentIndex = speeds.indexOf(ttsSpeed);
-    const nextSpeed = speeds[(currentIndex + 1) % speeds.length];
-
-    setTtsSpeed(nextSpeed);
-    await ttsService.setRate(nextSpeed);
-
-    AccessibilityInfo.announceForAccessibility(`재생 속도 ${nextSpeed}배로 변경되었습니다`);
-    Haptics.selectionAsync();
-  };
 
   const handleQuestionPress = () => {
     ttsService.stop();
@@ -563,16 +562,14 @@ const quizzes = getQuizzesByChapterId(chapterId.toString());
     }
   };
 
-  // 북마크 목록 화면으로 이동
-  const handleBookmarkList = () => {
+  // 설정 화면 이동 핸들러
+  const handleSettingsPress = () => {
     ttsService.stop();
     setIsPlaying(false);
-    AccessibilityInfo.announceForAccessibility("북마크 목록 화면으로 이동합니다");
-    navigation.navigate("BookmarkList", {
-      material,
-      chapterId,
-    });
-  };
+    AccessibilityInfo.announceForAccessibility("설정 화면으로 이동합니다.");
+    navigation.navigate('Settings'); 
+  }
+
 
   if (!chapter) {
     return (
@@ -589,6 +586,8 @@ const quizzes = getQuizzesByChapterId(chapterId.toString());
     ...styles.contentContainer,
     paddingBottom: controlsHeight + 24,
   };
+  
+  const currentTtsRate = ttsService.getOptions().rate || 1.0; 
 
   return (
     <SafeAreaView style={styles.container}>
@@ -621,20 +620,7 @@ const quizzes = getQuizzesByChapterId(chapterId.toString());
                 {bookmarked ? "⭐" : "☆"}
               </Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.bookmarkListButton}
-              onPress={handleBookmarkList}
-              accessible={true}
-              accessibilityLabel="북마크 목록"
-              accessibilityRole="button"
-              accessibilityHint="저장된 북마크 목록을 봅니다"
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={styles.bookmarkListButtonText}>
-                📑
-              </Text>
-            </TouchableOpacity>
+            
 
             <TouchableOpacity
               style={styles.modeButton}
@@ -651,16 +637,16 @@ const quizzes = getQuizzesByChapterId(chapterId.toString());
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.speedButton}
-              onPress={handleSpeedChange}
+              style={styles.settingsButton}
+              onPress={handleSettingsPress}
               accessible={true}
-              accessibilityLabel={`재생 속도 변경. 현재 ${ttsSpeed}배속`}
+              accessibilityLabel={`설정. 현재 속도 ${currentTtsRate}배속`}
               accessibilityRole="button"
-              accessibilityHint="탭하면 다음 속도로 변경됩니다"
+              accessibilityHint="TTS 속도, 음성 등 학습 설정을 변경합니다."
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={styles.speedButtonText}>
-                {ttsSpeed}x
+              <Text style={styles.settingsButtonText}>
+                ⚙️ {currentTtsRate}x
               </Text>
             </TouchableOpacity>
           </View>
@@ -814,19 +800,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   bookmarkButtonText: { fontSize: 26 },
-  bookmarkListButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    backgroundColor: "#E1F5FE",
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#039BE5",
-    minWidth: 52,
-    minHeight: 52,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bookmarkListButtonText: { fontSize: 26 },
   modeButton: {
     paddingVertical: 8,
     paddingHorizontal: 10,
@@ -840,19 +813,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modeButtonText: { fontSize: 26 },
-  speedButton: {
+  settingsButton: { 
     paddingVertical: 8,
     paddingHorizontal: 10,
-    backgroundColor: "#FFF3E0",
+    backgroundColor: "#E1F5FE",
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: "#FF9800",
-    minWidth: 68,
+    borderColor: "#039BE5",
+    minWidth: 80, 
     minHeight: 52,
     alignItems: "center",
     justifyContent: "center",
   },
-  speedButtonText: { fontSize: 17, color: "#F57C00", fontWeight: "bold" },
+  settingsButtonText: { 
+    fontSize: 17, 
+    color: "#039BE5", 
+    fontWeight: "bold" 
+  },
   headerInfo: { marginTop: 4 },
   subjectText: { fontSize: 18, color: "#666666", marginBottom: 4 },
   chapterTitle: { fontSize: 24, fontWeight: "bold", color: "#333333", marginBottom: 6 },
