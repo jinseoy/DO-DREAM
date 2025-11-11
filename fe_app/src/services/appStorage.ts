@@ -4,8 +4,9 @@
  * - StudentNumber (학번)
  * - TTS Speed (음성 속도)
  * - Device Info (기기 정보)
+ * - App Settings (TTS Pitch, Volume, Voice ID, High Contrast, Font Size)
  * 
- * 참고: 인증 관련은 authStorage.ts 사용
+ * * 참고: 인증 관련은 authStorage.ts 사용
  */
 import { MMKV } from 'react-native-mmkv';
 import { LocalProgress } from '../types/progress';
@@ -19,6 +20,11 @@ const KEYS = {
     `progress_${materialId}_${chapterId}`,
   STUDENT_NUMBER: 'student_number',
   TTS_SPEED: 'tts_speed',
+  TTS_PITCH: 'tts_pitch',
+  TTS_VOLUME: 'tts_volume',
+  TTS_VOICE_ID: 'tts_voice_id',
+  HIGH_CONTRAST_MODE: 'high_contrast_mode',
+  FONT_SIZE_SCALE: 'font_size_scale',
   DEVICE_ID: 'device_id',
   DEVICE_SECRET: 'device_secret',
   PLATFORM: 'platform',
@@ -90,7 +96,9 @@ export const getStudentNumber = (): string | null => {
   }
 };
 
-// TTS 속도 설정 관련
+// 앱 설정 관련 함수 (추가/수정)
+
+// 1. TTS 속도 설정 관련
 export const saveTTSSpeed = (speed: number): void => {
   try {
     storage.set(KEYS.TTS_SPEED, speed);
@@ -104,6 +112,96 @@ export const getTTSSpeed = (): number => {
     return storage.getNumber(KEYS.TTS_SPEED) ?? 1.0;
   } catch (error) {
     console.error('Failed to get TTS speed:', error);
+    return 1.0;
+  }
+};
+
+// 2. TTS Pitch 설정 관련
+export const saveTTSPitch = (pitch: number): void => {
+  try {
+    storage.set(KEYS.TTS_PITCH, pitch);
+  } catch (error) {
+    console.error('Failed to save TTS pitch:', error);
+  }
+};
+
+export const getTTSPitch = (): number => {
+  try {
+    return storage.getNumber(KEYS.TTS_PITCH) ?? 1.0;
+  } catch (error) {
+    console.error('Failed to get TTS pitch:', error);
+    return 1.0;
+  }
+};
+
+// 3. TTS Volume 설정 관련
+export const saveTTSVolume = (volume: number): void => {
+  try {
+    storage.set(KEYS.TTS_VOLUME, volume);
+  } catch (error) {
+    console.error('Failed to save TTS volume:', error);
+  }
+};
+
+export const getTTSVolume = (): number => {
+  try {
+    return storage.getNumber(KEYS.TTS_VOLUME) ?? 1.0;
+  } catch (error) {
+    console.error('Failed to get TTS volume:', error);
+    return 1.0;
+  }
+};
+
+// 4. TTS Voice ID 설정 관련
+export const saveTTSVoiceId = (voiceId: string): void => {
+  try {
+    storage.set(KEYS.TTS_VOICE_ID, voiceId);
+  } catch (error) {
+    console.error('Failed to save TTS voice ID:', error);
+  }
+};
+
+export const getTTSVoiceId = (): string | null => {
+  try {
+    return storage.getString(KEYS.TTS_VOICE_ID) ?? null;
+  } catch (error) {
+    console.error('Failed to get TTS voice ID:', error);
+    return null;
+  }
+};
+
+// 5. 고대비 모드 설정 관련
+export const saveHighContrastMode = (enabled: boolean): void => {
+  try {
+    storage.set(KEYS.HIGH_CONTRAST_MODE, enabled);
+  } catch (error) {
+    console.error('Failed to save high contrast mode:', error);
+  }
+};
+
+export const getHighContrastMode = (): boolean => {
+  try {
+    return storage.getBoolean(KEYS.HIGH_CONTRAST_MODE) ?? false;
+  } catch (error) {
+    console.error('Failed to get high contrast mode:', error);
+    return false;
+  }
+};
+
+// 6. 글자 크기 스케일 설정 관련
+export const saveFontSizeScale = (scale: number): void => {
+  try {
+    storage.set(KEYS.FONT_SIZE_SCALE, scale);
+  } catch (error) {
+    console.error('Failed to save font size scale:', error);
+  }
+};
+
+export const getFontSizeScale = (): number => {
+  try {
+    return storage.getNumber(KEYS.FONT_SIZE_SCALE) ?? 1.0;
+  } catch (error) {
+    console.error('Failed to get font size scale:', error);
     return 1.0;
   }
 };
