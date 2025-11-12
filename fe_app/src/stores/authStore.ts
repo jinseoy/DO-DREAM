@@ -26,6 +26,7 @@ import {
   getPlatform,
   generateDeviceSecret,
 } from '../utils/deviceUtils';
+import { registerFcmToken } from '../notifications/fcmService';
 
 interface AuthState {
   student: Student | null;
@@ -177,6 +178,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         saveBiometricEnabled(true);
         
         console.log('[AuthStore] Registration successful (with auto-login)');
+        // FCM 토큰 등록/갱신
+        await registerFcmToken();
         return;
       }
       
@@ -205,6 +208,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         saveBiometricEnabled(true);
         
         console.log('[AuthStore] Registration successful');
+        // FCM 토큰 등록/갱신
+        await registerFcmToken();
       } else {
         console.log('[AuthStore] No accessToken in register, trying login...');
         
@@ -236,6 +241,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         saveBiometricEnabled(true);
         
         console.log('[AuthStore] Registration successful (with auto-login)');
+        // FCM 토큰 등록/갱신
+        await registerFcmToken();
       }
       
     } catch (error: any) {
@@ -289,6 +296,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               saveBiometricEnabled(true);
               
               console.log('[AuthStore] Logged in successfully (already registered)');
+              // FCM 토큰 등록/갱신
+              await registerFcmToken();
               return;
             }
           }
@@ -337,6 +346,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       saveAccessToken(response.accessToken);
       console.log('[AuthStore] Login successful');
+      // FCM 토큰 등록/갱신
+      await registerFcmToken();
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || '로그인에 실패했습니다';
       set({ 

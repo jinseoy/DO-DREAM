@@ -8,6 +8,7 @@ import { TriggerProvider } from "./src/triggers/TriggerContext";
 import { useAppSettingsStore } from "./src/stores/appSettingsStore";
 import { useAuthStore } from "./src/stores/authStore";
 import ttsService from "./src/services/ttsService";
+import { initFcm } from "./src/notifications/fcmService";
 
 export default function App() {
   const hydrateAuth = useAuthStore((state) => state.hydrate);
@@ -27,6 +28,9 @@ export default function App() {
         volume: currentSettings.ttsVolume,
         voiceId: currentSettings.ttsVoiceId,
       });
+
+      // FCM 초기화 (앱 시작 시 토큰 등록 생략 - Mock 모드에서)
+      await initFcm({ registerOnInit: false });
     };
 
     initializeApp();
