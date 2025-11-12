@@ -19,8 +19,10 @@ import type { SignupScreenNavigationProp } from "../../navigation/navigationType
 import { useAuthStore } from "../../stores/authStore";
 import { biometricUtil } from "../../utils/biometric";
 import { accessibilityUtil } from "../../utils/accessibility";
+import { asrService } from "../../services/asrService";
 
 type Step = "input" | "verify" | "biometric" | "complete";
+type VoiceField = "studentNumber" | "name" | null;
 
 export default function SignupScreen() {
   const navigation = useNavigation<SignupScreenNavigationProp>();
@@ -33,11 +35,72 @@ export default function SignupScreen() {
   // 단계 상태
   const [currentStep, setCurrentStep] = useState<Step>("input");
 
+  // 음성 입력 상태
+  const [voiceTarget, setVoiceTarget] = useState<VoiceField>(null);
+  const [voiceListening, setVoiceListening] = useState(false);
+  const asrOffRef = useRef<(() => void) | null>(null);
+
   // 화면 진입 시 음성 안내
   useEffect(() => {
     accessibilityUtil.announce(
       "회원가입 화면입니다. 학번과 이름을 입력해주세요."
     );
+  }, []);
+
+  // 음성 입력 핸들러
+  const startVoiceFor = async (target: VoiceField) => {
+    try {
+      // 기존 구독 제거
+      if (asrOffRef.current) asrOffRef.current();
+
+      // 구독
+      asrOffRef.current = asrService.on((text, isFinal) => {
+        if (!text) return;
+        if (target === "studentNumber") {
+          // 숫자만 추출
+          const digits = text.replace(/[^0-9]/g, "");
+          if (!isFinal) {
+            setStudentNumber(digits);
+          } else {
+            setStudentNumber(digits);
+            stopVoice(false);
+            accessibilityUtil.announceWithVibration("학번 입력이 완료되었습니다", "success");
+          }
+        } else if (target === "name") {
+          if (!isFinal) {
+            setName(text.trim());
+          } else {
+            setName(text.trim());
+            stopVoice(false);
+            accessibilityUtil.announceWithVibration("이름 입력이 완료되었습니다", "success");
+          }
+        }
+      });
+
+      await asrService.start({ lang: "ko-KR", interimResults: true, continuous: true, autoRestart: true });
+      setVoiceTarget(target);
+      setVoiceListening(true);
+
+      const label = target === "studentNumber" ? "학번" : "이름";
+      AccessibilityInfo.announceForAccessibility(`${label} 음성 입력을 시작합니다. 말씀하세요.`);
+    } catch {
+      AccessibilityInfo.announceForAccessibility("마이크 권한이 필요합니다.");
+    }
+  };
+
+  const stopVoice = async (announce = true) => {
+    await asrService.stop();
+    if (asrOffRef.current) { asrOffRef.current(); asrOffRef.current = null; }
+    setVoiceListening(false);
+    setVoiceTarget(null);
+    if (announce) AccessibilityInfo.announceForAccessibility("음성 입력을 종료했습니다.");
+  };
+
+  useEffect(() => {
+    return () => {
+      asrService.abort();
+      if (asrOffRef.current) asrOffRef.current();
+    };
   }, []);
 
   // Step 1: 학번/이름 입력
@@ -51,7 +114,6 @@ export default function SignupScreen() {
       return;
     }
 
-    // 다음 단계로
     setCurrentStep("verify");
     // 학번을 한 자리씩 읽도록 공백으로 구분
     const studentNumberSpaced = studentNumber.split("").join(" ");
@@ -139,14 +201,12 @@ export default function SignupScreen() {
       accessibilityUtil.announce("회원가입을 진행하고 있습니다");
       await registerStudent(studentNumber, name);
 
-      // 5. 완료
       setCurrentStep("complete");
       accessibilityUtil.announceWithVibration(
         "회원가입이 완료되었습니다",
         "success"
       );
 
-      // 6. Library 화면으로 이동
       setTimeout(() => {
         navigation.replace("Library");
       }, 1500);
@@ -165,8 +225,8 @@ export default function SignupScreen() {
     switch (currentStep) {
       case "input":
         // isLoading 상태에 따라 버튼 레이블 동적 변경
-        const inputButtonLabel = isLoading 
-          ? "다음 단계로 처리 중입니다. 잠시 기다려주세요." 
+        const inputButtonLabel = isLoading
+          ? "다음 단계로 처리 중입니다. 잠시 기다려주세요."
           : "다음";
 
         return (
@@ -199,11 +259,20 @@ export default function SignupScreen() {
                       accessibilityHint="숫자로 학번을 입력하세요"
                     />
                     <TouchableOpacity
-                      style={styles.voiceButton}
-                      accessibilityLabel="음성 입력"
+                      style={[
+                        styles.voiceButton,
+                        voiceListening && voiceTarget === "studentNumber" && { backgroundColor: "#FFCDD2", borderColor: "#E53935" }
+                      ]}
+                      onPress={
+                        voiceListening && voiceTarget === "studentNumber"
+                          ? () => stopVoice(true)
+                          : () => startVoiceFor("studentNumber")
+                      }
+                      accessibilityLabel={voiceListening && voiceTarget === "studentNumber" ? "학번 음성 입력 중지" : "학번 음성 입력"}
                       accessibilityHint="음성으로 학번을 입력합니다"
+                      accessibilityRole="button"
                     >
-                      <Text style={styles.voiceButtonText}>🎤</Text>
+                      <Text style={styles.voiceButtonText}>입력</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -222,11 +291,20 @@ export default function SignupScreen() {
                       accessibilityHint="한글로 이름을 입력하세요"
                     />
                     <TouchableOpacity
-                      style={styles.voiceButton}
-                      accessibilityLabel="음성 입력"
+                      style={[
+                        styles.voiceButton,
+                        voiceListening && voiceTarget === "name" && { backgroundColor: "#FFCDD2", borderColor: "#E53935" }
+                      ]}
+                      onPress={
+                        voiceListening && voiceTarget === "name"
+                          ? () => stopVoice(true)
+                          : () => startVoiceFor("name")
+                      }
+                      accessibilityLabel={voiceListening && voiceTarget === "name" ? "이름 음성 입력 중지" : "이름 음성 입력"}
                       accessibilityHint="음성으로 이름을 입력합니다"
+                      accessibilityRole="button"
                     >
-                      <Text style={styles.voiceButtonText}>🎤</Text>
+                      <Text style={styles.voiceButtonText}>입력</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -240,16 +318,16 @@ export default function SignupScreen() {
                   onPress={handleInputComplete}
                   disabled={!studentNumber || !name || isLoading}
                   // 로딩 상태에 따라 Label 변경
-                  accessibilityLabel={inputButtonLabel} 
+                  accessibilityLabel={inputButtonLabel}
                   accessibilityHint="입력한 정보를 확인합니다"
                   accessibilityState={{ disabled: !studentNumber || !name }}
                 >
                   {isLoading ? (
                     // ActivityIndicator 접근성 비활성화
-                    <ActivityIndicator color="#FFF" accessible={false} /> 
+                    <ActivityIndicator color="#FFF" accessible={false} />
                   ) : (
                     // Text 접근성 비활성화
-                    <Text style={styles.primaryButtonText} accessible={false}>다음</Text> 
+                    <Text style={styles.primaryButtonText} accessible={false}>다음</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -262,7 +340,7 @@ export default function SignupScreen() {
         const verifyButtonLabel = isLoading
           ? "정보 확인 중입니다. 잠시 기다려주세요."
           : "확인";
-        
+
         return (
           <View style={styles.container}>
             <Text style={styles.title}>정보 확인</Text>
@@ -291,15 +369,15 @@ export default function SignupScreen() {
               onPress={handleVerify}
               disabled={isLoading}
               // 로딩 상태에 따라 Label 변경
-              accessibilityLabel={verifyButtonLabel} 
+              accessibilityLabel={verifyButtonLabel}
               accessibilityHint="정보를 확인하고 생체인증을 등록합니다"
             >
               {isLoading ? (
                 // ActivityIndicator 접근성 비활성화
-                <ActivityIndicator color="#FFF" accessible={false} /> 
+                <ActivityIndicator color="#FFF" accessible={false} />
               ) : (
                 // Text 접근성 비활성화
-                <Text style={styles.primaryButtonText} accessible={false}>확인</Text> 
+                <Text style={styles.primaryButtonText} accessible={false}>확인</Text>
               )}
             </TouchableOpacity>
 
