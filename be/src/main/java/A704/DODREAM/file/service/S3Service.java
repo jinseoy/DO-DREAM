@@ -58,7 +58,8 @@ public class S3Service {
 			.bucket(bucketName)
 			.key(s3Key)
 			.contentType(request.getContentType())
-			.contentDisposition("attachment; filename=\"" + request.getFileName() + "\"")
+			// contentDisposition은 PUT 요청에 불필요하며, 서명 불일치의 원인이 됨
+			// 다운로드 시 필요하면 GetObjectRequest에서 설정
 			.build();
 
 		PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
