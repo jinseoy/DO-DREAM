@@ -63,7 +63,14 @@
           }
         }
       ],
-      "expo-speech-recognition"
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "두드림이 마이크에 접근해야 음성 인식을 할 수 있습니다.",
+          "speechRecognitionPermission": "두드림이 음성 인식을 사용합니다.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
+      ]
     ],
     "extra": {
       "eas": {
