@@ -110,4 +110,5 @@ springdoc:
     url: /api/v3/api-docs      # 스펙 JSON은 이걸로 불러라
     config-url: /api/v3/api-docs/swagger-config
 
-
+fastapi:
+  url: ${fast_api_url}
