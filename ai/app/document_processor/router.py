@@ -4,6 +4,7 @@ import tempfile
 import os
 import httpx
 from urllib.parse import urlparse
+from typing import List, Dict, Any
 
 from app.document_processor.pdf_parser import PDFParser
 
@@ -17,7 +18,7 @@ class CloudFrontPDFRequest(BaseModel):
     cloudfront_url: HttpUrl  # CloudFront URL
     output_format: str = """
 {
-    "indexes": ["목차1", "목차2", ...],
+    "indexes": ["01 사회 문화 현상의 이해", "02 사회 문화현상의 연구 방법", ...],
     "data": [
         {
             "index": "01",
@@ -43,6 +44,10 @@ class CloudFrontPDFRequest(BaseModel):
     ]
 }
 """
+
+# 개념 Check 가공 요청 모델
+class ConceptCheckRequest(BaseModel):
+    concept_checks: List[Dict[str, Any]]  # s_title == "개념 Check"인 항목 리스트
 
 async def download_from_cloudfront(url: str, local_path: str) -> None:
     """
@@ -177,3 +182,55 @@ async def parse_pdf_from_cloudfront(request: CloudFrontPDFRequest):
                 print(f"✅ 임시 파일 삭제: {temp_path}")
             except Exception as e:
                 print(f"⚠️ 임시 파일 삭제 실패: {e}")
+
+@router.post("/process-concept-check")
+async def process_concept_check(request: ConceptCheckRequest):
+    """
+    개념 Check 항목을 Gemini로 가공하여 정제된 형태로 반환
+
+    요청 예시:
+    {
+        "concept_checks": [
+            {
+                "s_title": "개념 Check",
+                "contents": "1. 다양한 학문 간의 교류를 통해 사회·문화 현상을 총 체적으로 연구하는 경향을 (  ) 연구 경향이라고 한다.\n2. 기능론과(  )은 거시적 관점, (  )은 미시적 관점이다.",
+                "answer": "1. 간학문적\n2. 갈등론, 상징적 상호 작용론"
+            }
+        ]
+    }
+
+    응답 예시:
+    {
+        "processed_concept_checks": [
+            {
+                "title": "개념 Check",
+                "questions": [
+                    {
+                        "question": "다양한 학문 간의 교류를 통해 사회·문화 현상을 총 체적으로 연구하는 경향을 무엇이라고 하는가?",
+                        "answer": "간학문적 연구 경향"
+                    }
+                ]
+            }
+        ]
+    }
+    """
+    try:
+        print(f"개념 Check 가공 시작: {len(request.concept_checks)}개 항목")
+
+        if not request.concept_checks:
+            raise HTTPException(status_code=400, detail="concept_checks가 비어있습니다.")
+
+        # Gemini로 가공
+        parser = PDFParser()
+        processed_data = parser.process_concept_checks(request.concept_checks)
+
+        print(f"✅ 개념 Check 가공 완료")
+        print(processed_data)
+
+        return processed_data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 개념 Check 가공 중 오류: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"개념 Check 가공 중 오류: {str(e)}")

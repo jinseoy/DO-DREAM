@@ -131,4 +131,44 @@ public class PdfController {
     String signedUrl = pdfService.generateJsonSignedUrl(pdfId, userId);
     return ResponseEntity.ok(Map.of("url", signedUrl));
   }
+
+  /**
+   * 개념 Check 필터링만 조회 (GET - 빠른 응답)
+   */
+  @Operation(
+      summary = "개념 Check 조회 (필터링만)",
+      description = "이미 파싱된 PDF의 JSON에서 s_title이 '개념 Check'인 항목만 필터링하여 반환합니다. " +
+          "FastAPI 호출 없이 Spring에서 직접 필터링하므로 빠르게 응답합니다. " +
+          "AI 가공이 필요한 경우 POST /concept-check 엔드포인트를 사용하세요."
+  )
+  @GetMapping("/{pdfId}/concept-check")
+  public ResponseEntity<Map<String, Object>> getConceptCheck(
+      @PathVariable Long pdfId,
+      @AuthenticationPrincipal UserPrincipal userPrincipal
+  ) {
+    Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
+    Map<String, Object> result = pdfService.getConceptCheckOnly(pdfId, userId);
+    return ResponseEntity.ok(result);
+  }
+
+  /**
+   * 개념 Check 추출 및 AI 가공 (POST - 느린 응답)
+   */
+  @Operation(
+      summary = "개념 Check 추출 및 가공 (AI 처리)",
+      description = "이미 파싱된 PDF의 JSON에서 s_title이 '개념 Check'인 항목만 필터링하여 " +
+          "FastAPI로 전송 후 Gemini AI로 가공된 결과를 S3에 저장합니다. " +
+          "가공된 JSON은 concept-check-json/ 경로에 저장되며, " +
+          "응답으로 가공된 데이터를 즉시 반환합니다. " +
+          "처리 시간이 오래 걸리므로 단순 조회는 GET /concept-check를 사용하세요."
+  )
+  @PostMapping("/{pdfId}/concept-check")
+  public ResponseEntity<Map<String, Object>> extractConceptCheck(
+      @PathVariable Long pdfId,
+      @AuthenticationPrincipal UserPrincipal userPrincipal
+  ) {
+    Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
+    Map<String, Object> result = pdfService.extractConceptCheck(pdfId, userId);
+    return ResponseEntity.ok(result);
+  }
 }

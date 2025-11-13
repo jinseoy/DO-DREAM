@@ -82,6 +82,8 @@ public class UploadedFile {
 	@Column(columnDefinition = "TEXT")
 	private String indexes; // 목차 (검색용)
 
+	private String conceptCheckJsonS3Key; // 개념 Check JSON의 S3 경로
+
 	// 비즈니스 메서드
 	public void updateOcrStatus(OcrStatus status) {
 		this.ocrStatus = status;
@@ -113,6 +115,10 @@ public class UploadedFile {
 
 	public void setIndexes(String indexes) {
 		this.indexes = indexes;
+	}
+
+	public void setConceptCheckJsonS3Key(String conceptCheckJsonS3Key) {
+		this.conceptCheckJsonS3Key = conceptCheckJsonS3Key;
 	}
 
 	@PrePersist
