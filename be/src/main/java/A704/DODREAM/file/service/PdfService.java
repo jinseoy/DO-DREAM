@@ -178,8 +178,6 @@ public class PdfService {
       return Map.of(
           "pdfId", savedFile.getId(),
           "filename", filename,
-          "s3Key", s3Key,
-          "jsonS3Key", jsonS3Key,
           "parsedData", parsedData
       );
 
