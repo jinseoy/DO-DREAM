@@ -6,6 +6,7 @@ type Chapter = {
   id: string;
   title: string;
   content: string;
+  type?: 'content' | 'quiz';
 };
 
 type NavState = {
@@ -13,12 +14,14 @@ type NavState = {
   extractedText?: string;
   chapters?: Chapter[];
   from?: string;
+  pdfId?: number; // 🆕 PDF ID 추가
 };
 
 type SessionPayload = {
   fileName?: string;
   extractedText?: string;
   chapters?: Chapter[];
+  pdfId?: number; // 🆕 PDF ID 추가
 };
 
 export default function EditorPage() {
@@ -39,11 +42,13 @@ export default function EditorPage() {
         const parsed = JSON.parse(sessionData) as SessionPayload;
         console.log('[EditorPage] 세션 스토리지 데이터:', parsed);
         console.log('[EditorPage] 챕터 수:', parsed.chapters?.length || 0);
+        console.log('[EditorPage] PDF ID:', parsed.pdfId);
         
         finalData = {
           fileName: parsed.fileName || '새로운 자료',
           extractedText: parsed.extractedText,
           chapters: parsed.chapters,
+          pdfId: parsed.pdfId,
         };
       } catch (err) {
         console.error('[EditorPage] 세션 파싱 오류:', err);
@@ -90,6 +95,7 @@ export default function EditorPage() {
     fileName = '새로운 자료',
     extractedText = '<p>내용을 입력하세요...</p>',
     chapters,
+    pdfId,
   } = editorData;
 
   console.log('[EditorPage] AdvancedEditor에 전달:', {
@@ -98,6 +104,7 @@ export default function EditorPage() {
     hasChapters: !!chapters,
     chaptersCount: chapters?.length || 0,
     chapters: chapters,
+    pdfId,
   });
 
   return (
@@ -106,6 +113,7 @@ export default function EditorPage() {
       initialTitle={fileName}
       extractedText={extractedText}
       initialChapters={chapters}
+      pdfId={pdfId} // 🆕 PDF ID 전달
       onBack={() => navigate(-1)}
       onPublish={(title, publishedChapters, label) => {
         console.log('발행된 데이터:', { title, chapters: publishedChapters, label });

@@ -115,7 +115,7 @@ type ParsedPdfPayload = {
 
 type ParsedPdfResponse = ParsedPdfPayload & {
   filename?: string;
-  pdfId?: number;
+  pdfId?: number; // 🔥 PDF ID 추가
   parsedData?: ParsedPdfPayload;
 };
 
@@ -123,6 +123,7 @@ type ParsedChapter = {
   id: string;
   title: string;
   content: string;
+  type?: 'content' | 'quiz';
 };
 
 export default function ClassroomList({ onLogout }: ClassroomListProps) {
@@ -224,6 +225,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
           title: t.title || `챕터 ${idCounter}`,
           content:
             htmlParts.join('\n') || '<p>이 챕터에 대한 내용이 없습니다.</p>',
+          type: 'content',
         });
       });
     });
@@ -272,6 +274,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         ]);
 
         const chapters = buildChaptersFromParsedData(parsed);
+        const pdfId = parsed.pdfId; // 🔥 PDF ID 추출
 
         await Swal.close();
 
@@ -288,18 +291,15 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         console.log('[handlePickFile] 파싱 완료:', {
           fileName: docTitle,
           chaptersCount: chapters.length,
-          chapters: chapters.map((c) => ({
-            id: c.id,
-            title: c.title,
-            contentLength: c.content.length,
-          })),
+          pdfId,
         });
 
-        // ✅ state로 직접 전달 (세션 스토리지 완전 제거)
+        // ✅ state로 직접 전달
         navigate('/editor', {
           state: {
             fileName: docTitle,
             chapters: chapters,
+            pdfId: pdfId, // 🔥 PDF ID 전달
             from: 'classroom',
           },
         });
