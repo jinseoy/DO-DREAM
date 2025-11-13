@@ -179,7 +179,7 @@ export default function SplashScreen() {
           <Video
             ref={videoRef}
             style={styles.video}
-            source={require("../../../assets/splash.mp4")}
+            source={require("../../../assets/splash_9-16.mp4")}
             resizeMode={ResizeMode.COVER}
             isLooping={false}
             // 첫 실행 + 스크린리더 OFF 일 때만 실제 재생
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   },
   video: {
     width: "100%",
-    aspectRatio: 1, // 1:1 영상
+    aspectRatio: 9/16,
   },
   mockBadge: {
     position: "absolute",
