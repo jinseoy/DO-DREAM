@@ -48,7 +48,7 @@ public class SecurityConfig {
 			.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(auth -> auth
 				// 인가 규칙(화이트리스트)은 여기에서만 관리
-        .requestMatchers("/api/pdf/**").permitAll()
+        .requestMatchers("/api/pdf/**").permitAll().requestMatchers("/api/files/**").permitAll()
         .requestMatchers("/document/parse-pdf-from-cloudfront").permitAll()
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 				.requestMatchers("/error", "/error/**").permitAll()
