@@ -26,6 +26,7 @@ public class SecurityConfig {
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration config = new CorsConfiguration();
 		config.setAllowedOrigins(List.of(
+			"*",
 			"https://www.dodream.io.kr",
 			"http://localhost:5173",
 			"http://localhost:8080"
