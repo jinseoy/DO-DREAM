@@ -4,19 +4,12 @@ import { useState } from 'react';
 import Join from './pages/Join';
 import ClassroomList from './pages/ClassroomList';
 import Classroom from './pages/Classroom';
-import AdvancedEditor from './pages/AdvancedEditor';
+import EditorPage from './pages/EditorPage'; 
 import StudentRoom from './pages/StudentRoom';
 import './index.css';
 
-type Chapter = {
-  id: string;
-  title: string;
-  content: string;
-};
-
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [extractedText, setExtractedText] = useState('');
   const navigate = useNavigate();
 
   const handleLogin = () => {
@@ -26,21 +19,6 @@ export default function App() {
   const handleLogout = () => {
     setIsLoggedIn(false);
     navigate('/');
-  };
-
-  const handleNavigateToEditor = (text: string) => {
-    setExtractedText(text);
-    navigate('/editor');
-  };
-
-  const handlePublishAndReturn = (title: string, chapters: Chapter[]) => {
-    navigate(-1);
-    setExtractedText('');
-  };
-
-  const handleBackToClassroom = () => {
-    navigate(-1);
-    setExtractedText('');
   };
 
   return (
@@ -76,16 +54,13 @@ export default function App() {
         } 
       />
 
-      {/* 에디터 페이지 */}
+      {/* 에디터 페이지 - EditorPage로 변경! */}
       <Route 
         path="/editor" 
         element={
           isLoggedIn ? 
-          <AdvancedEditor 
-            extractedText={extractedText}
-            onPublish={handlePublishAndReturn}
-            onBack={handleBackToClassroom}
-          /> : 
+          <EditorPage /> 
+          : 
           <Navigate to="/" replace />
         } 
       />

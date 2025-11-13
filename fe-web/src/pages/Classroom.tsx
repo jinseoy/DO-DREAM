@@ -10,10 +10,10 @@ import {
   Tag,
 } from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
-import './Classroom.css';
 import teacherAvatar from '../assets/classList/teacher.png';
 import maleImg from '../assets/classroom/male.png';
 import femaleImg from '../assets/classroom/female.png';
+import './Classroom.css';
 
 /* ===== 타입 ===== */
 type LabelId =
@@ -28,7 +28,7 @@ type LabelId =
 type Material = {
   id: string;
   title: string;
-  uploadDate: string; // YYYY.MM.DD
+  uploadDate: string;
   label?: LabelId;
 };
 type Student = {
@@ -60,7 +60,6 @@ const parseDate = (d: string) => {
 
 /** KST 기준 날짜 포맷 유틸 */
 function formatKST(date: Date, withTime = false) {
-  // 한국 시간대 보정
   const tzDate = new Date(
     date.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }),
   );
@@ -104,7 +103,7 @@ export default function Classroom() {
 
   const [materials, setMaterials] = useState<Material[]>(defaultMaterials);
 
-  // ✅ 마운트 시 저장된 자료 복원
+  // 마운트 시 저장된 자료 복원
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -114,11 +113,11 @@ export default function Classroom() {
         return;
       } catch {}
     }
-    // 저장된 게 없다면 기본값을 저장해 둔다
+    // 저장된 게 없다면 기본값을 저장
     localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultMaterials));
   }, [STORAGE_KEY]);
 
-  // ✅ materials 변경 시 자동 저장
+  // materials 변경 시 자동 저장
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(materials));
   }, [STORAGE_KEY, materials]);
@@ -334,11 +333,10 @@ export default function Classroom() {
           <h1 className="cl-header-title">DO:DREAM</h1>
 
           <div className="cl-header-button">
-            {/* ✅ 목록으로: ClassroomList 경로로 이동 (예: "/") */}
             <button
               type="button"
               className="cl-logout-button"
-              onClick={() => navigate('/')} // 필요시 '/classrooms'로 변경
+              onClick={() => navigate('/')}
               title="목록으로"
             >
               <ArrowLeft size={18} />
@@ -364,7 +362,7 @@ export default function Classroom() {
 
           <div className="cl-sidebar-divider" />
 
-          {/* ▼ 메모장 (하단 고정) */}
+          {/* 메모장 (하단 고정) */}
           <div className="cl-memo">
             <div className="cl-memo-stage">
               <div className="cl-memo-zoom">
@@ -397,7 +395,7 @@ export default function Classroom() {
                 <h3>공유된 학습 자료</h3>
               </div>
               <div className="cl-head-right">
-                <div className="cl-input-wrap">
+                <div className="cl-input-wrap cl-control">
                   <Search size={16} />
                   <input
                     className="cl-input"
@@ -407,7 +405,7 @@ export default function Classroom() {
                   />
                 </div>
                 <button
-                  className="cl-sort-btn"
+                  className="cl-sort-btn cl-control"
                   onClick={() =>
                     setMatSort((s) => (s === 'new' ? 'old' : 'new'))
                   }
@@ -488,7 +486,7 @@ export default function Classroom() {
                 <h3>학생 관리 ({filteredStudents.length}명)</h3>
               </div>
               <div className="cl-head-right">
-                <div className="cl-input-wrap">
+                <div className="cl-input-wrap cl-control">
                   <Search size={16} />
                   <input
                     className="cl-input"
@@ -498,7 +496,7 @@ export default function Classroom() {
                   />
                 </div>
                 <button
-                  className="cl-sort-btn"
+                  className="cl-sort-btn cl-control"
                   onClick={() =>
                     setStuSort((s) => (s === 'progress' ? 'name' : 'progress'))
                   }
@@ -518,8 +516,8 @@ export default function Classroom() {
                 <div
                   key={s.id}
                   className="cl-student-card"
-                  onClick={() => navigate(`/student/${s.id}`)} // ✅ 추가
-                  style={{ cursor: 'pointer' }} // ✅ 추가
+                  onClick={() => navigate(`/student/${s.id}`)}
+                  style={{ cursor: 'pointer' }}
                 >
                   <div className="cl-student-top">
                     <img

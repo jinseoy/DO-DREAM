@@ -9,7 +9,6 @@ import {
   Trash2,
   Tag,
   Send,
-  NotebookPen,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, useRef, ChangeEvent } from 'react';
 import './ClassroomList.css';
@@ -83,7 +82,6 @@ const STUDENTS_BY_CLASSROOM: Record<
 
 /** KST 기준 날짜 포맷 유틸 */
 function formatKST(date: Date, withTime = false) {
-  // 한국 시간대 보정
   const tzDate = new Date(
     date.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }),
   );
@@ -96,14 +94,40 @@ function formatKST(date: Date, withTime = false) {
   return `${yyyy}년 ${mm}월 ${dd}일 (${HH}시 ${MM}분)`;
 }
 
-export default function ClassroomList({
-  onLogout,
-  onNavigateToEditor,
-}: ClassroomListProps) {
+type ParsedPdfPayload = {
+  indexes?: string[];
+  data?: Array<{
+    index: string;
+    index_title: string;
+    titles: Array<{
+      title: string;
+      s_titles?: Array<{
+        s_title?: string;
+        contents?: string | null;
+        ss_titles?: Array<{
+          ss_title?: string;
+          contents?: string | null;
+        }>;
+      }>;
+    }>;
+  }>;
+};
+
+type ParsedPdfResponse = ParsedPdfPayload & {
+  filename?: string;
+  pdfId?: number;
+  parsedData?: ParsedPdfPayload;
+};
+
+type ParsedChapter = {
+  id: string;
+  title: string;
+  content: string;
+};
+
+export default function ClassroomList({ onLogout }: ClassroomListProps) {
   const [selectedLabel, setSelectedLabel] = useState<string | undefined>();
-
   const navigate = useNavigate();
-
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -111,16 +135,12 @@ export default function ClassroomList({
   const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // ✅ 파일 추출 시뮬레이터 (demo)
   const simulateExtract = async (file: File): Promise<string> => {
-    // 간단한 확장자 판별
     const name = file.name.toLowerCase();
-    // (데모) txt면 실제 텍스트 읽고, 그 외는 더미 텍스트
     if (name.endsWith('.txt')) {
       const text = await file.text();
       return text.slice(0, 5000) || '내용이 비어있습니다.';
     }
-    // pdf/doc/docx 등은 실제 파서 없이 더미 본문
     return [
       `<h1>${file.name}</h1>`,
       '<h2>자동 추출 요약 (Demo)</h2>',
@@ -133,59 +153,21 @@ export default function ClassroomList({
     ].join('');
   };
 
-  // PDF 파싱 API 응답 타입(대충만 타입 잡아도 됨)
-  type ParsedPdfResponse = {
-    filename?: string;
-    pdfId?: number;
-    parsedData?: {
-      indexes?: string[];
-      data?: Array<{
-        index: string;
-        index_title: string;
-        titles: Array<{
-          title: string;
-          s_titles?: Array<{
-            s_title?: string;
-            contents?: string;
-            ss_titles?: Array<{
-              ss_title?: string;
-              contents?: string;
-            }>;
-          }>;
-        }>;
-      }>;
-    };
-  };
-
-  // 에디터로 넘길 챕터 타입
-  type ParsedChapter = {
-    id: string;
-    title: string;
-    content: string;
-  };
-
-  /** PDF를 API에 업로드해서 파싱 결과 받아오기 */
   async function uploadAndParsePdf(
     file: File,
     API_BASE: string,
   ): Promise<ParsedPdfResponse> {
-    // Swagger 가 쓰는 것과 최대한 비슷하게 "영문 안전 파일명"으로 변환
-    const safeBaseName = 'document'; // 진짜로 Swagger 랑 똑같이 가려면 그냥 고정
-    const safeFilename = `${safeBaseName}.pdf`;
-
     const url = `${API_BASE}/api/pdf/upload-and-parse?filename=${encodeURIComponent(
-      safeFilename,
+      file.name,
     )}`;
 
     const res = await fetch(url, {
       method: 'POST',
       headers: {
-        // Swagger curl 과 동일하게 맞추기
         accept: '*/*',
         'Content-Type': 'application/pdf',
       },
       body: file,
-      credentials: 'include',
     });
 
     if (!res.ok) {
@@ -196,38 +178,36 @@ export default function ClassroomList({
       );
     }
 
-    return res.json();
+    const json = (await res.json()) as ParsedPdfResponse;
+    console.log('[uploadAndParsePdf] raw response:', json);
+    return json;
   }
 
-  /** parsedData 구조를 AdvancedEditor에서 사용할 챕터 배열로 변환 */
-  function buildChaptersFromParsedData(
-    parsedData: ParsedPdfResponse['parsedData'],
-  ): ParsedChapter[] {
+  function buildChaptersFromParsedData(parsed: any): ParsedChapter[] {
+    const root = parsed.parsedData ?? parsed;
+    const data = root.data;
+
     const chapters: ParsedChapter[] = [];
-    if (!parsedData?.data || parsedData.data.length === 0) return chapters;
+    if (!data || data.length === 0) return chapters;
 
     let idCounter = 1;
 
-    parsedData.data.forEach((section) => {
-      section.titles?.forEach((t) => {
+    data.forEach((section: any) => {
+      section.titles?.forEach((t: any) => {
         const htmlParts: string[] = [];
 
-        t.s_titles?.forEach((s) => {
-          // (1) 사회·문화 현상 같은 소제목
+        t.s_titles?.forEach((s: any) => {
           if (s.s_title) {
             htmlParts.push(`<h3>${s.s_title}</h3>`);
           }
 
-          // 본문
           if (s.contents) {
-            const text = s.contents.replace(/\n/g, '<br/>');
-            htmlParts.push(`<p>${text}</p>`);
+            htmlParts.push(`<p>${s.contents.replace(/\n/g, '<br/>')}</p>`);
           }
 
-          // ① ~ 내용 리스트
           if (s.ss_titles && s.ss_titles.length > 0) {
             htmlParts.push('<ul>');
-            s.ss_titles.forEach((ss) => {
+            s.ss_titles.forEach((ss: any) => {
               const strong = ss.ss_title
                 ? `<strong>${ss.ss_title}</strong> `
                 : '';
@@ -240,9 +220,7 @@ export default function ClassroomList({
 
         chapters.push({
           id: String(idCounter++),
-          // 챕터 탭에 보일 제목
           title: t.title || `챕터 ${idCounter}`,
-          // 에디터 본문에 들어갈 HTML
           content:
             htmlParts.join('\n') || '<p>이 챕터에 대한 내용이 없습니다.</p>',
         });
@@ -252,26 +230,32 @@ export default function ClassroomList({
     return chapters;
   }
 
-  // ✅ 파일 선택 트리거
   const handleCreateMaterial = () => {
     if (fileInputRef.current) fileInputRef.current.click();
   };
 
-  // ✅ 파일 선택 후 처리
   const handlePickFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
 
-    // 🔹 확장자 제거한 문서 제목 (PDF, TXT 공통)
     const docTitle = file.name.replace(/\.[^.]+$/, '') || '새로운 자료';
 
     void Swal.fire({
       title: '텍스트 추출 중입니다',
-      html: '<div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;"><div style="width: 50px; height: 50px; border: 4px solid #192b55; border-top: 4px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div><p style="color: #192b55; font-size: 18px;">파일을 처리하는 중입니다...</p></div><style>@keyframes spin { to { transform: rotate(360deg); } }</style>',
-      confirmButtonColor: '#192b55',
+      html: `
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+        <div style="width: 50px; height: 50px; border: 4px solid #192b55; border-top: 4px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <p style="color: #192b55; font-size: 18px;">파일을 처리하는 중입니다...</p>
+      </div>
+      <style>
+      @keyframes spin { to { transform: rotate(360deg); } }
+      </style>
+    `,
+      showConfirmButton: false,
       allowOutsideClick: false,
       allowEscapeKey: false,
+      heightAuto: false,
     });
 
     const MIN_SHOW_MS = 1200;
@@ -281,13 +265,12 @@ export default function ClassroomList({
         file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
 
       if (isPdf) {
-        // 🔹 PDF: 파싱 API 호출
         const [parsed] = await Promise.all([
           uploadAndParsePdf(file, API_BASE),
           sleep(MIN_SHOW_MS),
         ]);
 
-        const chapters = buildChaptersFromParsedData(parsed.parsedData);
+        const chapters = buildChaptersFromParsedData(parsed);
 
         await Swal.close();
 
@@ -301,16 +284,27 @@ export default function ClassroomList({
           return;
         }
 
-        // 🔹 문서 전체 제목 = 업로드한 문서 제목
+        console.log('[handlePickFile] 파싱 완료:', {
+          fileName: docTitle,
+          chaptersCount: chapters.length,
+          chapters: chapters.map((c) => ({
+            id: c.id,
+            title: c.title,
+            contentLength: c.content.length,
+          })),
+        });
+
+        // ✅ state로 직접 전달 (세션 스토리지 완전 제거)
         navigate('/editor', {
           state: {
-            fileName: docTitle, // ★ 여기!
-            chapters,
+            fileName: docTitle,
+            chapters: chapters,
+            from: 'classroom',
           },
         });
       } else {
-        // 🔹 PDF 이외: 기존 데모 정리 + 제목만 통일
-        const [extracted] = await Promise.all([
+        // TXT 등 다른 파일
+        const [text] = await Promise.all([
           simulateExtract(file),
           sleep(MIN_SHOW_MS),
         ]);
@@ -319,12 +313,9 @@ export default function ClassroomList({
 
         navigate('/editor', {
           state: {
-            fileName: docTitle, // ★ 여기!
-            extractedText: extracted.startsWith('<')
-              ? extracted
-              : `<h1>${docTitle}</h1><p>${extracted
-                  .replace(/\n/g, '</p><p>')
-                  .replace(/<\/p><p>$/, '')}</p>`,
+            fileName: docTitle,
+            extractedText: text,
+            from: 'classroom',
           },
         });
       }
@@ -340,7 +331,6 @@ export default function ClassroomList({
     }
   };
 
-  // 메모장 상태 (localStorage 연동)
   const MEMO_KEY = 'clist_memo_v1';
   const [memo, setMemo] = useState('');
   useEffect(() => {
@@ -388,7 +378,6 @@ export default function ClassroomList({
     },
   ]);
 
-  /** 최근 업데이트 일시 (자료 변경 시 현재 시각으로 갱신) */
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date>(new Date());
   useEffect(() => {
     setLastUpdatedAt(new Date());
@@ -443,9 +432,8 @@ export default function ClassroomList({
   const getLabelColor = (label?: string) =>
     LABEL_OPTIONS.find((l) => l.id === label)?.color || 'transparent';
 
-  // 라벨 변경
   const handleLabelMaterial = (materialId: string, currentLabel?: string) => {
-    let picked: string | undefined = currentLabel; // ← 로컬 변수로 관리
+    let picked: string | undefined = currentLabel;
 
     Swal.fire({
       title: '라벨 선택',
@@ -497,15 +485,15 @@ export default function ClassroomList({
             '.ae-label-option',
           ) as HTMLElement | null;
           if (!target) return;
-          picked = target.getAttribute('data-label') || undefined; // ← 로컬 변수 갱신
+          picked = target.getAttribute('data-label') || undefined;
           render();
         });
       },
 
-      preConfirm: () => picked, // ← 여기서 선택값 반환!
+      preConfirm: () => picked,
     }).then((result) => {
       if (!result.isConfirmed) return;
-      const value = result.value as string | undefined; // 선택 해제 가능
+      const value = result.value as string | undefined;
 
       setMaterials((prev) =>
         prev.map((mat) =>
@@ -515,7 +503,6 @@ export default function ClassroomList({
     });
   };
 
-  // 전송 모달
   const handleSendMaterial = (materialId: string) => {
     const m = materials.find((mt) => mt.id === materialId);
     if (!m) return;
@@ -523,7 +510,6 @@ export default function ClassroomList({
     setShowSendModal(true);
   };
 
-  // 삭제
   const handleDeleteMaterial = (materialId: string) => {
     Swal.fire({
       title: '자료를 삭제하시겠습니까?',
@@ -572,10 +558,9 @@ export default function ClassroomList({
     try {
       const res = await fetch(`${API_BASE}/api/auth/teacher/logout`, {
         method: 'POST',
-        credentials: 'include', // 🔴 RT가 HttpOnly 쿠키이므로 필수
+        credentials: 'include',
       });
 
-      // 일부 서버는 바디가 없음 → ok만 체크
       if (!res.ok) throw new Error('로그아웃 실패');
 
       await Swal.close();
@@ -588,8 +573,8 @@ export default function ClassroomList({
         showConfirmButton: false,
       });
 
-      onLogout?.(); // App.tsx: isLoggedIn=false
-      navigate('/', { replace: true }); // 🔁 Join 화면(루트)으로
+      onLogout?.();
+      navigate('/', { replace: true });
     } catch (err: any) {
       await Swal.close();
       Swal.fire({
@@ -602,7 +587,6 @@ export default function ClassroomList({
     }
   };
 
-  // (참고) 가장 최근 업로드 "날짜"만 필요할 때
   const latestUploadDate = useMemo(() => {
     if (materials.length === 0) return '-';
     return materials
@@ -650,7 +634,6 @@ export default function ClassroomList({
 
             <div className="cl-sidebar-divider" />
 
-            {/* ▼ 메모장 (하단 고정) */}
             <div className="cl-memo">
               <div className="cl-memo-stage">
                 <div className="cl-memo-zoom">
@@ -660,7 +643,6 @@ export default function ClassroomList({
                     </div>
                   </div>
 
-                  {/* 이미지 안의 ‘종이 영역’에 정확히 겹치는 입력 박스 */}
                   <textarea
                     className="cl-memo-input"
                     placeholder="수업 준비/할 일 메모"
@@ -721,13 +703,9 @@ export default function ClassroomList({
 
           {/* 자료함 */}
           <div className="cl-materials-section">
-            {/* 헤더: 좌(타이틀/설명) + 우(최근 업데이트 일시) */}
             <div className="cl-materials-header">
               <div className="cl-section-header" style={{ flex: 1 }}>
                 <h2 className="cl-section-title">내 자료</h2>
-                {/* <p className="cl-section-subtitle">
-                  생성하거나 공유한 자료들을 관리하세요
-                </p> */}
               </div>
               <div className="cl-last-updated">
                 최근 업데이트: {formatKST(lastUpdatedAt, true)}
@@ -786,7 +764,6 @@ export default function ClassroomList({
                       <FileText size={18} />
                     </div>
                     <div className="cl-material-info">
-                      {/* 중첩 h3 버그 수정 */}
                       <h3 className="cl-material-title">{material.title}</h3>
                       <div className="cl-material-meta">
                         <span className="cl-material-date">
@@ -832,7 +809,6 @@ export default function ClassroomList({
         </main>
       </div>
 
-      {/* 전송 모달 */}
       {showSendModal && selectedMaterial && (
         <MaterialSendModal2Step
           classrooms={classrooms.map((c) => ({

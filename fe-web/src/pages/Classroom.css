@@ -85,35 +85,11 @@
 }
 
 /* ===== 카드 내부 툴바/검색/정렬 (페이지 전용) ===== */
-.cl-input-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 36px;
-  padding: 0 10px;
-  background: #fff;
-  border: none;
-  border-radius: 10px;
-}
 .cl-input {
   border: none;
   outline: none;
   background: transparent;
   height: 100%;
-}
-.cl-sort-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 6px 10px;
-  border-radius: 10px;
-  border: none;
-  background-color: #eee;
-  font-size: 12px;
-  font-weight: 800;
-  color: #374151;
-  cursor: pointer;
 }
 
 /* ===== 카드 스크롤 컨테이너 (페이지 전용) ===== */
@@ -230,4 +206,66 @@
     grid-template-columns: 1fr;
     gap: 16px;
   }
+}
+
+/* ★ 툴바 캡슐: 좌/우 공통 강제 통일 */
+.classroom-page .cl-card .cl-card-head .cl-head-right .cl-input-wrap,
+.classroom-page .cl-card .cl-card-head .cl-head-right .cl-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: #fff;
+  color: #374151;
+  font: inherit;
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+/* ★ 버튼 UA 리셋(크롬/사파리 차단) */
+.classroom-page .cl-card .cl-card-head .cl-head-right .cl-sort-btn {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: #fff;
+  color: #374151;
+  font: inherit;
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+/* ★ input UA 리셋 */
+.classroom-page .cl-card .cl-card-head .cl-head-right .cl-input {
+  all: unset;
+  font: inherit;
+  color: inherit;
+  line-height: 1;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* 아이콘 정렬 */
+.classroom-page .cl-card .cl-card-head .cl-head-right .cl-input-wrap > svg,
+.classroom-page .cl-card .cl-card-head .cl-head-right .cl-sort-btn > svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* (선택) hover */
+.classroom-page .cl-card .cl-card-head .cl-head-right .cl-input-wrap:hover,
+.classroom-page .cl-card .cl-card-head .cl-head-right .cl-sort-btn:hover {
+  box-shadow: 0 2px 6px rgba(0,0,0,.06);
 }
