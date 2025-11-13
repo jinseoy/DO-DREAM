@@ -49,8 +49,8 @@ spring:
   servlet:
     multipart:
       enabled: true
-      max-file-size: 100MB
-      max-request-size: 100MB
+      max-file-size: 2GB
+      max-request-size: 2GB
       file-size-threshold: 2KB
   data:
     redis:
@@ -61,6 +61,9 @@ server:
     session:
       cookie:
         same-site: lax
+  tomcat:
+    max-http-form-post-size: 2GB  # POST 요청 본문 크기 제한 (바이너리 직접 전송)
+    max-swallow-size: 2GB  # 업로드 중단 시 버퍼 크기
 
 logging:
   level:

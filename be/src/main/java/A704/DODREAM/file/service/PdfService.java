@@ -1,10 +1,12 @@
 package A704.DODREAM.file.service;
 
+import A704.DODREAM.file.entity.OcrStatus;
 import A704.DODREAM.file.entity.UploadedFile;
 import A704.DODREAM.file.repository.UploadedFileRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -18,11 +20,13 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -66,10 +70,258 @@ public class PdfService {
   @Autowired
   private ObjectMapper objectMapper;  // JSON 직렬화용
 
-
+  @Value("${aws.s3.upload-prefix:pdfs}")
+  private String uploadPrefix;
 
   /**
-   * PDF 파싱 및 JSON S3 저장
+   * PDF 업로드 + 파싱 통합 API (바이너리 스트림 방식)
+   *
+   * @param pdfBytes: PDF 바이너리 데이터
+   * @param filename: 원본 파일명
+   * @param userId: 사용자 ID
+   * @return 파싱된 결과 및 메타데이터
+   */
+  @Transactional
+  public Map<String, Object> uploadAndParsePdfFromBytes(byte[] pdfBytes, String filename, Long userId) {
+    try {
+      // 1. 파일 검증
+      if (pdfBytes == null || pdfBytes.length == 0) {
+        throw new RuntimeException("파일이 비어있습니다.");
+      }
+
+      if (filename == null || !filename.toLowerCase().endsWith(".pdf")) {
+        throw new RuntimeException("PDF 파일만 업로드 가능합니다.");
+      }
+
+      // 2. S3 키 생성
+      String s3Key = generateS3Key(filename);
+
+      // 3. S3에 업로드
+      PutObjectRequest putRequest = PutObjectRequest.builder()
+          .bucket(bucketName)
+          .key(s3Key)
+          .contentType("application/pdf")
+          .metadata(Map.of(
+              "original-filename", filename,
+              "uploaded-by", userId.toString(),
+              "uploaded-at", LocalDateTime.now().toString()
+          ))
+          .build();
+
+      s3Client.putObject(
+          putRequest,
+          RequestBody.fromBytes(pdfBytes)
+      );
+
+      log.info("✅ PDF S3 업로드 완료: {}", s3Key);
+
+      // 4. DB에 UploadedFile 레코드 생성
+      UploadedFile uploadedFile = UploadedFile.builder()
+          .originalFileName(filename)
+          .s3Key(s3Key)
+          .s3Bucket(bucketName)
+          .contentType("application/pdf")
+          .fileSize((long) pdfBytes.length)
+          .ocrStatus(OcrStatus.PENDING)
+          .uploaderId(userId)
+          .build();
+
+      UploadedFile savedFile = uploadedFileRepository.save(uploadedFile);
+
+      log.info("✅ DB 저장 완료: pdfId={}", savedFile.getId());
+
+      // 5. CloudFront signed URL 생성
+      String cloudFrontUrl = cloudFrontService.generateSignedUrl(s3Key);
+
+      // 6. FastAPI 호출하여 파싱
+      String fastApiEndpoint = fastApiUrl + "/document/parse-pdf-from-cloudfront";
+
+      Map<String, String> request = new HashMap<>();
+      request.put("cloudfront_url", cloudFrontUrl);
+
+      ResponseEntity<Map> response = webClient.post().uri(fastApiEndpoint)
+          .bodyValue(request)
+          .retrieve()
+          .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
+              clientResponse -> clientResponse.bodyToMono(String.class)
+                  .map(errorBody -> new RuntimeException("FastAPI 에러: " + errorBody)))
+          .toEntity(Map.class)
+          .block();
+
+      if (response.getBody() == null) {
+        throw new RuntimeException("FastAPI 응답이 비어있습니다.");
+      }
+
+      Map<String, Object> parsedData = (Map<String, Object>) response.getBody().get("parsed_data");
+
+      if (parsedData == null) {
+        throw new RuntimeException("FastAPI 응답에 parsed_data가 없습니다.");
+      }
+
+      // 7. JSON을 S3에 저장
+      String jsonS3Key = uploadJsonToS3(s3Key, parsedData, userId.toString());
+
+      // 8. DB 업데이트 (파싱 결과 반영)
+      savedFile.setJsonS3Key(jsonS3Key);
+      savedFile.setParsedAt(LocalDateTime.now());
+
+      // 필수 필드만 DB에 저장 (검색용)
+      if (parsedData.containsKey("indexes")) {
+        List<String> indexes = (List<String>) parsedData.get("indexes");
+        savedFile.setIndexes(String.join(",", indexes));
+      }
+
+      uploadedFileRepository.save(savedFile);
+
+      log.info("✅ 전체 프로세스 완료: pdfId={}", savedFile.getId());
+
+      return Map.of(
+          "pdfId", savedFile.getId(),
+          "filename", filename,
+          "s3Key", s3Key,
+          "jsonS3Key", jsonS3Key,
+          "parsedData", parsedData
+      );
+
+    } catch (Exception e) {
+      throw new RuntimeException("PDF 업로드 및 파싱 실패: " + e.getMessage());
+    }
+  }
+
+  /**
+   * PDF 업로드 + 파싱 통합 API (MultipartFile 방식)
+   *
+   * @param file: 업로드할 PDF 파일
+   * @param userId: 사용자 ID
+   * @return 파싱된 결과 및 메타데이터
+   */
+  @Transactional
+  public Map<String, Object> uploadAndParsePdf(MultipartFile file, Long userId) {
+    try {
+      // 1. 파일 검증
+      if (file.isEmpty()) {
+        throw new RuntimeException("파일이 비어있습니다.");
+      }
+
+      String originalFilename = file.getOriginalFilename();
+      if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".pdf")) {
+        throw new RuntimeException("PDF 파일만 업로드 가능합니다.");
+      }
+
+      // 2. S3 키 생성
+      String s3Key = generateS3Key(originalFilename);
+
+      // 3. S3에 업로드
+      PutObjectRequest putRequest = PutObjectRequest.builder()
+          .bucket(bucketName)
+          .key(s3Key)
+          .contentType("application/pdf")
+          .metadata(Map.of(
+              "original-filename", originalFilename,
+              "uploaded-by", userId.toString(),
+              "uploaded-at", LocalDateTime.now().toString()
+          ))
+          .build();
+
+      s3Client.putObject(
+          putRequest,
+          RequestBody.fromInputStream(file.getInputStream(), file.getSize())
+      );
+
+      log.info("✅ PDF S3 업로드 완료: {}", s3Key);
+
+      // 4. DB에 UploadedFile 레코드 생성
+      UploadedFile uploadedFile = UploadedFile.builder()
+          .originalFileName(originalFilename)
+          .s3Key(s3Key)
+          .s3Bucket(bucketName)
+          .contentType("application/pdf")
+          .fileSize(file.getSize())
+          .ocrStatus(OcrStatus.PENDING)
+          .uploaderId(userId)
+          .build();
+
+      UploadedFile savedFile = uploadedFileRepository.save(uploadedFile);
+
+      log.info("✅ DB 저장 완료: pdfId={}", savedFile.getId());
+
+      // 5. CloudFront signed URL 생성
+      String cloudFrontUrl = cloudFrontService.generateSignedUrl(s3Key);
+
+      // 6. FastAPI 호출하여 파싱
+      String fastApiEndpoint = fastApiUrl + "/document/parse-pdf-from-cloudfront";
+
+      Map<String, String> request = new HashMap<>();
+      request.put("cloudfront_url", cloudFrontUrl);
+
+      ResponseEntity<Map> response = webClient.post().uri(fastApiEndpoint)
+          .bodyValue(request)
+          .retrieve()
+          .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
+              clientResponse -> clientResponse.bodyToMono(String.class)
+                  .map(errorBody -> new RuntimeException("FastAPI 에러: " + errorBody)))
+          .toEntity(Map.class)
+          .block();
+
+      if (response.getBody() == null) {
+        throw new RuntimeException("FastAPI 응답이 비어있습니다.");
+      }
+
+      Map<String, Object> parsedData = (Map<String, Object>) response.getBody().get("parsed_data");
+
+      if (parsedData == null) {
+        throw new RuntimeException("FastAPI 응답에 parsed_data가 없습니다.");
+      }
+
+      // 7. JSON을 S3에 저장
+      String jsonS3Key = uploadJsonToS3(s3Key, parsedData, userId.toString());
+
+      // 8. DB 업데이트 (파싱 결과 반영)
+      savedFile.setJsonS3Key(jsonS3Key);
+      savedFile.setParsedAt(LocalDateTime.now());
+
+      // 필수 필드만 DB에 저장 (검색용)
+      if (parsedData.containsKey("indexes")) {
+        List<String> indexes = (List<String>) parsedData.get("indexes");
+        savedFile.setIndexes(String.join(",", indexes));
+      }
+
+      uploadedFileRepository.save(savedFile);
+
+      log.info("✅ 전체 프로세스 완료: pdfId={}", savedFile.getId());
+
+      return Map.of(
+          "pdfId", savedFile.getId(),
+          "filename", originalFilename,
+          "s3Key", s3Key,
+          "jsonS3Key", jsonS3Key,
+          "parsedData", parsedData
+      );
+
+    } catch (IOException e) {
+      throw new RuntimeException("파일 업로드 실패: " + e.getMessage());
+    } catch (Exception e) {
+      throw new RuntimeException("PDF 업로드 및 파싱 실패: " + e.getMessage());
+    }
+  }
+
+  /**
+   * S3 키 생성 (UUID 기반)
+   */
+  private String generateS3Key(String originalFileName) {
+    String uuid = UUID.randomUUID().toString();
+    String extension = "";
+
+    int lastDotIndex = originalFileName.lastIndexOf('.');
+    if (lastDotIndex > 0) {
+      extension = originalFileName.substring(lastDotIndex);
+    }
+
+    return uploadPrefix + "/" + uuid + extension;
+  }
+
+  /**
+   * PDF 파싱 및 JSON S3 저장 (기존 방식 - presigned URL 사용)
    */
   @Transactional
   public Map<String, Object> parsePdfAndSave(Long pdfId, Long userId) {
