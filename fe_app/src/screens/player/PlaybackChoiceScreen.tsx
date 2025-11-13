@@ -33,11 +33,9 @@ export default function PlaybackChoiceScreen() {
   const showQuizButton = hasStudied && hasQuiz;
 
   useEffect(() => {
-    const announcement = `${material.title}, ${material.currentChapter}챕터. 이어듣기 또는 처음부터 선택하세요.${
-      showQuizButton ? ' 퀴즈도 풀 수 있습니다.' : ''
-    }`;
+    const announcement = `${material.title}, ${material.currentChapter}챕터. 이어듣기, 처음부터, 저장 목록, 질문 목록, 퀴즈 중 선택하세요.`;
     AccessibilityInfo.announceForAccessibility(announcement);
-  }, [material.title, material.currentChapter, showQuizButton]);
+  }, [material.title, material.currentChapter]);
 
   const handleFromStart = () => {
     AccessibilityInfo.announceForAccessibility('처음부터 시작합니다.');
@@ -61,6 +59,20 @@ export default function PlaybackChoiceScreen() {
         fromStart: false,
       });
     }
+  };
+
+  const handleBookmarkPress = () => {
+    AccessibilityInfo.announceForAccessibility('저장 목록으로 이동합니다');
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    // TODO: 북마크 목록 화면으로 이동
+    // navigation.navigate('BookmarkList', { material });
+  };
+
+  const handleQuestionPress = () => {
+    AccessibilityInfo.announceForAccessibility('질문 목록으로 이동합니다');
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    // TODO: 질문 목록 화면으로 이동
+    // navigation.navigate('QuestionList', { material });
   };
 
   const handleQuizPress = () => {
@@ -112,44 +124,77 @@ export default function PlaybackChoiceScreen() {
 
       {/* 선택 버튼들 */}
       <View style={styles.buttonSection}>
+        {/* 이어서 듣기 - 학습 진도가 있을 때만 표시 */}
         {material.hasProgress && (
           <TouchableOpacity
-            style={[styles.choiceButton, styles.continueButton]}
+            style={styles.choiceButton}
             onPress={handleContinue}
             accessible={true}
-            accessibilityLabel="이어서 듣기"
+            accessibilityLabel="이어서 듣기, 마지막 위치부터"
             accessibilityRole="button"
-            accessibilityHint="마지막 들었던 위치부터 계속 듣습니다"
           >
-            <Text style={styles.buttonText}>이어서 듣기</Text>
-            <Text style={styles.buttonSubtext}>마지막 위치부터</Text>
+            <View style={styles.buttonContent}>
+              <Text style={styles.buttonText}>이어서 듣기</Text>
+              <Text style={styles.buttonSubtext}>마지막 위치부터</Text>
+            </View>
           </TouchableOpacity>
         )}
 
+        {/* 처음부터 듣기 */}
         <TouchableOpacity
-          style={[styles.choiceButton, styles.fromStartButton]}
+          style={styles.choiceButton}
           onPress={handleFromStart}
           accessible={true}
-          accessibilityLabel="처음부터 듣기"
+          accessibilityLabel="처음부터 듣기, 챕터 처음부터"
           accessibilityRole="button"
-          accessibilityHint="챕터 처음부터 다시 듣습니다"
         >
-          <Text style={styles.buttonText}>처음부터 듣기</Text>
-          <Text style={styles.buttonSubtext}>챕터 처음부터</Text>
+          <View style={styles.buttonContent}>
+            <Text style={styles.buttonText}>처음부터 듣기</Text>
+            <Text style={styles.buttonSubtext}>챕터 처음부터</Text>
+          </View>
         </TouchableOpacity>
 
-        {/* 퀴즈 버튼 - 학습 진도가 있을 때만 표시 */}
+        {/* 저장 목록 */}
+        <TouchableOpacity
+          style={styles.choiceButton}
+          onPress={handleBookmarkPress}
+          accessible={true}
+          accessibilityLabel="저장 목록"
+          accessibilityRole="button"
+        >
+          <View style={styles.buttonContent}>
+            <Text style={styles.buttonText}>저장 목록</Text>
+            <Text style={styles.buttonSubtext}>북마크 보기</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* 질문 목록 */}
+        <TouchableOpacity
+          style={styles.choiceButton}
+          onPress={handleQuestionPress}
+          accessible={true}
+          accessibilityLabel="질문 목록"
+          accessibilityRole="button"
+        >
+          <View style={styles.buttonContent}>
+            <Text style={styles.buttonText}>질문 목록</Text>
+            <Text style={styles.buttonSubtext}>이전 질문 보기</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* 퀴즈 풀기 - 학습 진도가 있고 퀴즈가 있을 때만 표시 */}
         {showQuizButton && (
           <TouchableOpacity
-            style={[styles.choiceButton, styles.quizButton]}
+            style={styles.choiceButton}
             onPress={handleQuizPress}
             accessible={true}
-            accessibilityLabel="퀴즈 풀기"
+            accessibilityLabel="퀴즈 풀기, 학습 내용 확인"
             accessibilityRole="button"
-            accessibilityHint="학습한 내용을 확인하는 퀴즈를 풉니다"
           >
-            <Text style={styles.buttonText}>퀴즈 풀기</Text>
-            <Text style={styles.buttonSubtext}>학습 내용 확인</Text>
+            <View style={styles.buttonContent}>
+              <Text style={styles.buttonText}>퀴즈 풀기</Text>
+              <Text style={styles.buttonSubtext}>학습 내용 확인</Text>
+            </View>
           </TouchableOpacity>
         )}
       </View>
@@ -176,51 +221,44 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   infoSection: {
-    marginBottom: 60,
+    marginBottom: 40,
     alignItems: 'center',
   },
   subjectText: {
-    fontSize: 40,
+    fontSize: 36,
     fontWeight: 'bold',
     color: '#333333',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   chapterText: {
-    fontSize: 24,
+    fontSize: 20,
     color: '#666666',
   },
   buttonSection: {
-    gap: 20,
+    gap: 16,
   },
   choiceButton: {
-    borderRadius: 16,
-    padding: 32,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    minHeight: 88,
+  },
+  buttonContent: {
+    flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 120,
-    justifyContent: 'center',
-    borderWidth: 3,
-  },
-  continueButton: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#45a049',
-  },
-  fromStartButton: {
-    backgroundColor: '#2196F3',
-    borderColor: '#1976D2',
-  },
-  quizButton: {
-    backgroundColor: '#9C27B0',
-    borderColor: '#7B1FA2',
+    justifyContent: 'space-between',
   },
   buttonText: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 8,
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#333333',
+    flex: 1,
   },
   buttonSubtext: {
     fontSize: 18,
-    color: '#ffffff',
-    opacity: 0.9,
+    color: '#666666',
+    marginLeft: 12,
   },
 });
