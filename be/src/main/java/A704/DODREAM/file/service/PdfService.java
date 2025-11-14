@@ -658,6 +658,12 @@ public class PdfService {
       // 5. JSON 파싱
       Map<String, Object> jsonData = objectMapper.readValue(jsonString, Map.class);
 
+      // ===== 디버깅: JSON 구조 확인 =====
+      log.info("📋 JSON 최상위 키 목록: {}", jsonData.keySet());
+      if (jsonData.containsKey("data")) {
+        log.info("📋 data 타입: {}", jsonData.get("data").getClass().getName());
+      }
+
       // 6. 개념 Check 필터링
       List<Map<String, Object>> conceptCheckItems = filterConceptCheckFromJson(jsonData);
 
@@ -682,66 +688,125 @@ public class PdfService {
   }
 
   /**
-   * JSON에서 s_title == "개념 Check"인 항목만 필터링하는 공통 메서드
+   * JSON에서 concept_checks 배열의 title == "개념 Check"인 항목을 index별로 그룹화하는 메서드
+   *
+   * 반환 형식:
+   * [
+   *   {
+   *     "index": "01",
+   *     "index_title": "사회·문화 현상의 이해",
+   *     "questions": [
+   *       {"question": "...", "answer": "..."},
+   *       {"question": "...", "answer": "..."}
+   *     ]
+   *   }
+   * ]
    */
   private List<Map<String, Object>> filterConceptCheckFromJson(Map<String, Object> jsonData) {
-    // data 배열에서 s_title == "개념 Check"인 항목만 필터링
-    List<Map<String, Object>> dataList = (List<Map<String, Object>>) jsonData.get("data");
-    if (dataList == null || dataList.isEmpty()) {
+    // data 배열에서 concept_checks 추출
+
+    // ===== 디버깅: data 키 확인 =====
+    if (!jsonData.containsKey("data")) {
+      log.error("❌ JSON에 'data' 키가 없습니다. 사용 가능한 키: {}", jsonData.keySet());
+      throw new RuntimeException("data 배열이 없습니다. 사용 가능한 키: " + jsonData.keySet());
+    }
+
+    Object dataObj = jsonData.get("data");
+    if (!(dataObj instanceof List)) {
+      log.error("❌ 'data'가 배열이 아닙니다. 타입: {}", dataObj.getClass().getName());
+      throw new RuntimeException("data가 배열 형식이 아닙니다.");
+    }
+
+    List<Map<String, Object>> dataList = (List<Map<String, Object>>) dataObj;
+    if (dataList.isEmpty()) {
+      log.warn("⚠️ data 배열이 비어있습니다.");
       throw new RuntimeException("data 배열이 비어있습니다.");
     }
 
     log.info("🔍 data 배열 크기: {}", dataList.size());
 
-    // data -> titles에서 개념 Check 찾기 (title 레벨과 s_title 레벨 둘 다 체크)
-    List<Map<String, Object>> conceptCheckItems = new ArrayList<>();
+    // ===== 디버깅: 첫 번째 data 항목의 구조 확인 =====
+    if (!dataList.isEmpty()) {
+      Map<String, Object> firstItem = dataList.get(0);
+      log.info("🔍 첫 번째 data 항목의 키: {}", firstItem.keySet());
+    }
+
+    // data -> concept_checks에서 개념 Check 찾고 index별로 그룹화
+    List<Map<String, Object>> groupedConceptCheckItems = new ArrayList<>();
 
     for (Map<String, Object> dataItem : dataList) {
-      List<Map<String, Object>> titles = (List<Map<String, Object>>) dataItem.get("titles");
-      if (titles == null) continue;
+      // index와 index_title 추출
+      String index = (String) dataItem.get("index");
+      String indexTitle = (String) dataItem.get("index_title");
 
-      log.info("🔍 titles 배열 크기: {}", titles.size());
+      log.info("🔍 처리 중인 index: '{}', index_title: '{}'", index, indexTitle);
 
-      for (Map<String, Object> title : titles) {
-        // 1. titles 레벨에서 title == "개념 Check" 체크
-        String titleValue = (String) title.get("title");
-        log.info("🔍 title 값: '{}'", titleValue);
+      // concept_checks 배열 가져오기
+      Object conceptChecksObj = dataItem.get("concept_checks");
 
+      if (conceptChecksObj == null) {
+        log.info("⚠️ concept_checks 키가 없습니다.");
+        continue;
+      }
+
+      if (!(conceptChecksObj instanceof List)) {
+        log.warn("⚠️ concept_checks가 배열이 아닙니다. 타입: {}", conceptChecksObj.getClass().getName());
+        continue;
+      }
+
+      List<Map<String, Object>> conceptChecks = (List<Map<String, Object>>) conceptChecksObj;
+      log.info("🔍 concept_checks 배열 크기: {}", conceptChecks.size());
+
+      // 이 index에 해당하는 모든 "개념 Check"의 questions를 모음
+      List<Map<String, Object>> allQuestions = new ArrayList<>();
+
+      for (Map<String, Object> conceptCheck : conceptChecks) {
+        String titleValue = (String) conceptCheck.get("title");
+        log.info("🔍 concept_check title 값: '{}'", titleValue);
+
+        // title == "개념 Check"인 항목의 questions 추가
         if ("개념 Check".equals(titleValue)) {
-          log.info("✅ titles 레벨에서 개념 Check 발견!");
-          conceptCheckItems.add(title);
-        }
+          log.info("✅ 개념 Check 발견!");
 
-        // 2. titles 배열의 항목 자체에 s_title == "개념 Check" 체크 (중요!)
-        String directSTitleValue = (String) title.get("s_title");
-        if (directSTitleValue != null) {
-          log.info("🔍 직접 s_title 값: '{}'", directSTitleValue);
+          Object questionsObj = conceptCheck.get("questions");
+          if (questionsObj instanceof List) {
+            List<Map<String, Object>> questions = (List<Map<String, Object>>) questionsObj;
 
-          if ("개념 Check".equals(directSTitleValue)) {
-            log.info("✅ titles 배열에서 직접 개념 Check 발견!");
-            conceptCheckItems.add(title);
-          }
-        }
+            // answer에서 숫자 부분 제거하면서 추가
+            for (Map<String, Object> question : questions) {
+              Map<String, Object> cleanedQuestion = new HashMap<>();
+              cleanedQuestion.put("question", question.get("question"));
 
-        // 3. s_titles 배열에서 s_title == "개념 Check" 체크
-        List<Map<String, Object>> sTitles = (List<Map<String, Object>>) title.get("s_titles");
-        if (sTitles != null) {
-          log.info("🔍 s_titles 배열 크기: {}", sTitles.size());
+              // answer에서 앞의 "숫자. " 패턴 제거
+              String answer = (String) question.get("answer");
+              if (answer != null) {
+                // "1. ", "2. ", "3. " 등의 패턴 제거 (정규식 사용)
+                answer = answer.replaceAll("^\\d+\\.\\s*", "");
+              }
+              cleanedQuestion.put("answer", answer);
 
-          for (Map<String, Object> sTitle : sTitles) {
-            String sTitleValue = (String) sTitle.get("s_title");
-            log.info("🔍 s_title 값: '{}'", sTitleValue);
-
-            if ("개념 Check".equals(sTitleValue)) {
-              log.info("✅ s_titles 레벨에서 개념 Check 발견!");
-              conceptCheckItems.add(sTitle);
+              allQuestions.add(cleanedQuestion);
             }
+
+            log.info("✅ questions {} 개 추가됨", questions.size());
           }
         }
       }
+
+      // questions가 있는 경우에만 결과에 추가
+      if (!allQuestions.isEmpty()) {
+        // LinkedHashMap을 사용하여 필드 순서 보장
+        Map<String, Object> groupedItem = new java.util.LinkedHashMap<>();
+        groupedItem.put("index", index);
+        groupedItem.put("index_title", indexTitle);
+        groupedItem.put("questions", allQuestions);
+
+        groupedConceptCheckItems.add(groupedItem);
+        log.info("✅ index '{}' 그룹 생성 완료 (총 {} 개 questions)", index, allQuestions.size());
+      }
     }
 
-    return conceptCheckItems;
+    return groupedConceptCheckItems;
   }
 
   @Transactional
