@@ -43,9 +43,9 @@ export default function SettingsScreen() {
   useEffect(() => {
     const loadVoices = async () => {
       const voices = await ttsService.getAvailableVoices();
-      
+
       console.log('[Settings] Original voices:', voices.map(v => ({ id: v.id, name: v.name })));
-      
+
       setAvailableVoices(voices);
 
       // 저장된 음성이 없다면 첫 번째 음성을 기본값으로
@@ -54,7 +54,23 @@ export default function SettingsScreen() {
       }
     };
     loadVoices();
+
+    // 화면 unmount 시 TTS 샘플 정지
+    return () => {
+      console.log('[SettingsScreen] Cleanup - TTS 샘플 정지');
+      ttsService.stop();
+    };
   }, []);
+
+  // 화면 이탈 시 TTS 샘플 완전 정지 (네비게이션 감지)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', async () => {
+      console.log('[SettingsScreen] 화면 이탈 감지 - TTS 샘플 정지');
+      await ttsService.stop();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   // 각 설정별 핸들러 (Store 액션 호출 + TTS 서비스 적용)
   const handleRateChange = useCallback(async (rate: number) => {

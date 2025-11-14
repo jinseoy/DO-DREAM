@@ -1,7 +1,7 @@
 import Tts from 'react-native-tts';
 import { Section } from '../types/chapter';
 import { PlayMode } from '../types/playMode';
-import { Platform, AccessibilityInfo } from 'react-native';
+import { Platform } from 'react-native';
 
 export type TTSStatus = 'idle' | 'playing' | 'paused' | 'stopped';
 
@@ -59,8 +59,9 @@ class TTSService {
     default: 500,
   };
 
-  // TalkBack 안내가 먼저 나오도록 대기 시간(ms)
-  private srDelayMs = 2500;
+  // (TalkBack 대기를 TTS 내부에서 처리하지 않으므로,
+  //  필요 시 화면 레벨에서만 delay를 줄 것)
+  private srDelayMs = 0;
 
   // 오류 재시도 컨트롤
   private retryCount = 0;
@@ -112,9 +113,9 @@ class TTSService {
   private async initializeTtsEngine() {
     try {
       if (Platform.OS === 'android') {
-        // Android: 다른 오디오를 살짝 낮춰서 충돌 완화
+        // Android: Audio ducking 비활성화 - TTS와 TalkBack 볼륨 균형 개선
         // @ts-ignore
-        Tts.setDucking?.(true);
+        Tts.setDucking?.(false);
       }
 
       await Tts.getInitStatus();
@@ -161,15 +162,11 @@ class TTSService {
     console.log('[TTS] Initialized with options:', this.options);
   }
 
-  /** TalkBack 안내 대기 시간(ms) 조정 */
+  /** TalkBack 안내 대기 시간(ms) 조정 - 현재는 사용하지 않음 */
   public setScreenReaderLeadDelay(ms: number) {
     this.srDelayMs = Math.max(0, ms | 0);
   }
 
-  /**
-   * 앱 설정 스토어와 TTS 서비스의 상태를 동기화합니다.
-   * 앱 시작 시 hydrate 이후 호출되어야 합니다.
-   */
   async syncWithSettings(settings: SyncOptions): Promise<void> {
     console.log('[TTS] Syncing with app settings:', settings);
     this.options.rate = settings.rate;
@@ -241,14 +238,6 @@ class TTSService {
     if (this.currentSectionIndex >= this.sections.length) {
       this.status = 'stopped';
       return;
-    }
-
-    // TalkBack 켜져 있으면 버튼 설명 먼저 나오도록 대기
-    try {
-      const sr = await AccessibilityInfo.isScreenReaderEnabled();
-      if (sr) await this.delay(this.srDelayMs);
-    } catch {
-      // ignore
     }
 
     const currentSection = this.sections[this.currentSectionIndex];
@@ -475,9 +464,11 @@ class TTSService {
     });
   }
 
-  setVolume(volume: number): void {
-    this.options.volume = volume;
+  async setVolume(volume: number): Promise<void> {
     console.log('[TTS] Volume changed to:', volume);
+    await this.updateAndReplay(() => {
+      this.options.volume = volume;
+    });
   }
 
   setLanguage(language: string): void {
@@ -492,7 +483,7 @@ class TTSService {
     });
   }
 
-  /**
+    /**
    * 현재 TTS 설정으로 샘플 텍스트를 재생합니다.
    * 설정 화면 등에서 테스트용으로 사용됩니다.
    * @param text 재생할 텍스트
@@ -503,7 +494,6 @@ class TTSService {
       return;
     }
 
-    // speakSample이 완료될 때까지 기다리도록 Promise로 감쌉니다.
     return new Promise(async (resolve, reject) => {
       try {
         await this.stop();
@@ -581,33 +571,28 @@ class TTSService {
     return this.options;
   }
 
-  /**
-   * 목소리 이름을 사용자 친화적인 한국어로 변환 (통일된 형식)
-   */
   private getVoiceDisplayName(voiceId: string, voiceName: string, index: number): string {
     console.log(`[TTS] Processing voice: id=${voiceId}, name=${voiceName}`);
 
-    // 삼성 TTS 목소리 ID 패턴 처리 (SMTl = 여성, SMTm = 남성, SMTh = 고음)
     if (voiceId.includes('SMT')) {
       const match = voiceId.match(/SMT([lmh])(\d+)/);
       if (match) {
         const [, gender, num] = match;
-        const genderName = gender === 'l' ? '여성' : 
-                          gender === 'm' ? '남성' : 
-                          gender === 'h' ? '고음' : '목소리';
-        // 두 자리 숫자로 통일 (01, 02, 03...)
+        const genderName =
+          gender === 'l' ? '여성' :
+          gender === 'm' ? '남성' :
+          gender === 'h' ? '고음' : '목소리';
         const paddedNum = num.padStart(2, '0');
         return `${genderName} ${paddedNum}`;
       }
     }
 
-    // Google TTS 패턴 처리
     if (voiceId.includes('Google') || voiceName.includes('Google')) {
       const match = voiceId.match(/(female|male|woman|man)[\s-]?(\d*)/i);
       if (match) {
         const [, gender, num] = match;
-        const genderName = gender.toLowerCase().includes('f') || 
-                          gender.toLowerCase().includes('w') ? '여성' : '남성';
+        const genderName = gender.toLowerCase().includes('f') ||
+          gender.toLowerCase().includes('w') ? '여성' : '남성';
         if (num) {
           const paddedNum = num.padStart(2, '0');
           return `${genderName} ${paddedNum}`;
@@ -617,7 +602,6 @@ class TTSService {
       return `구글 ${String(index + 1).padStart(2, '0')}`;
     }
 
-    // 기타 목소리: 번호를 두 자리로 통일
     const paddedIndex = String(index + 1).padStart(2, '0');
     return `목소리 ${paddedIndex}`;
   }
@@ -633,7 +617,6 @@ class TTSService {
       console.log('[TTS] Available Korean voices:', koVoices.length);
       console.log('[TTS] Raw voice data:', koVoices.map((v) => ({ id: v.id, name: v.name })));
 
-      // 목소리 이름을 사용자 친화적으로 변환 (통일된 형식)
       const processedVoices = koVoices.map((v, index) => ({
         id: v.id,
         name: this.getVoiceDisplayName(v.id, v.name, index),
@@ -690,10 +673,17 @@ class TTSService {
     return this.status === 'playing';
   }
 
-  cleanup(): void {
+  async cleanup(): Promise<void> {
+    console.log('[TTS] Cleanup started');
+
     this.clearPauseAfterTimer();
     this.bumpSpeakToken();
-    Tts.stop();
+
+    try {
+      await Tts.stop();
+    } catch (error) {
+      console.warn('[TTS] Stop failed during cleanup:', error);
+    }
 
     Tts.removeAllListeners('tts-start');
     Tts.removeAllListeners('tts-finish');
@@ -704,7 +694,10 @@ class TTSService {
     this.status = 'idle';
     this.options = {};
     this.currentRepeatCount = 0;
-    console.log('[TTS] Cleaned up');
+    this.playMode = 'single';
+    this.retryCount = 0;
+
+    console.log('[TTS] Cleanup completed');
   }
 }
 
