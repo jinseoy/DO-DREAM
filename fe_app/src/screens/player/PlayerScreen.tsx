@@ -150,25 +150,29 @@ export default function PlayerScreen() {
   const initialPlayMode: PlayMode =
     savedPosition && !fromStart ? savedPosition.playMode : "single";
 
-  const { isPlaying, currentSectionIndex, playMode, actions: ttsActions } =
-    useTTSPlayer({
-      chapter,
-      initialSectionIndex,
-      initialPlayMode,
-      appSettings,
-      onCompletion: useCallback(() => {
-        setIsChapterCompleted(true);
-        saveProgressDataRef.current(true);
-        AccessibilityInfo.announceForAccessibility("챕터 학습을 완료했습니다.");
-      }, []),
-      onSectionChange: useCallback((newIndex: number) => {
-        setTimeout(
-          () => scrollViewRef.current?.scrollTo({ y: 0, animated: true }),
-          50
-        );
-        saveProgressDataRef.current(false, newIndex);
-      }, []),
-    });
+  const {
+    isPlaying,
+    currentSectionIndex,
+    playMode,
+    actions: ttsActions,
+  } = useTTSPlayer({
+    chapter,
+    initialSectionIndex,
+    initialPlayMode,
+    appSettings,
+    onCompletion: useCallback(() => {
+      setIsChapterCompleted(true);
+      saveProgressDataRef.current(true);
+      AccessibilityInfo.announceForAccessibility("챕터 학습을 완료했습니다.");
+    }, []),
+    onSectionChange: useCallback((newIndex: number) => {
+      setTimeout(
+        () => scrollViewRef.current?.scrollTo({ y: 0, animated: true }),
+        50
+      );
+      saveProgressDataRef.current(false, newIndex);
+    }, []),
+  });
   // --- 훅 사용 끝 ---
 
   // saveProgressData에서 최신 상태를 참조하기 위한 ref
@@ -178,11 +182,27 @@ export default function PlayerScreen() {
   }, [currentSectionIndex, playMode]);
 
   // 자동 재생 (연속 재생 모드일 때)
-  useEffect(() => {
-    if (playMode === "continuous") {
-      ttsActions.ensureAutoPlay(1000);
-    }
-  }, [playMode, ttsActions]);
+  // useEffect(() => {
+  //   if (playMode === "continuous") {
+  //     ttsActions.ensureAutoPlay(1000);
+  //   }
+  // }, [playMode, ttsActions]);
+
+  // 연속 재생 자동재생: "처음 진입"은 건너뛰고, 사용자가 나중에 연속 재생으로 바꿨을 때만 동작
+  // const isFirstPlayModeEffect = useRef(true);
+
+  // useEffect(() => {
+  //   // 첫 진입 때는 아무 것도 하지 않고 한 번만 스킵
+  //   if (isFirstPlayModeEffect.current) {
+  //     isFirstPlayModeEffect.current = false;
+  //     return;
+  //   }
+
+  //   // 사용자가 나중에 연속 재생 모드로 바꿨을 때만 자동재생
+  //   if (playMode === "continuous") {
+  //     ttsActions.ensureAutoPlay(500); // 필요하면 딜레이 조절 가능
+  //   }
+  // }, [playMode, ttsActions]);
 
   // 스크린리더 상태 추적
   useEffect(() => {
@@ -686,7 +706,9 @@ export default function PlayerScreen() {
             accessibilityLabel={isLastSection ? "학습 완료" : "다음 섹션"}
             accessibilityRole="button"
             accessibilityHint={
-              isLastSection ? "챕터 학습을 완료하고 퀴즈 화면으로 이동합니다" : ""
+              isLastSection
+                ? "챕터 학습을 완료하고 퀴즈 화면으로 이동합니다"
+                : ""
             }
           >
             <Text style={styles.controlButtonText}>

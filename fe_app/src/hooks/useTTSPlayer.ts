@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AccessibilityInfo } from "react-native";
 import ttsService from "../services/ttsService";
-import { Chapter, Section } from "../types/chapter";
+import { Chapter } from "../types/chapter";
 import { PlayMode } from "../types/playMode";
 import { AppSettings } from "../stores/appSettingsStore";
 import * as Haptics from "expo-haptics";
@@ -51,9 +51,20 @@ export function useTTSPlayer({
 
   // TTS 초기화 및 설정 동기화
   useEffect(() => {
-    if (!chapter) return;
+    // 챕터 또는 섹션이 없으면 초기화하지 않고 경고만 남김
+    if (!chapter || !chapter.sections || chapter.sections.length === 0) {
+      console.warn("[useTTSPlayer] No sections found for this chapter.");
+      return;
+    }
 
-    ttsService.initialize(chapter.sections, initialSectionIndex, {
+    // 저장된 섹션 인덱스가 범위를 벗어날 경우 방어
+    const maxIndex = chapter.sections.length - 1;
+    const safeInitialIndex = Math.min(initialSectionIndex, maxIndex);
+
+    // state도 안전한 인덱스로 맞춰주기
+    setCurrentSectionIndex(safeInitialIndex);
+
+    ttsService.initialize(chapter.sections, safeInitialIndex, {
       rate: appSettings.ttsRate,
       pitch: appSettings.ttsPitch,
       volume: appSettings.ttsVolume,
@@ -85,13 +96,12 @@ export function useTTSPlayer({
     return () => {
       ttsService.cleanup();
     };
-  }, [
-    chapter,
-    initialSectionIndex,
-    initialPlayMode,
-    onCompletion,
-    onSectionChange,
-  ]);
+  }, [chapter, initialSectionIndex, initialPlayMode, onCompletion, onSectionChange, appSettings.ttsRate, appSettings.ttsPitch, appSettings.ttsVolume, appSettings.ttsVoiceId]);
+
+  // 재생 가능한 섹션이 있는지 공통 체크
+  const hasPlayableSections = !!chapter &&
+    Array.isArray(chapter.sections) &&
+    chapter.sections.length > 0;
 
   // 재생 모드 변경 핸들러
   const changePlayMode = useCallback((newMode: PlayMode) => {
@@ -99,8 +109,13 @@ export function useTTSPlayer({
     ttsService.setPlayMode(newMode);
   }, []);
 
-  // 재생/일시정지 토글
+  // 재생/일시정지 토글 (완전 수동형 + 섹션 체크)
   const togglePlayPause = useCallback(async () => {
+    if (!hasPlayableSections) {
+      AccessibilityInfo.announceForAccessibility("재생할 내용이 없습니다.");
+      return;
+    }
+
     Haptics.selectionAsync();
     const speaking = await ttsService.isSpeaking();
     if (speaking) {
@@ -110,10 +125,17 @@ export function useTTSPlayer({
       await ttsService.play();
       // play() 호출 후 실제 재생까지 시간이 걸릴 수 있어, 폴링에 상태 업데이트를 맡김
     }
-  }, []);
+  }, [hasPlayableSections]);
 
   // 이전 섹션
   const playPrevious = useCallback(async () => {
+    if (!hasPlayableSections) {
+      AccessibilityInfo.announceForAccessibility(
+        "이전으로 이동할 수 있는 섹션이 없습니다."
+      );
+      return;
+    }
+
     if (currentSectionIndex > 0) {
       Haptics.selectionAsync();
       const wasPlaying = await ttsService.isSpeaking();
@@ -121,11 +143,20 @@ export function useTTSPlayer({
       if (wasPlaying) {
         await ttsService.play();
       }
+    } else {
+      AccessibilityInfo.announceForAccessibility("이전 섹션이 없습니다.");
     }
-  }, [currentSectionIndex]);
+  }, [hasPlayableSections, currentSectionIndex]);
 
   // 다음 섹션
   const playNext = useCallback(async () => {
+    if (!hasPlayableSections) {
+      AccessibilityInfo.announceForAccessibility(
+        "다음으로 이동할 수 있는 섹션이 없습니다."
+      );
+      return;
+    }
+
     if (chapter && currentSectionIndex < chapter.sections.length - 1) {
       Haptics.selectionAsync();
       const wasPlaying = await ttsService.isSpeaking();
@@ -133,26 +164,10 @@ export function useTTSPlayer({
       if (wasPlaying) {
         await ttsService.play();
       }
+    } else {
+      AccessibilityInfo.announceForAccessibility("마지막 섹션입니다.");
     }
-  }, [chapter, currentSectionIndex]);
-
-  // 자동 재생 로직 (스크린리더가 꺼져있을 때만)
-  const ensureAutoPlay = useCallback(async (delayMs: number) => {
-    const isScreenReaderEnabled =
-      await AccessibilityInfo.isScreenReaderEnabled();
-    if (isScreenReaderEnabled) return;
-
-    setTimeout(async () => {
-      try {
-        const speaking = await ttsService.isSpeaking();
-        if (!speaking) {
-          await ttsService.play();
-        }
-      } catch (error) {
-        console.error("[useTTSPlayer] Auto-play failed", error);
-      }
-    }, delayMs);
-  }, []);
+  }, [hasPlayableSections, chapter, currentSectionIndex]);
 
   // 외부에서 TTS를 제어해야 할 때 (예: 모달 열기)
   const pause = useCallback(async () => {
@@ -163,10 +178,15 @@ export function useTTSPlayer({
   }, []);
 
   const play = useCallback(async () => {
+    if (!hasPlayableSections) {
+      AccessibilityInfo.announceForAccessibility("재생할 내용이 없습니다.");
+      return;
+    }
+
     if (!(await ttsService.isSpeaking())) {
       await ttsService.play();
     }
-  }, []);
+  }, [hasPlayableSections]);
 
   // 설정 변경 시 TTS에 즉시 반영
   useEffect(() => {
@@ -196,7 +216,7 @@ export function useTTSPlayer({
       playPrevious,
       playNext,
       changePlayMode,
-      ensureAutoPlay,
+      // ensureAutoPlay 제거: 완전 수동형
       pause,
       play,
     },
