@@ -35,7 +35,7 @@ public class BookmarkService {
         Material material = materialRepository.findById(request.getMaterialId())
                 .orElseThrow(() -> new CustomException(ErrorCode.MATERIAL_NOT_FOUND));
 
-        Optional<Bookmark> existing = bookmarkRepository.findByUserAndMaterialAndSectionId(user, material, request.getSectionId());
+        Optional<Bookmark> existing = bookmarkRepository.findByUserAndMaterialAndTitleIdAndSTitleId(user, material, request.getTitleId(), request.getStitleId());
 
         if(existing.isPresent()){
             bookmarkRepository.delete(existing.get());
@@ -45,7 +45,8 @@ public class BookmarkService {
             Bookmark bookmark = Bookmark.builder()
                     .user(user)
                     .material(material)
-                    .sectionId(request.getSectionId())
+                    .titleId(request.getTitleId())
+                    .sTitleId(request.getStitleId())
                     .build();
 
             Bookmark saved = bookmarkRepository.save(bookmark);

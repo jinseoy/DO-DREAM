@@ -9,5 +9,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class BookmarkRequest {
     private Long materialId;
-    private String sectionId;
+    private String titleId;
+    private String stitleId;
 }

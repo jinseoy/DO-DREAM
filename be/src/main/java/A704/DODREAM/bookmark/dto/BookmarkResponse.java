@@ -13,7 +13,8 @@ import java.time.LocalDateTime;
 public class BookmarkResponse {
     private Long id;
     private Long materialId;
-    private String sectionId;
+    private String titleId;
+    private String stitleId;
     private boolean bookmarked;
     private LocalDateTime createdAt;
 
@@ -21,7 +22,8 @@ public class BookmarkResponse {
         return BookmarkResponse.builder()
                 .id(bookmark.getId())
                 .materialId(bookmark.getMaterial().getId())
-                .sectionId(bookmark.getSectionId())
+                .titleId(bookmark.getTitleId())
+                .stitleId(bookmark.getSTitleId())
                 .bookmarked(bookmarked)
                 .createdAt(bookmark.getCreatedAt())
                 .build();
