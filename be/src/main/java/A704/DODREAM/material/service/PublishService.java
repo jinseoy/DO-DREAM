@@ -117,7 +117,7 @@ public class PublishService {
     }
 
     private void addIds(Map<String, Object> jsonData) {
-        Map<String, Object> parsedData = (Map<String, Object>) jsonData.get("parsed_data");
+        Map<String, Object> parsedData = (Map<String, Object>) jsonData.get("parsedData");
         if(parsedData == null){
             return;
         }
