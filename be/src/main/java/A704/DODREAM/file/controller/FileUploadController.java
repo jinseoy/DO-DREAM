@@ -126,10 +126,13 @@ public class FileUploadController {
         }
     }
 
+    // ===== OCR 사용 안함: 주석처리 =====
+    /*
     /**
      * S3 업로드 완료 후 OCR 처리 시작 (새 플로우)
      * 클라이언트가 presigned URL로 S3에 업로드 완료 후 이 API를 호출
      */
+    /*
     @PostMapping("/{fileId}/process")
     public ResponseEntity<?> startOcrProcess(@PathVariable Long fileId) {
         try {
@@ -160,10 +163,13 @@ public class FileUploadController {
                     .body("Failed to start OCR process: " + e.getMessage());
         }
     }
+    */
 
+    /*
     /**
      * PDF 파일 업로드 및 OCR 처리 시작 (기존 플로우)
      */
+    /*
     @PostMapping("/upload")
     public ResponseEntity<?> uploadFile(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
@@ -232,6 +238,7 @@ public class FileUploadController {
     /**
      * OCR 결과 조회
      */
+    /*
     @GetMapping("/{fileId}/ocr-result")
     public ResponseEntity<?> getOcrResult(@PathVariable Long fileId) {
         try {
@@ -248,6 +255,7 @@ public class FileUploadController {
                     .body("Failed to get OCR result: " + e.getMessage());
         }
     }
+    */
 
     /**
      * 업로더의 파일 목록 조회
@@ -278,9 +286,11 @@ public class FileUploadController {
         }
     }
 
+    /*
     /**
      * OCR 상태만 조회
      */
+    /*
     @GetMapping("/{fileId}/status")
     public ResponseEntity<?> getOcrStatus(@PathVariable Long fileId) {
         try {
@@ -306,6 +316,7 @@ public class FileUploadController {
     /**
      * 파일의 전체 텍스트만 조회 (좌표 정보 제외)
      */
+    /*
     @GetMapping("/{fileId}/text")
     public ResponseEntity<?> getFullText(@PathVariable Long fileId) {
         try {
@@ -337,6 +348,7 @@ public class FileUploadController {
     /**
      * 문서 구조 조회 (감지된 제목/섹션 목록)
      */
+    /*
     @GetMapping("/{fileId}/structure")
     public ResponseEntity<?> getDocumentStructure(@PathVariable Long fileId) {
         try {
@@ -387,6 +399,7 @@ public class FileUploadController {
     /**
      * 특정 레벨의 섹션만 조회 (레벨 1 = 대단원, 2 = 중단원, 3 = 소단원)
      */
+    /*
     @GetMapping("/{fileId}/sections")
     public ResponseEntity<?> getSectionsByLevel(
             @PathVariable Long fileId,
@@ -431,6 +444,7 @@ public class FileUploadController {
     /**
      * 상태별 메시지 반환
      */
+    /*
     private String getStatusMessage(OcrStatus status) {
         return switch (status) {
             case PENDING -> "OCR processing is waiting to start";
@@ -443,6 +457,7 @@ public class FileUploadController {
     /**
      * UploadedFile을 OcrResultResponse로 변환
      */
+    /*
     private OcrResultResponse convertToOcrResultResponse(UploadedFile uploadedFile) {
         List<OcrResultResponse.PageResponse> pages = uploadedFile.getOcrPages().stream()
                 .map(page -> {
@@ -481,4 +496,5 @@ public class FileUploadController {
                 .pages(pages)
                 .build();
     }
+    */
 }
