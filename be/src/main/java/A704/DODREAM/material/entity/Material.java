@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -27,11 +28,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "materials", indexes = {
@@ -40,6 +36,7 @@ import lombok.NoArgsConstructor;
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
@@ -50,7 +47,7 @@ public class Material {
 	private Long id;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "teacher_id", nullable = true)  // 테스트를 위해 nullable 허용
+	@JoinColumn(name = "teacher_id", nullable = false)
 	private User teacher;
 
 	@Column(nullable = false, length = 200)
@@ -62,6 +59,9 @@ public class Material {
 	@Column(name = "file_url", nullable = false, length = 500)
 	private String fileUrl;
 
+    @Column(name = "json_s3_key")
+    private String jsonS3Key;
+
 	@Column(name = "file_size")
 	private Long fileSize;
 
@@ -71,15 +71,15 @@ public class Material {
 	@Column(name = "grade_level", length = 20)
 	private String gradeLevel;
 
-	@Enumerated(EnumType.STRING)
-	@Column(name = "content_type", length = 20)
-	@Builder.Default
-	private ContentType contentType = ContentType.TEXT;
-
-	@Enumerated(EnumType.STRING)
-	@Column(name = "processing_status", nullable = false, length = 20)
-	@Builder.Default
-	private ProcessingStatus processingStatus = ProcessingStatus.PENDING;
+//	@Enumerated(EnumType.STRING)
+//	@Column(name = "content_type", length = 20)
+//	@Builder.Default
+//	private ContentType contentType = ContentType.TEXT;
+//
+//	@Enumerated(EnumType.STRING)
+//	@Column(name = "processing_status", nullable = false, length = 20)
+//	@Builder.Default
+//	private ProcessingStatus processingStatus = ProcessingStatus.PENDING;
 
 	@Enumerated(EnumType.STRING)
 	@Column(length = 20)
@@ -93,9 +93,9 @@ public class Material {
 	@Column(name = "updated_at")
 	private LocalDateTime updatedAt;
 
-	@OneToMany(mappedBy = "material", cascade = CascadeType.ALL, orphanRemoval = true)
-	@Builder.Default
-	private List<MaterialContent> contents = new ArrayList<>();
+//	@OneToMany(mappedBy = "material", cascade = CascadeType.ALL, orphanRemoval = true)
+//	@Builder.Default
+//	private List<MaterialContent> contents = new ArrayList<>();
 
 	@OneToMany(mappedBy = "material", cascade = CascadeType.ALL, orphanRemoval = true)
 	@Builder.Default

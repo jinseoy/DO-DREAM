@@ -37,8 +37,10 @@ public enum ErrorCode {
     FORBIDDEN("AUTH_401", "권한이 없습니다."),
 
     // 파일 관련 (FILE)
+    FILE_NOT_FOUND("FILE_404", "파일을 찾을 수 없습니다."),
     FILE_UPLOAD_FAILED("FILE_500", "파일 업로드에 실패했습니다."),
     INVALID_FILE_EXTENSION("FILE_400", "잘못된 형식의 파일입니다."),
+    FILE_PARSING_FAILED("FILE_400", "파싱된 JSON이 없습니다."),
 
     //자료 관련 (MATERIAL)
     MATERIAL_NOT_FOUND("MATERIAL_404", "자료를 찾을 수 없습니다."),

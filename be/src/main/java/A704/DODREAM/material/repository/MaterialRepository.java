@@ -8,4 +8,6 @@ import java.util.Optional;
 
 public interface MaterialRepository extends JpaRepository<Material, Long> {
     Optional<Material> findByIdAndTeacherId(Long materialId, Long teacherId);
+
+    Optional<Material> findByJsonS3Key(String jsonS3Key);
 }
