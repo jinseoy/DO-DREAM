@@ -35,6 +35,7 @@ type Chapter = {
   title: string;
   content: string;
   type?: 'content' | 'quiz';
+  qa?: { question: string; answer: string }[];
 };
 
 type EditorProps = {
@@ -83,17 +84,17 @@ const ChapterBreak = HorizontalRule.extend({
 });
 
 type ConceptCheckResponse = {
-  conceptCheckCount: number;
-  data: Array<{
-    s_title: string;
-    contents: string;
-    ss_titles?: Array<{
-      ss_title?: string;
-      contents?: string;
-    }>;
-  }>;
   pdfId: number;
   filename: string;
+  conceptCheckCount: number;
+  data: Array<{
+    index: string;
+    index_title: string;
+    questions: Array<{
+      question: string;
+      answer: string;
+    }>;
+  }>;
 };
 
 export default function AdvancedEditor({
@@ -111,9 +112,13 @@ export default function AdvancedEditor({
   const [isSplitMode, setIsSplitMode] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [mergeMode, setMergeMode] = useState(false);
-  const [selectedChapters, setSelectedChapters] = useState<Set<string>>(new Set());
+  const [selectedChapters, setSelectedChapters] = useState<Set<string>>(
+    new Set(),
+  );
   const [draggedChapterId, setDraggedChapterId] = useState<string | null>(null);
-  const [dragOverChapterId, setDragOverChapterId] = useState<string | null>(null);
+  const [dragOverChapterId, setDragOverChapterId] = useState<string | null>(
+    null,
+  );
 
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [activeChapterId, setActiveChapterId] = useState<string>('');
@@ -158,7 +163,7 @@ export default function AdvancedEditor({
 
   useEffect(() => {
     if (!editor || !activeChapterId || chapters.length === 0) return;
-    
+
     const chapter = chapters.find((c) => c.id === activeChapterId);
     if (!chapter) return;
 
@@ -166,7 +171,7 @@ export default function AdvancedEditor({
     editor.commands.setContent(html);
   }, [editor, activeChapterId, chapters.length]);
 
-  // 🔥 에디터 업데이트 감지 + 분할선 자동 감지
+  // 에디터 업데이트 감지 + 분할선 자동 감지
   useEffect(() => {
     if (!editor) return;
 
@@ -179,8 +184,9 @@ export default function AdvancedEditor({
       );
       setHasUnsavedChanges(true);
 
-      // 🔥 분할선 존재 여부 확인
-      const hasChapterBreak = /<hr[^>]*data-chapter-break=["']true["'][^>]*>/gi.test(newContent);
+      // 분할선 존재 여부 확인
+      const hasChapterBreak =
+        /<hr[^>]*data-chapter-break=["']true["'][^>]*>/gi.test(newContent);
       if (!hasChapterBreak && isSplitMode) {
         setIsSplitMode(false);
       }
@@ -220,14 +226,18 @@ export default function AdvancedEditor({
     if (chapters.length === 1) {
       Swal.fire({
         icon: 'warning',
-        title: '최소 하나의 챕터가 필요합니다',
+        title: '최소 하나의 항목이 필요합니다',
+        text: '적어도 하나의 학습/퀴즈 항목은 남겨두어야 합니다',
         confirmButtonColor: '#192b55',
       });
       return;
     }
 
+    const target = chapters.find((c) => c.id === id);
+    const targetLabel = target?.type === 'quiz' ? '퀴즈' : '챕터';
+
     Swal.fire({
-      title: '챕터를 삭제하시겠습니까?',
+      title: `${targetLabel}를 삭제하시겠습니까?`,
       text: '이 작업은 되돌릴 수 없습니다',
       icon: 'warning',
       showCancelButton: true,
@@ -245,7 +255,7 @@ export default function AdvancedEditor({
         }
         Swal.fire({
           icon: 'success',
-          title: '챕터가 삭제되었습니다',
+          title: `${targetLabel}가 삭제되었습니다`,
           confirmButtonColor: '#192b55',
         });
       }
@@ -273,14 +283,20 @@ export default function AdvancedEditor({
     setEditingChapterId(null);
   };
 
-  // 🆕 드래그 앤 드롭 핸들러
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, chapterId: string) => {
+  // 드래그 앤 드롭 핸들러
+  const handleDragStart = (
+    e: React.DragEvent<HTMLDivElement>,
+    chapterId: string,
+  ) => {
     setDraggedChapterId(chapterId);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/html', chapterId);
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, chapterId: string) => {
+  const handleDragOver = (
+    e: React.DragEvent<HTMLDivElement>,
+    chapterId: string,
+  ) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setDragOverChapterId(chapterId);
@@ -290,7 +306,10 @@ export default function AdvancedEditor({
     setDragOverChapterId(null);
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetChapterId: string) => {
+  const handleDrop = (
+    e: React.DragEvent<HTMLDivElement>,
+    targetChapterId: string,
+  ) => {
     e.preventDefault();
     setDragOverChapterId(null);
 
@@ -359,10 +378,8 @@ export default function AdvancedEditor({
     };
 
     const baseIndex =
-      chapters.reduce(
-        (max, ch) => Math.max(max, parseInt(ch.id, 10) || 0),
-        0,
-      ) + 1;
+      chapters.reduce((max, ch) => Math.max(max, parseInt(ch.id, 10) || 0), 0) +
+      1;
 
     const first = parts[0];
     const rest = parts.slice(1);
@@ -409,7 +426,7 @@ export default function AdvancedEditor({
 
   const toggleChapterSelection = (id: string) => {
     if (!mergeMode) return;
-    
+
     const newSelection = new Set(selectedChapters);
     if (newSelection.has(id)) {
       newSelection.delete(id);
@@ -433,7 +450,9 @@ export default function AdvancedEditor({
       .filter((ch) => selectedChapters.has(ch.id))
       .sort((a, b) => parseInt(a.id) - parseInt(b.id));
 
-    const mergedContent = selected.map((ch) => ch.content).join('\n<hr class="ae-chapter-divider" />\n');
+    const mergedContent = selected
+      .map((ch) => ch.content)
+      .join('\n<hr class="ae-chapter-divider" />\n');
     const mergedTitle = selected.map((ch) => ch.title).join(' + ');
 
     Swal.fire({
@@ -454,7 +473,9 @@ export default function AdvancedEditor({
       cancelButtonText: '취소',
       reverseButtons: true,
       preConfirm: () => {
-        const titleInput = document.getElementById('mergedTitle') as HTMLInputElement;
+        const titleInput = document.getElementById(
+          'mergedTitle',
+        ) as HTMLInputElement;
         return titleInput?.value || mergedTitle;
       },
     }).then((result) => {
@@ -462,16 +483,25 @@ export default function AdvancedEditor({
         const newTitle = result.value;
         const firstId = selected[0].id;
 
+        // 선택한 챕터가 전부 quiz 타입이면 병합된 챕터도 quiz 유지
+        const mergedType: Chapter['type'] = selected.every(
+          (ch) => ch.type === 'quiz',
+        )
+          ? 'quiz'
+          : 'content';
+
         setChapters((prev) => {
           const unselected = prev.filter((ch) => !selectedChapters.has(ch.id));
           const merged: Chapter = {
             id: firstId,
             title: newTitle,
             content: mergedContent,
-            type: 'content',
+            type: mergedType,
           };
-          
-          return [...unselected, merged].sort((a, b) => parseInt(a.id) - parseInt(b.id));
+
+          return [...unselected, merged].sort(
+            (a, b) => parseInt(a.id) - parseInt(b.id),
+          );
         });
 
         setActiveChapterId(firstId);
@@ -506,7 +536,9 @@ export default function AdvancedEditor({
     });
 
     try {
-      const response = await fetch(`${API_BASE}/api/pdf/${pdfId}/concept-check`, {
+      const url = `${API_BASE}/api/pdf/${pdfId}/concept-check`;
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           accept: '*/*',
@@ -515,53 +547,91 @@ export default function AdvancedEditor({
       });
 
       if (!response.ok) {
+        await Swal.close();
+
+        // 500 에러 특별 처리
+        if (response.status === 500) {
+          Swal.fire({
+            icon: 'warning',
+            title: '문제 불러오기 기능 준비 중',
+            html: `
+            <div style="text-align: left; line-height: 1.7;">
+              <p style="margin-bottom: 12px;">
+                AI 생성 퀴즈 기능이 현재 준비 중입니다.
+              </p>
+              <p style="margin-bottom: 12px; padding: 12px; background: #f3f4f6; border-radius: 8px;">
+                💡 <strong>해결 방법:</strong><br/>
+                "<strong>직접 퀴즈 추가</strong>" 버튼으로 문제를 만들어보세요!
+              </p>
+              <div style="font-size: 13px; color: #666; margin-top: 12px;">
+                <strong>참고:</strong> 백엔드 팀에서 API 구조 업데이트 중입니다.
+              </div>
+            </div>
+          `,
+            confirmButtonColor: '#192b55',
+            confirmButtonText: '확인',
+          });
+          return;
+        }
+
         throw new Error('문제를 불러오지 못했습니다');
       }
 
       const data: ConceptCheckResponse = await response.json();
-      
       await Swal.close();
 
       if (!data.data || data.data.length === 0) {
         Swal.fire({
           icon: 'info',
-          title: '문제가 없습니다',
-          text: '이 자료에는 개념 체크 문제가 없습니다',
+          title: '생성된 문제가 없습니다',
+          html: `
+          <p>이 자료에는 아직 개념 체크 문제가 없습니다.</p>
+          <p style="margin-top: 10px; font-size: 14px; color: #666;">
+            "직접 퀴즈 추가" 버튼으로 문제를 추가할 수 있습니다.
+          </p>
+        `,
           confirmButtonColor: '#192b55',
         });
         return;
       }
 
-      const quizChapters: Chapter[] = data.data.map((quiz, idx) => {
-        const maxId = chapters.reduce(
-          (max, ch) => Math.max(max, parseInt(ch.id, 10) || 0),
-          0,
-        );
-        
-        let content = `<h2>${quiz.s_title}</h2>\n`;
-        content += `<div class="quiz-content">\n${quiz.contents.replace(/\n/g, '<br/>')}\n</div>\n`;
-        
-        if (quiz.ss_titles && quiz.ss_titles.length > 0) {
-          quiz.ss_titles.forEach((ss) => {
-            if (ss.ss_title) {
-              content += `<h3>${ss.ss_title}</h3>\n`;
-            }
-            if (ss.contents) {
-              content += `<p>${ss.contents.replace(/\n/g, '<br/>')}</p>\n`;
-            }
-          });
-        }
+      // 기존 코드...
+      const maxIdBase = chapters.reduce(
+        (max, ch) => Math.max(max, parseInt(ch.id, 10) || 0),
+        0,
+      );
+
+      const quizChapters: Chapter[] = data.data.map((block, idx) => {
+        const newId = String(maxIdBase + idx + 1);
+
+        let content = `<h2>${block.index}. ${block.index_title}</h2>\n`;
+        content += `<div class="quiz-content">\n<ol>\n`;
+
+        block.questions.forEach((q) => {
+          content += `
+    <li>
+      <p>${q.question}</p>
+      <p><strong>정답:</strong> ${q.answer}</p>
+    </li>
+  `;
+        });
+
+        content += `</ol>\n</div>\n`;
 
         return {
-          id: String(maxId + idx + 1),
-          title: `📝 ${quiz.s_title}`,
+          id: newId,
+          title: `📝 ${block.index}. ${block.index_title}`,
           content,
           type: 'quiz',
+          qa: block.questions.map((q) => ({
+            question: q.question,
+            answer: q.answer,
+          })),
         };
       });
 
       setChapters((prev) => [...prev, ...quizChapters]);
-      
+
       Swal.fire({
         icon: 'success',
         title: '문제를 불러왔습니다!',
@@ -570,6 +640,8 @@ export default function AdvancedEditor({
       });
     } catch (error) {
       await Swal.close();
+      console.error('❌ Quiz fetch error:', error);
+
       Swal.fire({
         icon: 'error',
         title: '문제 불러오기 실패',
@@ -583,30 +655,37 @@ export default function AdvancedEditor({
     Swal.fire({
       title: '퀴즈 생성',
       html: `
-        <div class="ae-quiz-form">
-          <div class="ae-quiz-field">
-            <label class="ae-quiz-label">퀴즈 제목</label>
-            <input 
-              id="quizTitle" 
-              class="ae-quiz-input" 
-              placeholder="예: 개념 Check, 심화 문제"
-            />
-          </div>
-          
-          <div class="ae-quiz-field">
-            <label class="ae-quiz-label">퀴즈 내용</label>
-            <textarea 
-              id="quizContent" 
-              class="ae-quiz-textarea" 
-              placeholder="퀴즈 내용을 입력하세요...
+      <div class="ae-quiz-form">
+        <div class="ae-quiz-field">
+          <label class="ae-quiz-label">퀴즈 제목</label>
+          <input 
+            id="quizTitle" 
+            class="ae-quiz-input" 
+            placeholder="예: 개념 Check, 서술형 문제"
+          />
+        </div>
+        
+        <div class="ae-quiz-field">
+          <label class="ae-quiz-label">질문</label>
+          <textarea 
+            id="quizQuestion" 
+            class="ae-quiz-textarea" 
+            placeholder="질문 내용을 입력하세요...
 
 예시:
-1. 사회·문화 현상의 특징 3가지를 서술하시오.
-2. 자연현상과 사회·문화 현상의 차이점을 설명하시오."
-            ></textarea>
-          </div>
+자연 현상과 사회·문화 현상을 구분하여 설명하시오."
+          ></textarea>
         </div>
-      `,
+
+        <div class="ae-quiz-field">
+          <label class="ae-quiz-label">정답</label>
+          <textarea 
+            id="quizAnswer" 
+            class="ae-quiz-textarea" 
+            placeholder="모범 답안을 입력하세요..."></textarea>
+        </div>
+      </div>
+    `,
       showCancelButton: true,
       confirmButtonText: '추가',
       cancelButtonText: '취소',
@@ -619,31 +698,56 @@ export default function AdvancedEditor({
       },
       buttonsStyling: false,
       preConfirm: () => {
-        const titleInput = document.getElementById('quizTitle') as HTMLInputElement;
-        const contentInput = document.getElementById('quizContent') as HTMLTextAreaElement;
-        
-        const title = titleInput?.value.trim();
-        const content = contentInput?.value.trim();
+        const titleInput = document.getElementById(
+          'quizTitle',
+        ) as HTMLInputElement;
+        const qInput = document.getElementById(
+          'quizQuestion',
+        ) as HTMLTextAreaElement;
+        const aInput = document.getElementById(
+          'quizAnswer',
+        ) as HTMLTextAreaElement;
 
-        if (!title || !content) {
-          Swal.showValidationMessage('제목과 내용을 모두 입력하세요');
+        const title = titleInput?.value.trim();
+        const question = qInput?.value.trim();
+        const answer = aInput?.value.trim();
+
+        if (!title || !question || !answer) {
+          Swal.showValidationMessage('제목, 질문, 정답을 모두 입력하세요');
           return null;
         }
 
-        return { title, content };
+        return { title, question, answer };
       },
     }).then((result) => {
       if (result.isConfirmed && result.value) {
+        const { title, question, answer } = result.value;
         const maxId = chapters.reduce(
           (max, ch) => Math.max(max, parseInt(ch.id, 10) || 0),
           0,
         );
 
+        const formattedQuestion = question.replace(/\n/g, '<br/>');
+        const formattedAnswer = answer.replace(/\n/g, '<br/>');
+
+        const content = `
+        <h2>${title}</h2>
+        <div class="quiz-content">
+          <ol>
+            <li>
+              <p>${formattedQuestion}</p>
+              <p><strong>정답:</strong> ${formattedAnswer}</p>
+            </li>
+          </ol>
+        </div>
+      `;
+
         const newQuiz: Chapter = {
           id: String(maxId + 1),
-          title: `${result.value.title}`,
-          content: `<h2>${result.value.title}</h2>\n<p>${result.value.content.replace(/\n/g, '<br/>')}</p>`,
+          title: `📝 ${title}`,
+          content,
           type: 'quiz',
+          qa: [{ question, answer }],
         };
 
         setChapters((prev) => [...prev, newQuiz]);
@@ -724,7 +828,7 @@ export default function AdvancedEditor({
     });
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!materialTitle.trim()) {
       Swal.fire({
         icon: 'warning',
@@ -734,15 +838,129 @@ export default function AdvancedEditor({
       return;
     }
 
-    Swal.fire({
-      icon: 'success',
-      title: '발행되었습니다!',
-      text: `"${materialTitle}" 발행 완료`,
-      confirmButtonColor: '#192b55',
-    }).then(() => {
+    if (!pdfId) {
+      Swal.fire({
+        icon: 'error',
+        title: 'PDF ID가 없습니다',
+        text: '발행을 진행할 수 없습니다',
+        confirmButtonColor: '#192b55',
+      });
+      return;
+    }
+
+    const payload = {
+      materialTitle,
+      labelColor: selectedLabel ? selectedLabel.toUpperCase() : null,
+      editedJson: {
+        chapters,
+      },
+    };
+
+    try {
+      await Swal.fire({
+        title: '발행 중입니다...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading(),
+      });
+
+      const res = await fetch(`${API_BASE}/api/documents/${pdfId}/publish`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          accept: 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+
+      // 응답 본문 먼저 읽기
+      const responseText = await res.text();
+      console.log('📤 Publish Response:', {
+        status: res.status,
+        statusText: res.statusText,
+        body: responseText,
+      });
+
+      await Swal.close();
+
+      if (!res.ok) {
+        // 403 에러 특별 처리
+        if (res.status === 403) {
+          let errorMessage = '이 자료를 수정할 권한이 없습니다.';
+
+          try {
+            const errorData = JSON.parse(responseText);
+            if (errorData.message) {
+              errorMessage = errorData.message;
+            }
+          } catch {
+            // JSON 파싱 실패 시 기본 메시지 사용
+          }
+
+          Swal.fire({
+            icon: 'error',
+            title: '권한 없음',
+            html: `
+            <div style="text-align: left; line-height: 1.7;">
+              <p style="margin-bottom: 12px;">
+                ${errorMessage}
+              </p>
+              <div style="margin-top: 15px; padding: 12px; background: #f3f4f6; border-radius: 8px; font-size: 14px;">
+                <strong>가능한 원인:</strong>
+                <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+                  <li>다른 사용자의 자료입니다</li>
+                  <li>세션이 만료되었습니다</li>
+                  <li>읽기 전용 자료입니다</li>
+                </ul>
+              </div>
+              <p style="margin-top: 15px; font-size: 13px; color: #666;">
+                💡 <strong>해결 방법:</strong> 다시 로그인하거나 자신의 자료를 편집해보세요.
+              </p>
+            </div>
+          `,
+            confirmButtonColor: '#192b55',
+            confirmButtonText: '확인',
+          });
+          return;
+        }
+
+        // 500 에러
+        if (res.status === 500) {
+          Swal.fire({
+            icon: 'error',
+            title: '서버 오류',
+            text: '서버에서 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+            confirmButtonColor: '#192b55',
+          });
+          return;
+        }
+
+        // 기타 에러
+        throw new Error(responseText || '서버에서 오류가 발생했습니다');
+      }
+
+      // 성공
+      await Swal.fire({
+        icon: 'success',
+        title: '발행되었습니다!',
+        text: `"${materialTitle}" 발행 완료`,
+        confirmButtonColor: '#192b55',
+      });
+
       setHasUnsavedChanges(false);
       onPublish(materialTitle, chapters, selectedLabel);
-    });
+    } catch (error) {
+      await Swal.close();
+      console.error('❌ Publish error:', error);
+
+      Swal.fire({
+        icon: 'error',
+        title: '발행 실패',
+        text: error instanceof Error ? error.message : '다시 시도해주세요',
+        confirmButtonColor: '#192b55',
+      });
+    }
   };
 
   const handleBackClick = () => {
@@ -769,14 +987,16 @@ export default function AdvancedEditor({
 
   if (chapters.length === 0 || !activeChapterId) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        fontSize: '18px',
-        color: '#192b55'
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          fontSize: '18px',
+          color: '#192b55',
+        }}
+      >
         에디터 초기화 중...
       </div>
     );
@@ -848,14 +1068,15 @@ export default function AdvancedEditor({
         </div>
       </header>
 
-      {/* 🆕 새로운 레이아웃 */}
       <div className="ae-layout">
-        {/* 🆕 오른쪽 챕터 사이드바 */}
+        {/* 오른쪽 챕터 사이드바 */}
         <aside className="ae-chapter-sidebar">
           <div className="ae-sidebar-header">
             <div className="ae-sidebar-title-wrapper">
               <h3>챕터 목록</h3>
-              {!mergeMode && <span className="ae-sidebar-hint">드래그하여 순서 변경</span>}
+              {!mergeMode && (
+                <span className="ae-sidebar-hint">드래그하여 순서 변경</span>
+              )}
             </div>
             <button
               className="ae-sidebar-add-btn"
@@ -865,15 +1086,18 @@ export default function AdvancedEditor({
               <Plus size={16} />
             </button>
           </div>
+
           <div className="ae-chapter-list">
             {chapters.map((ch) => (
               <div
                 key={ch.id}
-                className={`ae-chapter-item ${activeChapterId === ch.id ? 'active' : ''} ${
-                  ch.type === 'quiz' ? 'quiz-item' : ''
-                } ${mergeMode && selectedChapters.has(ch.id) ? 'selected' : ''} ${
-                  draggedChapterId === ch.id ? 'dragging' : ''
-                } ${dragOverChapterId === ch.id ? 'drag-over' : ''}`}
+                className={`ae-chapter-item ${
+                  activeChapterId === ch.id ? 'active' : ''
+                } ${ch.type === 'quiz' ? 'quiz-item' : ''} ${
+                  mergeMode && selectedChapters.has(ch.id) ? 'selected' : ''
+                } ${draggedChapterId === ch.id ? 'dragging' : ''} ${
+                  dragOverChapterId === ch.id ? 'drag-over' : ''
+                }`}
                 draggable={!mergeMode && !editingChapterId}
                 onDragStart={(e) => handleDragStart(e, ch.id)}
                 onDragOver={(e) => handleDragOver(e, ch.id)}
@@ -940,14 +1164,17 @@ export default function AdvancedEditor({
           </div>
         </aside>
 
+        {/* 메인 영역 */}
         <div className="ae-main">
-          {/* 🔥 개선된 툴바 */}
+          {/* 툴바 */}
           <div className="ae-toolbar-enhanced">
             <div className="ae-toolbar-section">
               <button
                 onClick={insertChapterBreak}
                 disabled={!editor}
-                className={`ae-tool-btn-new split ${isSplitMode ? 'active' : ''}`}
+                className={`ae-tool-btn-new split ${
+                  isSplitMode ? 'active' : ''
+                }`}
                 title="분할선 추가"
               >
                 <Scissors size={18} />
@@ -971,10 +1198,10 @@ export default function AdvancedEditor({
               <button
                 onClick={toggleMergeMode}
                 className={`ae-tool-btn-new merge ${mergeMode ? 'active' : ''}`}
-                title="챕터 병합"
+                title="항목 병합 모드"
               >
                 <Merge size={18} />
-                <span>{mergeMode ? '병합 취소' : '챕터 병합'}</span>
+                <span>{mergeMode ? '병합 모드 종료' : '항목 병합 모드'}</span>
               </button>
               {mergeMode && (
                 <button
@@ -998,7 +1225,7 @@ export default function AdvancedEditor({
                   title="API에서 문제 불러오기"
                 >
                   <Download size={18} />
-                  <span>AI 생성 퀴즈 만들기</span>
+                  <span>퀴즈 뽑기</span>
                 </button>
               )}
               <button
@@ -1012,11 +1239,13 @@ export default function AdvancedEditor({
             </div>
           </div>
 
+          {/* 안내 배너들 */}
           {isSplitMode && !mergeMode && (
             <div className="ae-split-hint">
               <strong>✂️ 분할 모드 : </strong>
               <span>
-                분할선을 추가한 후 "분할 실행" 버튼을 클릭하면 챕터를 나눌 수 있습니다
+                분할선을 추가한 후 "분할하기" 버튼을 클릭하면 챕터를 나눌 수
+                있습니다
               </span>
             </div>
           )}
@@ -1025,12 +1254,18 @@ export default function AdvancedEditor({
             <div className="ae-merge-hint">
               <strong>🔗 병합 모드 : </strong>
               <span>
-                병합할 챕터를 2개 이상 선택한 후 "병합하기" 버튼을 클릭하세요
+                병합할 항목(학습/문제)을 2개 이상 선택한 후 "병합하기" 버튼을
+                클릭하세요
               </span>
             </div>
           )}
 
-          <div className={`ae-editor-wrapper ${activeChapter?.type === 'quiz' ? 'quiz-editor' : ''}`}>
+          {/* 에디터 영역 */}
+          <div
+            className={`ae-editor-wrapper ${
+              activeChapter?.type === 'quiz' ? 'quiz-editor' : ''
+            }`}
+          >
             {activeChapter?.type === 'quiz' && (
               <div className="quiz-badge">
                 <FileQuestion size={16} />

@@ -915,6 +915,23 @@
   color: #374151 !important;
 }
 
+.ae-root.dark .ae-chapter-item.quiz-item {
+  background: rgba(139, 92, 246, 0.18);
+  border-color: rgba(139, 92, 246, 0.7);
+  color: #e5e7ff;
+}
+
+.ae-root.dark .ae-chapter-item.quiz-item:hover {
+  background: rgba(139, 92, 246, 0.32);
+}
+
+.ae-root.dark .ae-chapter-item.quiz-item.active {
+  background: #8b5cf6;
+  border-color: #a855f7;
+  color: #ffffff;
+}
+
+
 .swal2-validation-message {
   background: #fef2f2 !important;
   color: #dc2626 !important;
