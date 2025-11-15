@@ -294,7 +294,7 @@ export default function QuizResultScreen() {
       {/* 상단 오른쪽 음성 명령 버튼 */}
       <View style={styles.header}>
         <View style={{ flex: 1 }} />
-        <VoiceCommandButton accessibilityHint="두 번 탭한 후 다시 풀기, 서재로, 맞은 문제 펼치기, 맞은 문제 접기, 뒤로 가기와 같은 명령을 말씀하세요." />
+        <VoiceCommandButton accessibilityHint="두 번 탭한 후 다시 풀기, 서재로, 맞은 문제 펼치기, 맞은 문제 접기와 같은 명령을 말씀하세요." />
       </View>
 
       <ScrollView
