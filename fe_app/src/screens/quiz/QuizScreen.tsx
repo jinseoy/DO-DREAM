@@ -17,6 +17,7 @@ import {
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
 import { TriggerContext } from "../../triggers/TriggerContext";
+import VoiceCommandButton from "../../components/VoiceCommandButton";
 
 interface Answer {
   questionId: number;
@@ -34,7 +35,12 @@ export default function QuizScreen() {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [isTalkBackEnabled, setIsTalkBackEnabled] = useState<boolean>(false);
 
-  const { setMode, registerPlayPause } = useContext(TriggerContext);
+  const {
+    setMode,
+    registerPlayPause,
+    setCurrentScreenId,
+    registerVoiceHandlers,
+  } = useContext(TriggerContext);
 
   const questionTextRef = useRef<Text>(null);
 
@@ -79,21 +85,6 @@ export default function QuizScreen() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedOptionId, currentQuestionIndex]);
-
-  useEffect(() => {
-    readQuestionAndOptions();
-
-    if (isTalkBackEnabled) {
-      setTimeout(() => {
-        if (questionTextRef.current) {
-          const reactTag = findNodeHandle(questionTextRef.current);
-          if (reactTag) {
-            AccessibilityInfo.setAccessibilityFocus(reactTag);
-          }
-        }
-      }, 500);
-    }
-  }, [currentQuestionIndex, isTalkBackEnabled]);
 
   const readQuestionAndOptions = async () => {
     if (isTalkBackEnabled) {
@@ -192,6 +183,21 @@ export default function QuizScreen() {
     }
   };
 
+  useEffect(() => {
+    readQuestionAndOptions();
+
+    if (isTalkBackEnabled) {
+      setTimeout(() => {
+        if (questionTextRef.current) {
+          const reactTag = findNodeHandle(questionTextRef.current);
+          if (reactTag) {
+            AccessibilityInfo.setAccessibilityFocus(reactTag);
+          }
+        }
+      }, 500);
+    }
+  }, [currentQuestionIndex, isTalkBackEnabled]);
+
   const handleGoBack = () => {
     Speech.stop();
     navigation.goBack();
@@ -201,7 +207,6 @@ export default function QuizScreen() {
     setSelectedOptionId(optionId);
     Haptics.selectionAsync();
 
-    // TalkBack OFF일 때만 음성 안내
     if (!isTalkBackEnabled) {
       const announcement = `${optionNumber}번 선택됨`;
       Speech.speak(announcement, {
@@ -210,7 +215,6 @@ export default function QuizScreen() {
         rate: 1.2,
       });
     }
-    // TalkBack ON일 때는 아무 음성도 내지 않음
   };
 
   const handleNext = () => {
@@ -293,18 +297,166 @@ export default function QuizScreen() {
     }
   };
 
+  const handleQuizVoiceRaw = (spoken: string) => {
+    const raw = (spoken || "").trim().toLowerCase();
+    if (!raw) return;
+
+    const noSpace = raw.replace(/\s+/g, "");
+    console.log("[VoiceCommands][Quiz] rawText:", raw);
+
+    if (
+      noSpace.includes("뒤로가기") ||
+      noSpace.includes("뒤로가") ||
+      noSpace.includes("이전화면") ||
+      noSpace.includes("이전화면으로")
+    ) {
+      handleGoBack();
+      return;
+    }
+
+    if (
+      noSpace.includes("다시읽어") ||
+      noSpace.includes("다시읽어줘") ||
+      noSpace.includes("문제다시") ||
+      noSpace.includes("문제읽어줘") ||
+      noSpace.includes("다시들려줘")
+    ) {
+      readQuestionAndOptions();
+      return;
+    }
+
+    if (
+      noSpace.includes("다음문제") ||
+      noSpace.includes("다음문제로") ||
+      noSpace.includes("다음문제요") ||
+      noSpace.includes("다음") ||
+      noSpace.includes("넘어가") ||
+      noSpace.includes("넘어가줘")
+    ) {
+      handleNext();
+      return;
+    }
+
+    if (
+      noSpace.includes("채점") ||
+      noSpace.includes("결과보기") ||
+      noSpace.includes("결과확인") ||
+      noSpace.includes("정답확인")
+    ) {
+      handleNext();
+      return;
+    }
+
+    if (
+      noSpace.includes("이전문제") ||
+      noSpace.includes("앞문제") ||
+      noSpace.includes("전문제") ||
+      noSpace.includes("이전으로") ||
+      noSpace.includes("이전")
+    ) {
+      handlePrevious();
+      return;
+    }
+
+    const hanToNum: Record<string, number> = {
+      일: 1,
+      한: 1,
+      이: 2,
+      삼: 3,
+      사: 4,
+      오: 5,
+      육: 6,
+      칠: 7,
+      팔: 8,
+      구: 9,
+    };
+
+    let targetOptionIndex: number | null = null;
+
+    const numMatch = noSpace.match(/([0-9]+)/);
+    if (numMatch) {
+      const n = parseInt(numMatch[1], 10);
+      if (!isNaN(n) && n >= 1 && n <= currentQuestion.options.length) {
+        targetOptionIndex = n - 1;
+      }
+    }
+
+    if (targetOptionIndex === null) {
+      (Object.keys(hanToNum) as (keyof typeof hanToNum)[]).forEach((ch) => {
+        if (targetOptionIndex !== null) return;
+        if (
+          noSpace.includes(ch + "번보기") ||
+          noSpace.includes(ch + "번선택") ||
+          noSpace.includes(ch + "번답") ||
+          noSpace.includes(ch + "번") ||
+          noSpace.includes(ch + "번째보기") ||
+          noSpace.includes(ch + "번째")
+        ) {
+          const n = hanToNum[ch];
+          if (n >= 1 && n <= currentQuestion.options.length) {
+            targetOptionIndex = n - 1;
+          }
+        }
+      });
+    }
+
+    if (targetOptionIndex !== null) {
+      const option = currentQuestion.options[targetOptionIndex];
+      handleOptionPress(option.id, targetOptionIndex + 1);
+      return;
+    }
+
+    console.log("[VoiceCommands][Quiz] 처리할 수 없는 명령:", spoken);
+    AccessibilityInfo.announceForAccessibility(
+      "이 화면에서 사용할 수 없는 음성 명령입니다. 1번, 2번처럼 보기 번호를 말하거나, 다음 문제, 이전 문제, 문제 다시, 채점하기, 뒤로 가기처럼 말해 주세요."
+    );
+  };
+
+  useEffect(() => {
+    setCurrentScreenId("Quiz");
+
+    registerVoiceHandlers("Quiz", {
+      next: handleNext,
+      prev: handlePrevious,
+      goBack: handleGoBack,
+      rawText: handleQuizVoiceRaw,
+    });
+
+    return () => {
+      registerVoiceHandlers("Quiz", {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const msg =
+      "퀴즈 화면입니다. 상단의 음성 명령 버튼을 두 번 탭한 후, 1번, 2번처럼 보기 번호를 말하거나, 다음 문제, 이전 문제, 문제 다시, 채점하기, 뒤로 가기라고 말하면 해당 기능이 실행됩니다.";
+    const timer = setTimeout(() => {
+      AccessibilityInfo.announceForAccessibility(msg);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={handleGoBack}
-          accessible={true}
-          accessibilityLabel="뒤로가기"
-          accessibilityRole="button"
-          style={styles.backButton}
-        >
-          <Text style={styles.backButtonText}>← 뒤로</Text>
-        </TouchableOpacity>
+        <View style={styles.headerTopRow}>
+          <TouchableOpacity
+            onPress={handleGoBack}
+            accessible={true}
+            accessibilityLabel="뒤로가기"
+            accessibilityRole="button"
+            accessibilityHint="이전 화면으로 돌아갑니다"
+            style={styles.backButton}
+          >
+            <Text style={styles.backButtonText}>← 뒤로</Text>
+          </TouchableOpacity>
+
+          <VoiceCommandButton
+            accessibilityHint="두 번 탭한 후, 1번, 2번처럼 보기 번호를 말하거나, 다음 문제, 이전 문제, 문제 다시, 채점하기, 뒤로 가기와 같은 명령을 말씀하세요"
+            onBeforeListen={() => Speech.stop()}
+          />
+        </View>
 
         <View style={styles.headerInfo}>
           <Text style={styles.quizTitle}>{quiz.title}</Text>
@@ -341,7 +493,6 @@ export default function QuizScreen() {
           </Text>
         </View>
 
-        {/* 선택지 */}
         <View style={styles.optionsSection} accessible={false}>
           {currentQuestion.options.map((option, index) => {
             const isSelected = selectedOptionId === option.id;
@@ -354,7 +505,6 @@ export default function QuizScreen() {
               textStyle.push(styles.optionTextSelected);
             }
 
-            // accessibilityLabel에 "선택됨" 포함하지 않음 (TalkBack이 자동으로 읽음)
             const accessibilityLabel = `${index + 1}번, ${option.optionText}`;
 
             return (
@@ -366,9 +516,7 @@ export default function QuizScreen() {
                 accessibilityLabel={accessibilityLabel}
                 accessibilityRole="button"
                 accessibilityHint=""
-                // accessibilityState를 사용하면 TalkBack이 자동으로 "선택됨" 추가
                 accessibilityState={{ selected: isSelected }}
-                // LiveRegion 제거로 상태 변경 알림 비활성화
                 accessibilityLiveRegion="none"
               >
                 <View
@@ -455,6 +603,11 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     borderBottomWidth: 2,
     borderBottomColor: "#e0e0e0",
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   backButton: {
     paddingVertical: 8,
