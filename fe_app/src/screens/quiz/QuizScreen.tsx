@@ -441,16 +441,14 @@ export default function QuizScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={[styles.header, { paddingHorizontal: 24 }]}>
-        <View style={commonStyles.headerContainer}>
-          <BackButton onPress={handleGoBack} style={commonStyles.headerBackButton} />
+      <View style={[commonStyles.headerContainer, styles.header]}>
+        <BackButton onPress={handleGoBack} style={commonStyles.headerBackButton} />
 
-          <VoiceCommandButton
-            style={commonStyles.headerVoiceButton}
-            accessibilityHint="두 번 탭한 후, 1번, 2번처럼 보기 번호를 말하거나, 다음 문제, 이전 문제, 문제 다시, 채점하기, 뒤로 가기와 같은 명령을 말씀하세요"
-            onBeforeListen={() => Speech.stop()}
-          />
-        </View>
+        <VoiceCommandButton
+          style={commonStyles.headerVoiceButton}
+          accessibilityHint="두 번 탭한 후, 1번, 2번처럼 보기 번호를 말하거나, 다음 문제, 이전 문제, 문제 다시, 채점하기, 뒤로 가기와 같은 명령을 말씀하세요"
+          onBeforeListen={() => Speech.stop()}
+        />
 
         <View style={styles.headerInfo}>
           <Text style={styles.quizTitle}>{quiz.title}</Text>
@@ -594,10 +592,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "column",
     alignItems: "stretch",
-    paddingTop: 12,
     paddingBottom: 20,
-    borderBottomWidth: 2,
-    borderBottomColor: "#e0e0e0",
   },
   headerInfo: {
     marginTop: 16,
