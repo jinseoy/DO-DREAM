@@ -57,16 +57,49 @@ export default function SettingsScreen() {
 
       console.log(
         "[Settings] Original voices:",
-        voices.map((v) => ({ id: v.id, name: v.name }))
+        voices.map((v) => ({
+          id: v.id,
+          name: v.name,
+          lang: v.language,
+          q: v.quality,
+        }))
       );
 
-      setAvailableVoices(voices);
+      // 1) 한국어 위주로 필터링 (없으면 전체 사용)
+      let koVoices = voices.filter(
+        (v) =>
+          v.language?.toLowerCase().startsWith("ko") ||
+          v.language?.toLowerCase().includes("ko-kr")
+      );
+
+      if (koVoices.length === 0) {
+        koVoices = [...voices];
+      }
+
+      // 2) 품질 높은 순으로 정렬
+      koVoices.sort((a, b) => (b.quality ?? 0) - (a.quality ?? 0));
+
+      // 3) 학습용에 어울리는 한글 이름으로 다시 라벨링
+      const friendlyNames = [
+        "집중 잘 되는 기본 목소리",
+        "조용하고 차분한 목소리",
+        "또렷한 선생님 목소리",
+        "부드러운 설명용 목소리",
+      ];
+
+      const renamed = koVoices.slice(0, 4).map((v, idx) => ({
+        ...v,
+        name: friendlyNames[idx] ?? `공부용 목소리 ${idx + 1}`,
+      }));
+
+      setAvailableVoices(renamed);
 
       // 저장된 음성이 없다면 첫 번째 음성을 기본값으로
-      if (!settings.ttsVoiceId && voices.length > 0) {
-        handleVoiceChange(voices[0].id);
+      if (!settings.ttsVoiceId && renamed.length > 0) {
+        handleVoiceChange(renamed[0].id);
       }
     };
+
     loadVoices();
 
     // 화면 unmount 시 TTS 샘플 정지
@@ -405,8 +438,52 @@ export default function SettingsScreen() {
         return;
       }
 
-      // 2) 재생 속도 (빠르게 / 느리게 / 기본)
+      // 2) 재생 속도 (빠르게 / 느리게 / 기본 / 두 배 / 최고 / 최저)
       if (nospace.includes("속도")) {
+        // 두 배 / 2배
+        if (
+          nospace.includes("두배") ||
+          nospace.includes("2배") ||
+          nospace.includes("두배속") ||
+          nospace.includes("2배속")
+        ) {
+          handleRateChange(2.0);
+          return;
+        }
+
+        // 반 배속 / 0.5배
+        if (
+          nospace.includes("반배") ||
+          nospace.includes("0.5배") ||
+          nospace.includes("0점5배") ||
+          nospace.includes("영점오배")
+        ) {
+          handleRateChange(0.5);
+          return;
+        }
+
+        // 최고/최대 속도
+        if (
+          nospace.includes("최고") ||
+          nospace.includes("최대로") ||
+          nospace.includes("최대속도") ||
+          nospace.includes("가장빠")
+        ) {
+          handleRateChange(2.0);
+          return;
+        }
+
+        // 최저/가장 느리게
+        if (
+          nospace.includes("최저") ||
+          nospace.includes("최소속도") ||
+          nospace.includes("가장느리")
+        ) {
+          handleRateChange(0.5);
+          return;
+        }
+
+        // 상대적 조절 (조금 빠르게/느리게)
         if (
           nospace.includes("빠르") ||
           nospace.includes("빨리") ||
@@ -429,22 +506,48 @@ export default function SettingsScreen() {
             Number((settings.ttsRate - 0.1).toFixed(2))
           );
           handleRateChange(next);
-        } else if (nospace.includes("기본") || nospace.includes("처음")) {
+        } else if (
+          nospace.includes("기본") ||
+          nospace.includes("처음") ||
+          nospace.includes("한배")
+        ) {
           handleRateChange(1.0);
         } else {
           AccessibilityInfo.announceForAccessibility(
-            "재생 속도는 빠르게, 느리게, 기본 속도로 말해 주세요."
+            "재생 속도는 두 배, 반 배속, 최고 속도, 최저 속도, 빠르게, 느리게, 기본 속도처럼 말해 주세요."
           );
         }
         return;
       }
 
-      // 3) 높낮이 / 톤
+      // 3) 높낮이 / 톤 / 목소리 높이
       if (
         nospace.includes("높낮이") ||
         nospace.includes("톤") ||
-        nospace.includes("음높이")
+        nospace.includes("음높이") ||
+        nospace.includes("목소리높이")
       ) {
+        // 최고 톤
+        if (
+          nospace.includes("최고") ||
+          nospace.includes("최대로") ||
+          nospace.includes("최대") ||
+          nospace.includes("가장높")
+        ) {
+          handlePitchChange(2.0);
+          return;
+        }
+
+        // 최저 톤
+        if (
+          nospace.includes("최저") ||
+          nospace.includes("최소") ||
+          nospace.includes("가장낮")
+        ) {
+          handlePitchChange(0.5);
+          return;
+        }
+
         if (
           nospace.includes("높게") ||
           nospace.includes("올려") ||
@@ -469,7 +572,7 @@ export default function SettingsScreen() {
           handlePitchChange(1.0);
         } else {
           AccessibilityInfo.announceForAccessibility(
-            "높낮이는 높게, 낮게, 기본으로 말해 주세요."
+            "목소리 높이는 높게, 낮게, 최고, 최저, 기본처럼 말해 주세요."
           );
         }
         return;
@@ -481,6 +584,29 @@ export default function SettingsScreen() {
         nospace.includes("소리") ||
         nospace.includes("음량")
       ) {
+        // 최대/최고 볼륨
+        if (
+          nospace.includes("최대") ||
+          nospace.includes("최대로") ||
+          nospace.includes("최고") ||
+          nospace.includes("가장크게")
+        ) {
+          handleVolumeChange(1.0);
+          return;
+        }
+
+        // 최소/무음
+        if (
+          nospace.includes("최소") ||
+          nospace.includes("최저") ||
+          nospace.includes("무음") ||
+          nospace.includes("묵음") ||
+          nospace.includes("가장작")
+        ) {
+          handleVolumeChange(0.0);
+          return;
+        }
+
         if (
           nospace.includes("크게") ||
           nospace.includes("올려") ||
@@ -506,7 +632,7 @@ export default function SettingsScreen() {
           handleVolumeChange(1.0);
         } else {
           AccessibilityInfo.announceForAccessibility(
-            "볼륨은 크게, 작게, 기본으로 말해 주세요."
+            "볼륨은 크게, 작게, 최고, 최저, 기본처럼 말해 주세요."
           );
         }
         return;
