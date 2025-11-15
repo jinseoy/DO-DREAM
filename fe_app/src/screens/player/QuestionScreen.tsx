@@ -1,4 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useContext,
+  useCallback,
+} from "react";
 import {
   View,
   Text,
@@ -18,6 +24,8 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import type { QuestionScreenNavigationProp } from "../../navigation/navigationTypes";
 import * as Haptics from "expo-haptics";
 import { asrService } from "../../services/asrService";
+import { TriggerContext } from "../../triggers/TriggerContext";
+import VoiceCommandButton from "../../components/VoiceCommandButton";
 
 type MsgType = "user" | "bot";
 interface Message {
@@ -34,18 +42,21 @@ export default function QuestionScreen() {
   const route = useRoute<any>();
   const { autoStartASR } = (route?.params as RouteParams) || {};
 
+  const { setCurrentScreenId, registerVoiceHandlers } =
+    useContext(TriggerContext);
+
   // 채팅 데이터
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
 
-  // ASR 상태
+  // ASR 상태 (로컬 질문용)
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState(""); // 실시간(중간) 텍스트
   const offRef = useRef<null | (() => void)>(null);
 
-  // 🔧 중복 확정 방지용
-  const lastCommittedRef = useRef<string>("");      // 마지막으로 말풍선에 올린 텍스트
-  const lastFinalAtRef = useRef<number>(0);         // 마지막 확정 시간 (ms)
+  // 명령 중복 확정 방지용
+  const lastCommittedRef = useRef<string>(""); // 마지막으로 말풍선에 올린 텍스트
+  const lastFinalAtRef = useRef<number>(0); // 마지막 확정 시간 (ms)
 
   // 발화 종료(침묵) 감지
   const SILENCE_TIMEOUT_MS = 1400;
@@ -53,7 +64,7 @@ export default function QuestionScreen() {
   const lastHeardAtRef = useRef<number>(0);
 
   // 🔧 TalkBack 안내음 무시 타임윈도
-  const ignoreUntilRef = useRef<number>(0);         // 이 시간 이전 이벤트는 무시
+  const ignoreUntilRef = useRef<number>(0); // 이 시간 이전 이벤트는 무시
   const screenReaderOnRef = useRef<boolean>(false);
 
   // 웨이브(인식 중 시각 피드백)
@@ -70,15 +81,20 @@ export default function QuestionScreen() {
   // 화면 진입 안내 + 포커스
   useEffect(() => {
     let mounted = true;
-    AccessibilityInfo.isScreenReaderEnabled().then((on) => (screenReaderOnRef.current = !!on));
-    const sub = AccessibilityInfo.addEventListener("screenReaderChanged", (on) => {
-      screenReaderOnRef.current = !!on;
-    });
+    AccessibilityInfo.isScreenReaderEnabled().then(
+      (on) => (screenReaderOnRef.current = !!on)
+    );
+    const sub = AccessibilityInfo.addEventListener(
+      "screenReaderChanged",
+      (on) => {
+        screenReaderOnRef.current = !!on;
+      }
+    );
 
     setTimeout(() => {
       if (!mounted) return;
       AccessibilityInfo.announceForAccessibility(
-        "질문하기 화면입니다. 아래의 말하기 버튼을 누르거나, 입력창에 질문을 작성하세요."
+        "질문하기 화면입니다. 화면 상단 오른쪽의 말하기 버튼을 누르거나, 입력창에 질문을 작성하세요."
       );
       const tag = micBtnRef.current ? findNodeHandle(micBtnRef.current) : null;
       if (tag) AccessibilityInfo.setAccessibilityFocus(tag);
@@ -91,7 +107,7 @@ export default function QuestionScreen() {
     };
   }, []);
 
-  // QuestionScreen 진입 시 자동 인식 시작
+  // QuestionScreen 진입 시 자동 인식 시작 (로컬 ASR)
   useEffect(() => {
     if (!autoStartASR) return;
     const delay = screenReaderOnRef.current ? 1200 : 600; // TalkBack 켜져있으면 더 늦게 시작
@@ -107,14 +123,28 @@ export default function QuestionScreen() {
       Animated.loop(
         Animated.sequence([
           Animated.delay(delay),
-          Animated.timing(v, { toValue: 1, duration: 380, useNativeDriver: true }),
-          Animated.timing(v, { toValue: 0, duration: 380, useNativeDriver: true }),
+          Animated.timing(v, {
+            toValue: 1,
+            duration: 380,
+            useNativeDriver: true,
+          }),
+          Animated.timing(v, {
+            toValue: 0,
+            duration: 380,
+            useNativeDriver: true,
+          }),
         ])
       );
 
     let ctrl: Animated.CompositeAnimation | null = null;
     if (listening) {
-      ctrl = Animated.parallel([make(wave1, 0), make(wave2, 90), make(wave3, 180), make(wave4, 270), make(wave5, 360)]);
+      ctrl = Animated.parallel([
+        make(wave1, 0),
+        make(wave2, 90),
+        make(wave3, 180),
+        make(wave4, 270),
+        make(wave5, 360),
+      ]);
       ctrl.start();
     } else {
       wave1.setValue(0);
@@ -136,18 +166,34 @@ export default function QuestionScreen() {
     // 🔧 완전 중복 차단
     if (t === lastCommittedRef.current) return;
 
-    const msg: Message = { id: `${Date.now()}_${Math.random()}`, type: "user", text: t, timestamp: new Date() };
+    const msg: Message = {
+      id: `${Date.now()}_${Math.random()}`,
+      type: "user",
+      text: t,
+      timestamp: new Date(),
+    };
     setMessages((prev) => [...prev, msg]);
     lastCommittedRef.current = t;
     lastFinalAtRef.current = Date.now();
 
-    setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 50);
+    setTimeout(
+      () => scrollViewRef.current?.scrollToEnd({ animated: true }),
+      50
+    );
   };
 
   const addBotMessage = (text: string) => {
-    const msg: Message = { id: `${Date.now()}_${Math.random()}`, type: "bot", text, timestamp: new Date() };
+    const msg: Message = {
+      id: `${Date.now()}_${Math.random()}`,
+      type: "bot",
+      text,
+      timestamp: new Date(),
+    };
     setMessages((prev) => [...prev, msg]);
-    setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 50);
+    setTimeout(
+      () => scrollViewRef.current?.scrollToEnd({ animated: true }),
+      50
+    );
     AccessibilityInfo.announceForAccessibility(text);
   };
 
@@ -180,7 +226,7 @@ export default function QuestionScreen() {
     }, SILENCE_TIMEOUT_MS + 80);
   };
 
-  // ASR 구독
+  // ASR 구독 (로컬 질문용)
   const subscribeASR = () => {
     if (offRef.current) offRef.current();
     offRef.current = asrService.on((raw, isFinal) => {
@@ -207,7 +253,7 @@ export default function QuestionScreen() {
     });
   };
 
-  // 마이크 시작/정지
+  // 마이크 시작/정지 (로컬 질문용)
   const startListening = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     subscribeASR();
@@ -226,7 +272,9 @@ export default function QuestionScreen() {
     lastHeardAtRef.current = Date.now();
     armSilenceTimer();
     setListening(true);
-    AccessibilityInfo.announceForAccessibility("음성 인식을 시작합니다. 질문을 말씀하세요.");
+    AccessibilityInfo.announceForAccessibility(
+      "음성 인식을 시작합니다. 질문을 말씀하세요."
+    );
   };
 
   const stopListening = async (announce = true) => {
@@ -241,11 +289,12 @@ export default function QuestionScreen() {
       offRef.current();
       offRef.current = null;
     }
-    if (announce) AccessibilityInfo.announceForAccessibility("음성 인식을 종료했습니다.");
+    if (announce)
+      AccessibilityInfo.announceForAccessibility("음성 인식을 종료했습니다.");
   };
 
   // 입력 전송(임시 - 백엔드 없음)
-  const handleSend = () => {
+  const handleSend = useCallback(() => {
     const t = inputText.trim();
     if (!t) {
       AccessibilityInfo.announceForAccessibility("메시지를 입력해주세요.");
@@ -253,14 +302,121 @@ export default function QuestionScreen() {
     }
     pushUserMessage(t);
     setInputText("");
-    setTimeout(() => addBotMessage("백엔드는 현재 준비 중입니다. 인식된 질문을 저장합니다."), 400);
-  };
+    setTimeout(() => addBotMessage("인식된 질문을 저장합니다."), 400);
+  }, [inputText]);
 
   // 뒤로가기
-  const handleBack = async () => {
+  const handleBack = useCallback(async () => {
     if (listening) await stopListening(false);
     navigation.goBack();
-  };
+  }, [listening, navigation]);
+
+  // Question 화면 전용 음성 명령/질문(rawText) 처리
+  const handleQuestionVoiceCommand = useCallback(
+    (spoken: string) => {
+      const raw = spoken.trim();
+      if (!raw) return;
+      const t = raw.toLowerCase();
+
+      // 1) 말하기 시작 / 종료 / 토글 (로컬 ASR 제어)
+      if (
+        t.includes("말하기") ||
+        t.includes("음성인식") ||
+        t.includes("음성 인식")
+      ) {
+        if (
+          t.includes("시작") ||
+          t.includes("켜") ||
+          t.includes("해줘") ||
+          t.includes("실행")
+        ) {
+          if (!listening) startListening();
+        } else if (
+          t.includes("종료") ||
+          t.includes("끝") ||
+          t.includes("꺼") ||
+          t.includes("멈춰")
+        ) {
+          if (listening) stopListening(true);
+        } else {
+          // "말하기"만 말하면 토글
+          if (!listening) startListening();
+          else stopListening(true);
+        }
+        return;
+      }
+
+      // 2) 질문 보내기 / 확인 (입력창 기반 전송)
+      if (
+        t.includes("보내") ||
+        t.includes("확인") ||
+        t.includes("질문해") ||
+        t.includes("질문 보내")
+      ) {
+        handleSend();
+        return;
+      }
+
+      // 3) 대화 지우기
+      if (
+        t.includes("지워") ||
+        t.includes("초기화") ||
+        t.includes("다시 시작") ||
+        t.includes("대화 삭제")
+      ) {
+        setMessages([]);
+        setInterim("");
+        lastCommittedRef.current = "";
+        AccessibilityInfo.announceForAccessibility(
+          "대화 내용을 모두 지웠습니다."
+        );
+        return;
+      }
+
+      // 4) 입력창 포커스
+      if (
+        t.includes("입력창") ||
+        t.includes("키보드") ||
+        t.includes("텍스트")
+      ) {
+        inputRef.current?.focus();
+        AccessibilityInfo.announceForAccessibility(
+          "질문 입력창에 포커스를 맞췄습니다."
+        );
+        return;
+      }
+
+      // 5) 뒤로가기 (전역 파서가 못 잡았을 경우 대비)
+      if (t.includes("뒤로") || t.includes("이전 화면")) {
+        handleBack();
+        return;
+      }
+
+      // 6) 위 명령어에 해당하지 않으면 → 일반 질문으로 처리
+      pushUserMessage(raw);
+      setTimeout(() => addBotMessage("인식된 질문을 저장합니다."), 400);
+    },
+    [listening, handleSend, handleBack]
+  );
+
+  // QuestionScreen용 전역 음성 명령 핸들러 등록
+  useEffect(() => {
+    setCurrentScreenId("Question");
+
+    registerVoiceHandlers("Question", {
+      goBack: handleBack,
+      rawText: handleQuestionVoiceCommand,
+    });
+
+    return () => {
+      registerVoiceHandlers("Question", {});
+    };
+  }, [
+    setCurrentScreenId,
+    registerVoiceHandlers,
+    handleBack,
+    handleQuestionVoiceCommand,
+  ]);
 
   // 언마운트 정리
   useEffect(() => {
@@ -275,9 +431,16 @@ export default function QuestionScreen() {
   const DraftBubble = () =>
     !interim ? null : (
       <View style={[styles.messageRow, styles.userRow]}>
-        <View style={[styles.bubble, styles.userBubble, styles.draftBubble]} accessibilityRole="text">
+        <View
+          style={[styles.bubble, styles.userBubble, styles.draftBubble]}
+          accessibilityRole="text"
+        >
           <Text style={[styles.msgText, styles.userText]}>{interim}</Text>
-          <Text style={[styles.timeText, styles.userTime]} accessible={false} importantForAccessibility="no">
+          <Text
+            style={[styles.timeText, styles.userTime]}
+            accessible={false}
+            importantForAccessibility="no"
+          >
             실시간 인식 중…
           </Text>
         </View>
@@ -285,9 +448,20 @@ export default function QuestionScreen() {
     );
 
   const WaveDot = ({ v, i }: { v: Animated.Value; i: number }) => {
-    const scale = v.interpolate({ inputRange: [0, 1], outputRange: [1, 1.5] });
-    const opacity = v.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] });
-    return <Animated.View key={i} style={[styles.waveDot, { transform: [{ scale }], opacity }]} />;
+    const scale = v.interpolate({
+      inputRange: [0, 1],
+      outputRange: [1, 1.5],
+    });
+    const opacity = v.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.4, 1],
+    });
+    return (
+      <Animated.View
+        key={i}
+        style={[styles.waveDot, { transform: [{ scale }], opacity }]}
+      />
+    );
   };
 
   return (
@@ -314,20 +488,26 @@ export default function QuestionScreen() {
             두드림 AI
           </Text>
 
-          <TouchableOpacity
-            onPress={() => {
-              setMessages([]);
-              setInterim("");
-              lastCommittedRef.current = "";
-              AccessibilityInfo.announceForAccessibility("대화 내용을 모두 지웠습니다.");
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="대화 지우기"
-            accessibilityHint="현재 대화 내용을 모두 삭제합니다"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Text style={styles.clearTxt}>지우기</Text>
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              onPress={() => {
+                setMessages([]);
+                setInterim("");
+                lastCommittedRef.current = "";
+                AccessibilityInfo.announceForAccessibility(
+                  "대화 내용을 모두 지웠습니다."
+                );
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="대화 지우기"
+              accessibilityHint="현재 대화 내용을 모두 삭제합니다"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.clearTxt}>지우기</Text>
+            </TouchableOpacity>
+
+            <VoiceCommandButton accessibilityHint="두 번 탭한 후 질문이나 음성 명령을 말씀하세요." />
+          </View>
         </View>
 
         {/* 대화 영역 */}
@@ -342,9 +522,14 @@ export default function QuestionScreen() {
             <View style={styles.emptyWrap}>
               <View style={styles.welcomeBubble} accessibilityRole="text">
                 <Text style={styles.welcomeTxt}>
-                  두드림 AI에게 물어보세요. 아래 버튼으로 음성 인식을 시작하거나, 입력창에 질문을 적고 확인을 눌러 주세요.
+                  두드림 AI에게 물어보세요. 오른쪽 위 버튼으로 음성 인식을
+                  시작하거나, 아래 입력창에 질문을 적고 확인을 눌러 주세요.
                 </Text>
-                <Text style={styles.botTime} accessible={false} importantForAccessibility="no">
+                <Text
+                  style={styles.botTime}
+                  accessible={false}
+                  importantForAccessibility="no"
+                >
                   {formatTime(new Date())}
                 </Text>
               </View>
@@ -354,16 +539,35 @@ export default function QuestionScreen() {
               {messages.map((m) => {
                 const isUser = m.type === "user";
                 return (
-                  <View key={m.id} style={[styles.messageRow, isUser ? styles.userRow : styles.botRow]}>
+                  <View
+                    key={m.id}
+                    style={[
+                      styles.messageRow,
+                      isUser ? styles.userRow : styles.botRow,
+                    ]}
+                  >
                     <View
-                      style={[styles.bubble, isUser ? styles.userBubble : styles.botBubble]}
+                      style={[
+                        styles.bubble,
+                        isUser ? styles.userBubble : styles.botBubble,
+                      ]}
                       accessible
                       accessibilityRole="text"
                       accessibilityLabel={m.text}
                     >
-                      <Text style={[styles.msgText, isUser ? styles.userText : styles.botText]}>{m.text}</Text>
                       <Text
-                        style={[styles.timeText, isUser ? styles.userTime : styles.botTime]}
+                        style={[
+                          styles.msgText,
+                          isUser ? styles.userText : styles.botText,
+                        ]}
+                      >
+                        {m.text}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.timeText,
+                          isUser ? styles.userTime : styles.botTime,
+                        ]}
                         accessible={false}
                         importantForAccessibility="no"
                       >
@@ -378,7 +582,7 @@ export default function QuestionScreen() {
           )}
         </ScrollView>
 
-        {/* 인식 중 웨이브 */}
+        {/* 인식 중 웨이브 (로컬 ASR용) */}
         {listening && (
           <View style={styles.waveBar}>
             <View style={styles.waveDots}>
@@ -391,7 +595,7 @@ export default function QuestionScreen() {
           </View>
         )}
 
-        {/* 입력 영역 + 음성인식 버튼 */}
+        {/* 입력 영역 */}
         <View style={styles.inputRow}>
           <TextInput
             ref={inputRef}
@@ -406,17 +610,6 @@ export default function QuestionScreen() {
             accessibilityLabel="질문 입력창"
             accessibilityHint="질문을 입력하고 확인 버튼을 누르세요"
           />
-
-          <TouchableOpacity
-            style={[styles.micAccButton, listening ? styles.micAccOn : styles.micAccOff]}
-            onPress={listening ? () => stopListening(true) : startListening}
-            accessibilityRole="button"
-            accessibilityLabel={listening ? "말하기 종료" : "음성 인식 시작"}
-            accessibilityHint={listening ? "음성인식을 종료합니다" : "지금부터 말씀하시면 인식합니다"}
-            ref={micBtnRef}
-          >
-            <Text style={styles.micAccText}>{listening ? "끝내기" : "말하기"}</Text>
-          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.sendBtn, !inputText.trim() && styles.sendDisabled]}
@@ -434,7 +627,7 @@ export default function QuestionScreen() {
   );
 }
 
-const BTN_HEIGHT = 56; // 🔧 버튼/입력 최소 높이 일치
+const BTN_HEIGHT = 56; // 버튼/입력 최소 높이 기준
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#E8EAF6" },
@@ -453,11 +646,25 @@ const styles = StyleSheet.create({
   backBtn: { padding: 8, minWidth: 48 },
   backTxt: { fontSize: 28, color: "#424242" },
   title: { fontSize: 22, fontWeight: "600", color: "#424242" },
-  clearTxt: { fontSize: 16, color: "#F44336", fontWeight: "700" },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  clearTxt: {
+    fontSize: 16,
+    color: "#F44336",
+    fontWeight: "700",
+    paddingRight: 8,
+  },
 
   // 대화
   chatArea: { flex: 1, backgroundColor: "#E8EAF6" },
-  chatContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 },
+  chatContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 16,
+  },
   emptyWrap: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 },
   msgsWrap: { flex: 1 },
 
@@ -465,7 +672,12 @@ const styles = StyleSheet.create({
   userRow: { justifyContent: "flex-end" },
   botRow: { justifyContent: "flex-start" },
 
-  bubble: { maxWidth: "85%", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12 },
+  bubble: {
+    maxWidth: "85%",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
   userBubble: { backgroundColor: "#3F51B5", alignSelf: "flex-end" },
   botBubble: { backgroundColor: "#FFF9C4", alignSelf: "flex-start" },
 
@@ -488,7 +700,12 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     maxWidth: "95%",
   },
-  welcomeTxt: { fontSize: 18, lineHeight: 28, color: "#424242", marginBottom: 8 },
+  welcomeTxt: {
+    fontSize: 18,
+    lineHeight: 28,
+    color: "#424242",
+    marginBottom: 8,
+  },
 
   // 웨이브
   waveBar: {
@@ -497,10 +714,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  waveDots: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12 },
-  waveDot: { width: 16, height: 16, borderRadius: 8, backgroundColor: "#FFF9C4" },
+  waveDots: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  waveDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#FFF9C4",
+  },
 
-  // 입력 + 버튼 (🔧 사이즈/접근성 개선)
+  // 입력 + 버튼
   inputRow: {
     flexDirection: "row",
     alignItems: "flex-end",
@@ -514,7 +741,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     minHeight: BTN_HEIGHT,
-    maxHeight: 160, // 🔧 더 길게 입력 가능
+    maxHeight: 220,
     backgroundColor: "#F5F5F5",
     borderRadius: 24,
     paddingHorizontal: 20,
@@ -524,20 +751,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E0E0E0",
   },
-
-  // 접근성 최적화된 음성 버튼
-  micAccButton: {
-    height: BTN_HEIGHT,
-    paddingHorizontal: 16,
-    borderRadius: 24,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 132,
-  },
-  micAccOff: { backgroundColor: "#E3F2FD", borderColor: "#64B5F6" },
-  micAccOn: { backgroundColor: "#FCE4EC", borderColor: "#F06292" },
-  micAccText: { fontSize: 16, fontWeight: "700", color: "#333" },
 
   sendBtn: {
     height: BTN_HEIGHT,
