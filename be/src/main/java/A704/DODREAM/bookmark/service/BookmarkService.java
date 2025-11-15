@@ -3,6 +3,7 @@ package A704.DODREAM.bookmark.service;
 import A704.DODREAM.bookmark.dto.BookmarkDetailResponse;
 import A704.DODREAM.bookmark.dto.BookmarkRequest;
 import A704.DODREAM.bookmark.dto.BookmarkResponse;
+import A704.DODREAM.bookmark.dto.MaterialBookmarksResponse;
 import A704.DODREAM.bookmark.entity.Bookmark;
 import A704.DODREAM.bookmark.repository.BookmarkRepository;
 import A704.DODREAM.file.entity.UploadedFile;
@@ -29,6 +30,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -171,4 +173,20 @@ public class BookmarkService {
         throw new RuntimeException("Content not found for titleId: " + titleId + ", sTitleId: " + sTitleId);
     }
 
+    @Transactional
+    public MaterialBookmarksResponse getMaterialBookmarks(Long userId, Long materialId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Material material = materialRepository.findById(materialId)
+                .orElseThrow(() -> new RuntimeException("Material not found"));
+
+        List<Bookmark> bookmarks = bookmarkRepository.findByUserAndMaterial(user, material);
+
+        Set<String> bookmarkedSTitleIds = bookmarks.stream()
+                .map(Bookmark::getSTitleId)
+                .collect(Collectors.toSet());
+
+        return new MaterialBookmarksResponse(materialId, bookmarkedSTitleIds);
+    }
 }

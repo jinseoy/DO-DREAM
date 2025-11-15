@@ -4,6 +4,7 @@ import A704.DODREAM.auth.dto.request.UserPrincipal;
 import A704.DODREAM.bookmark.dto.BookmarkDetailResponse;
 import A704.DODREAM.bookmark.dto.BookmarkRequest;
 import A704.DODREAM.bookmark.dto.BookmarkResponse;
+import A704.DODREAM.bookmark.dto.MaterialBookmarksResponse;
 import A704.DODREAM.bookmark.service.BookmarkService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,6 +41,23 @@ public class BookmarkController {
     ) {
         List<BookmarkDetailResponse> bookmarks = bookmarkService.getBookmarks(userPrincipal.userId());
         return ResponseEntity.ok(bookmarks);
+    }
+
+    @Operation(
+            summary = "특정 자료의 북마크 목록 조회",
+            description = "학생이 특정 자료에서 북마크한 s_title ID 목록을 조회합니다.\n\n" +
+                    "자료 조회(GET /api/materials/shared/{materialId}/json)할 때 같이 호출해서 캐싱해놨다가 해당 s_title에 북마크 했는지 여부 판단할 떄 사용해주세요."
+    )
+    @GetMapping("/material/{materialId}")
+    public ResponseEntity<MaterialBookmarksResponse> getMaterialBookmarks(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long materialId
+    ) {
+        MaterialBookmarksResponse response = bookmarkService.getMaterialBookmarks(
+                userPrincipal.userId(),
+                materialId
+        );
+        return ResponseEntity.ok(response);
     }
 
 
