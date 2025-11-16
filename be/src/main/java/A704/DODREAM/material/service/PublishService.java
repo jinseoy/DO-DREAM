@@ -8,6 +8,7 @@ import A704.DODREAM.global.exception.CustomException;
 import A704.DODREAM.global.exception.constant.ErrorCode;
 import A704.DODREAM.material.dto.PublishedMaterialListResponse;
 import A704.DODREAM.material.entity.Material;
+import A704.DODREAM.material.enums.LabelColor;
 import A704.DODREAM.material.repository.MaterialRepository;
 import A704.DODREAM.user.entity.User;
 import A704.DODREAM.user.repository.UserRepository;
@@ -178,5 +179,17 @@ public class PublishService {
         List<Material> materials = materialRepository.findAllByTeacherIdWithUploadedFile(teacher.getId());
 
         return PublishedMaterialListResponse.from(materials);
+    }
+
+    @Transactional
+    public void updateLabel(Long materialId, Long userId, LabelColor label){
+        Material material = materialRepository.findById(materialId)
+                .orElseThrow(() -> new CustomException(ErrorCode.MATERIAL_NOT_FOUND));
+
+        if(!material.getTeacher().getId().equals(userId)){
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
+
+        material.setLabel(label);
     }
 }

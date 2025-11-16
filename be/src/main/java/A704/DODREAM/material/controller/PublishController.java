@@ -4,6 +4,7 @@ import A704.DODREAM.auth.dto.request.UserPrincipal;
 import A704.DODREAM.material.dto.PublishRequest;
 import A704.DODREAM.material.dto.PublishResponseDto;
 import A704.DODREAM.material.dto.PublishedMaterialListResponse;
+import A704.DODREAM.material.dto.UpdateLabelRequest;
 import A704.DODREAM.material.service.PublishService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -49,5 +50,16 @@ public class PublishController {
         PublishedMaterialListResponse response = publishService.getPublishedMaterialList(userId);
 
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "라벨 색상 변경")
+    @PatchMapping("/label")
+    public ResponseEntity<Void> updateLabelColor(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @RequestBody UpdateLabelRequest request
+    ){
+        publishService.updateLabel(request.getMaterialId(), userPrincipal.userId(), request.getLabel());
+
+        return ResponseEntity.ok().build();
     }
 }
