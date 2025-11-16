@@ -59,8 +59,6 @@ public class PublishService {
                 throw new CustomException(ErrorCode.FILE_PARSING_FAILED);
             }
 
-            addIds(publishRequest.getEditedJson());
-
             String jsonString = objectMapper.writerWithDefaultPrettyPrinter()
                     .writeValueAsString(publishRequest.getEditedJson());
 
@@ -116,60 +114,60 @@ public class PublishService {
                 .build();
     }
 
-    private void addIds(Map<String, Object> jsonData) {
-        Map<String, Object> parsedData = (Map<String, Object>) jsonData.get("parsedData");
-        if(parsedData == null){
-            return;
-        }
-
-        List<Map<String, Object>> dataList = (List<Map<String, Object>>) parsedData.get("data");
-        if(dataList == null || dataList.isEmpty()) {
-            return;
-        }
-
-        for(Map<String, Object> content : dataList) {
-            List<Map<String, Object>> titles = (List<Map<String, Object>>) content.get("titles");
-
-            if(titles != null){
-                for(int i = 0; i < titles.size(); i++){
-                    Map<String, Object> title = titles.get(i);
-                    titles.set(i, addIdToTop(title));
-
-                    List<Map<String, Object>> sTitles = (List<Map<String, Object>>) title.get("s_titles");
-                    if(sTitles != null){
-                        for(int j = 0; j < sTitles.size(); j++){
-                            Map<String, Object> sTitle = sTitles.get(j);
-                            sTitles.set(j, addIdToTop(sTitle));
-
-                            List<Map<String, Object>> ssTitles = (List<Map<String, Object>>) sTitle.get("ss_titles");
-                            if(ssTitles != null){
-                                for(int k = 0; k < ssTitles.size(); k++){
-                                    Map<String, Object> ssTitle = ssTitles.get(k);
-                                    ssTitles.set(k, addIdToTop(ssTitle));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private Map<String, Object> addIdToTop(Map<String, Object> map) {
-        if(map.containsKey("id") && map.get("id") != null) {
-            return map;
-        }
-        // LinkedHashMap으로 새로운 맵 생성 (순서 보장)
-        Map<String, Object> newMap = new LinkedHashMap<>();
-
-        // id를 가장 먼저 추가
-        newMap.put("id", UUID.randomUUID().toString());
-
-        // 나머지 기존 데이터 추가
-        newMap.putAll(map);
-
-        return newMap;
-    }
+//    private void addIds(Map<String, Object> jsonData) {
+//        Map<String, Object> parsedData = (Map<String, Object>) jsonData.get("parsedData");
+//        if(parsedData == null){
+//            return;
+//        }
+//
+//        List<Map<String, Object>> dataList = (List<Map<String, Object>>) parsedData.get("data");
+//        if(dataList == null || dataList.isEmpty()) {
+//            return;
+//        }
+//
+//        for(Map<String, Object> content : dataList) {
+//            List<Map<String, Object>> titles = (List<Map<String, Object>>) content.get("titles");
+//
+//            if(titles != null){
+//                for(int i = 0; i < titles.size(); i++){
+//                    Map<String, Object> title = titles.get(i);
+//                    titles.set(i, addIdToTop(title));
+//
+//                    List<Map<String, Object>> sTitles = (List<Map<String, Object>>) title.get("s_titles");
+//                    if(sTitles != null){
+//                        for(int j = 0; j < sTitles.size(); j++){
+//                            Map<String, Object> sTitle = sTitles.get(j);
+//                            sTitles.set(j, addIdToTop(sTitle));
+//
+//                            List<Map<String, Object>> ssTitles = (List<Map<String, Object>>) sTitle.get("ss_titles");
+//                            if(ssTitles != null){
+//                                for(int k = 0; k < ssTitles.size(); k++){
+//                                    Map<String, Object> ssTitle = ssTitles.get(k);
+//                                    ssTitles.set(k, addIdToTop(ssTitle));
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
+//
+//    private Map<String, Object> addIdToTop(Map<String, Object> map) {
+//        if(map.containsKey("id") && map.get("id") != null) {
+//            return map;
+//        }
+//        // LinkedHashMap으로 새로운 맵 생성 (순서 보장)
+//        Map<String, Object> newMap = new LinkedHashMap<>();
+//
+//        // id를 가장 먼저 추가
+//        newMap.put("id", UUID.randomUUID().toString());
+//
+//        // 나머지 기존 데이터 추가
+//        newMap.putAll(map);
+//
+//        return newMap;
+//    }
 
     public PublishedMaterialListResponse getPublishedMaterialList(Long userId) {
 

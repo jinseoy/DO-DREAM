@@ -36,14 +36,8 @@ public class Bookmark {
     @Column(name = "title_id", nullable = false, length = 50)
     private String titleId;
 
-    @Column(name = "s_title_id", nullable = false, length = 50)
-    private String sTitleId;
-
     @Column(nullable = false)
     private String title;
-
-    @Column(nullable = false)
-    private String sTitle;
 
     @Column(columnDefinition = "TEXT")
     private String contents;

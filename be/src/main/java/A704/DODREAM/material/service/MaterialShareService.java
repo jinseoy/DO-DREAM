@@ -274,12 +274,18 @@ public class MaterialShareService {
 
 			Map<String, Object> jsonData = objectMapper.readValue(jsonString, Map.class);
 
+			List<Map<String, Object>> chapters = (List<Map<String, Object>>) jsonData.get("chapters");
+
+			if (chapters == null) {
+				throw new CustomException(ErrorCode.INVALID_JSON_STRUCTURE);
+			}
+
 			return Map.of(
 					"materialId", materialId,
 					"materialTitle", material.getTitle(),
 					"filename", uploadedFile.getOriginalFileName(),
-					"parsedAt", uploadedFile.getParsedAt(),
-					"parsedData", jsonData.get("parsedData")
+					"parsedAt", uploadedFile.getParsedAt() != null ? uploadedFile.getParsedAt() : LocalDateTime.now(),
+					"chapters", chapters
 			);
 
 		} catch (Exception e) {
