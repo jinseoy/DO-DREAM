@@ -11,7 +11,12 @@ type StudentLite = {
   avatar?: string;
 };
 
-type Material = { id: string; title: string; uploadDate: string; content: string };
+type Material = {
+  id: string;
+  title: string;
+  uploadDate: string;
+  content: string;
+};
 
 type ClassroomLite = { id: string; name: string; count: number };
 
@@ -23,9 +28,9 @@ type Props = {
   onSend: (studentIds: string[], classroomIds: string[]) => void;
 
   // 이미지 리소스
-  schoolImage: string;  // src/assets/school.png
-  maleImage: string;    // src/assets/male.png
-  femaleImage: string;  // src/assets/female.png
+  schoolImage: string; // src/assets/school.png
+  maleImage: string; // src/assets/male.png
+  femaleImage: string; // src/assets/female.png
 };
 
 export default function MaterialSendModal2Step({
@@ -48,7 +53,9 @@ export default function MaterialSendModal2Step({
 
   // 현재 step에 따른 학생 목록
   const students = useMemo(() => {
-    const list = selectedClasses.flatMap((cid) => studentsByClassroom[cid] || []);
+    const list = selectedClasses.flatMap(
+      (cid) => studentsByClassroom[cid] || [],
+    );
     const map = new Map<string, StudentLite>();
     list.forEach((s) => map.set(s.id, s));
     return Array.from(map.values());
@@ -65,16 +72,22 @@ export default function MaterialSendModal2Step({
     const q = query.trim().toLowerCase();
     if (!q) return students;
     return students.filter(
-      (s) => s.name.toLowerCase().includes(q) || s.grade.toLowerCase().includes(q),
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.grade.toLowerCase().includes(q),
     );
   }, [students, query]);
 
   const toggleClass = (id: string) => {
-    setSelectedClasses((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setSelectedClasses((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
   };
 
   const toggleStudent = (id: string) => {
-    setSelectedStudents((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setSelectedStudents((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
   };
 
   const toggleByKey =
@@ -93,7 +106,9 @@ export default function MaterialSendModal2Step({
         setSelectedClasses((prev) => prev.filter((id) => !ids.has(id)));
         setSelectAll(false);
       } else {
-        const idsToAdd = filteredClasses.map((c) => c.id).filter((id) => !selectedClasses.includes(id));
+        const idsToAdd = filteredClasses
+          .map((c) => c.id)
+          .filter((id) => !selectedClasses.includes(id));
         setSelectedClasses((prev) => [...prev, ...idsToAdd]);
         setSelectAll(true);
       }
@@ -103,19 +118,24 @@ export default function MaterialSendModal2Step({
         setSelectedStudents((prev) => prev.filter((id) => !ids.has(id)));
         setSelectAll(false);
       } else {
-        const idsToAdd = filteredStudents.map((s) => s.id).filter((id) => !selectedStudents.includes(id));
+        const idsToAdd = filteredStudents
+          .map((s) => s.id)
+          .filter((id) => !selectedStudents.includes(id));
         setSelectedStudents((prev) => [...prev, ...idsToAdd]);
         setSelectAll(true);
       }
     }
   };
 
-  const canNext = step === 1 ? selectedClasses.length > 0 : selectedStudents.length > 0;
+  const canNext =
+    step === 1 ? selectedClasses.length > 0 : selectedStudents.length > 0;
 
   const headerTitle = step === 1 ? '공유할 반 선택' : '공유할 학생 선택';
   const labelText = '선택된 자료';
   const selectToggleText =
-    step === 1 ? `전체 선택 (${filteredClasses.length}개 반)` : `전체 선택 (${filteredStudents.length}명)`;
+    step === 1
+      ? `전체 선택 (${filteredClasses.length}개 반)`
+      : `전체 선택 (${filteredStudents.length}명)`;
 
   const handlePrimary = () => {
     if (step === 1) {
@@ -142,7 +162,11 @@ export default function MaterialSendModal2Step({
         {/* Header */}
         <div className="msm-header">
           <h2>{headerTitle}</h2>
-          <button className="msm-close-btn" onClick={onClose} aria-label="닫기">
+          <button
+            className="msm-close-btn"
+            onClick={onClose}
+            aria-label="닫기"
+          >
             <X size={24} />
           </button>
         </div>
@@ -166,7 +190,11 @@ export default function MaterialSendModal2Step({
             <input
               className="msm-search-input"
               type="text"
-              placeholder={step === 1 ? '반 이름 검색 (예: 3학년 1반)' : '이름 또는 학년/반으로 검색'}
+              placeholder={
+                step === 1
+                  ? '반 이름 검색 (예: 3학년 1반)'
+                  : '이름 또는 학년/반으로 검색'
+              }
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
@@ -178,12 +206,16 @@ export default function MaterialSendModal2Step({
           {/* Select All */}
           <button
             type="button"
-            className={`msm-select-toggle ${selectAll ? 'is-on' : ''}`}
+            className={`msm-select-toggle ${
+              selectAll ? 'is-on' : ''
+            }`}
             onClick={toggleSelectAll}
             aria-pressed={selectAll}
           >
             {selectToggleText}
-            {selectAll && <Check className="msm-select-check" size={16} />}
+            {selectAll && (
+              <Check className="msm-select-check" size={16} />
+            )}
           </button>
 
           {/* List */}
@@ -194,7 +226,9 @@ export default function MaterialSendModal2Step({
                   return (
                     <div
                       key={c.id}
-                      className={`msm-student-item ${checked ? 'is-selected' : ''}`}
+                      className={`msm-student-item ${
+                        checked ? 'is-selected' : ''
+                      }`}
                       role="button"
                       tabIndex={0}
                       onClick={() => toggleClass(c.id)}
@@ -207,7 +241,11 @@ export default function MaterialSendModal2Step({
                         </span>
                       )}
                       {/* 학교 이미지 */}
-                      <img className="msm-avatar-img" src={schoolImage} alt="학교" />
+                      <img
+                        className="msm-avatar-img"
+                        src={schoolImage}
+                        alt="학교"
+                      />
                       <div className="msm-student-text">
                         <p className="msm-name">{c.name}</p>
                         <p className="msm-grade">{c.count}명</p>
@@ -221,7 +259,9 @@ export default function MaterialSendModal2Step({
                   return (
                     <div
                       key={s.id}
-                      className={`msm-student-item ${checked ? 'is-selected' : ''}`}
+                      className={`msm-student-item ${
+                        checked ? 'is-selected' : ''
+                      }`}
                       role="button"
                       tabIndex={0}
                       onClick={() => toggleStudent(s.id)}
@@ -235,9 +275,15 @@ export default function MaterialSendModal2Step({
                       )}
 
                       {imgSrc ? (
-                        <img className="msm-avatar-img" src={imgSrc} alt={`${s.name} 아바타`} />
+                        <img
+                          className="msm-avatar-img"
+                          src={imgSrc}
+                          alt={`${s.name} 아바타`}
+                        />
                       ) : (
-                        <span className="msm-avatar-emoji">{s.avatar || '👤'}</span>
+                        <span className="msm-avatar-emoji">
+                          {s.avatar || '👤'}
+                        </span>
                       )}
 
                       <div className="msm-student-text">
@@ -248,7 +294,9 @@ export default function MaterialSendModal2Step({
                   );
                 })}
 
-            {(step === 1 ? filteredClasses.length === 0 : filteredStudents.length === 0) && (
+            {(step === 1
+              ? filteredClasses.length === 0
+              : filteredStudents.length === 0) && (
               <div className="msm-empty">검색 결과가 없습니다</div>
             )}
           </div>
@@ -266,9 +314,7 @@ export default function MaterialSendModal2Step({
             aria-disabled={!canNext}
           >
             {step === 1 ? (
-              <>
-                <span>{selectedClasses.length}개 반 선택</span>
-              </>
+              <span>{selectedClasses.length}개 반 선택</span>
             ) : (
               <>
                 <Send size={18} />

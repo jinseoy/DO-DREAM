@@ -10,7 +10,13 @@ import {
   Tag,
   Send,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, useRef, ChangeEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+  ChangeEvent,
+} from 'react';
 import './ClassroomList.css';
 import teacherAvatar from '../assets/classList/teacher.png';
 
@@ -20,9 +26,9 @@ import maleImg from '../assets/classroom/male.png';
 import femaleImg from '../assets/classroom/female.png';
 
 type ClassroomData = {
-  id: string;
-  grade: string;
-  class: string;
+  id: string;          // classroomId
+  grade: string;       // "3학년"
+  class: string;       // "1반"
   studentCount: number;
   materialCount: number;
 };
@@ -49,36 +55,6 @@ const LABEL_OPTIONS = [
   { id: 'purple', color: '#8e4fc8ff', name: '보라' },
   { id: 'gray', color: '#8b8f97ff', name: '회색' },
 ];
-
-// 반별 학생 데이터
-const STUDENTS_BY_CLASSROOM: Record<
-  string,
-  Array<{
-    id: string;
-    name: string;
-    grade: string;
-    gender?: 'male' | 'female';
-    avatarUrl?: string;
-    avatar?: string;
-  }>
-> = {
-  '1': [
-    { id: '1', name: '김민준', grade: '3학년 1반', gender: 'male' },
-    { id: '2', name: '이서연', grade: '3학년 1반', gender: 'female' },
-  ],
-  '2': [
-    { id: '3', name: '박지호', grade: '3학년 2반', gender: 'male' },
-    { id: '4', name: '최유진', grade: '3학년 2반', gender: 'female' },
-  ],
-  '3': [
-    { id: '5', name: '정민수', grade: '2학년 1반', gender: 'male' },
-    { id: '6', name: '강서윤', grade: '2학년 1반', gender: 'female' },
-  ],
-  '4': [
-    { id: '7', name: '홍길동', grade: '2학년 3반', gender: 'male' },
-    { id: '8', name: '김영희', grade: '2학년 3반', gender: 'female' },
-  ],
-};
 
 /** KST 기준 날짜 포맷 유틸 */
 function formatKST(date: Date, withTime = false) {
@@ -115,7 +91,7 @@ type ParsedPdfPayload = {
 
 type ParsedPdfResponse = ParsedPdfPayload & {
   filename?: string;
-  pdfId?: number; // 🔥 PDF ID 추가
+  pdfId?: number;
   parsedData?: ParsedPdfPayload;
 };
 
@@ -149,6 +125,61 @@ type PublishedMaterialsResponse = {
   totalCount: number;
 };
 
+type StudentLite = {
+  id: string;          // studentId
+  name: string;        // studentName
+  grade: string;       // "3학년 1반"
+  gender?: 'male' | 'female';
+  avatarUrl?: string;
+  avatar?: string;
+};
+
+/** 담당 반 목록 API 응답 타입 */
+type TeacherClassroomDto = {
+  classroomId: number;
+  year: number;
+  gradeLevel: number;
+  classNumber: number;
+  displayName: string;
+  schoolName: string;
+  studentCount: number;
+  materialCount: number;
+};
+
+type TeacherClassesResponse = {
+  teacherId: number;
+  teacherName: string;
+  totalCount: number;
+  classrooms: TeacherClassroomDto[];
+};
+
+/** 담당 학생 전체 조회 API 응답 타입 */
+type ClassStudentsDto = {
+  classroomId: number;
+  year: number;
+  gradeLevel: number;
+  classNumber: number;
+  displayName: string;
+  schoolName: string;
+  totalCount: number;
+  students: {
+    studentId: number;
+    studentName: string;
+    studentNumber: string;
+  }[];
+};
+
+/** 자료 공유 API body 타입 */
+type MaterialShareRequest = {
+  materialId: number;
+  shares: {
+    [classroomId: string]: {
+      type: 'CLASS';
+      studentIds: number[];
+    };
+  };
+};
+
 export default function ClassroomList({ onLogout }: ClassroomListProps) {
   const [selectedLabel, setSelectedLabel] = useState<string | undefined>();
   const navigate = useNavigate();
@@ -158,6 +189,11 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
 
   const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const [classrooms, setClassrooms] = useState<ClassroomData[]>([]);
+  const [studentsByClassroom, setStudentsByClassroom] = useState<
+    Record<string, StudentLite[]>
+  >({});
 
   const simulateExtract = async (file: File): Promise<string> => {
     const name = file.name.toLowerCase();
@@ -297,7 +333,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         ]);
 
         const chapters = buildChaptersFromParsedData(parsed);
-        const pdfId = parsed.pdfId; // 🔥 PDF ID 추출
+        const pdfId = parsed.pdfId;
 
         await Swal.close();
 
@@ -317,17 +353,15 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
           pdfId,
         });
 
-        // ✅ state로 직접 전달
         navigate('/editor', {
           state: {
             fileName: docTitle,
             chapters: chapters,
-            pdfId: pdfId, // 🔥 PDF ID 전달
+            pdfId: pdfId,
             from: 'classroom',
           },
         });
       } else {
-        // TXT 등 다른 파일
         const [text] = await Promise.all([
           simulateExtract(file),
           sleep(MIN_SHOW_MS),
@@ -366,15 +400,14 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
   }, [memo]);
 
   const [materials, setMaterials] = useState<Material[]>([]);
-
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date>(new Date());
 
+  // 발행 자료 목록 조회
   useEffect(() => {
     if (!API_BASE) return;
 
     const fetchPublishedMaterials = async () => {
       try {
-        // ⭐ localStorage 에서 토큰 꺼내기
         const accessToken = localStorage.getItem('accessToken');
 
         if (!accessToken) {
@@ -385,10 +418,8 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
           method: 'GET',
           headers: {
             accept: '*/*',
-            // ⭐ JWT를 Authorization 헤더로 실어 보내기
             ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           },
-          // 쿠키도 쓰고 있으면 유지, 아니면 빼도 됨
           credentials: 'include',
         });
 
@@ -425,6 +456,101 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
     void fetchPublishedMaterials();
   }, [API_BASE]);
 
+  // 담당 반 / 학생 목록 조회
+  useEffect(() => {
+    if (!API_BASE) return;
+
+    const fetchClassesAndStudents = async () => {
+      try {
+        const accessToken = localStorage.getItem('accessToken');
+        const commonHeaders: HeadersInit = {
+          accept: '*/*',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        };
+
+        // 1) 내 담당 반 목록
+        const classesRes = await fetch(`${API_BASE}/api/classes/teacher`, {
+          method: 'GET',
+          headers: commonHeaders,
+          credentials: 'include',
+        });
+
+        if (!classesRes.ok) {
+          const text = await classesRes.text().catch(() => '');
+          throw new Error(
+            text ||
+              `담당 반 목록 조회에 실패했습니다. (status: ${classesRes.status})`,
+          );
+        }
+
+        const classesJson = (await classesRes.json()) as TeacherClassesResponse;
+
+        const mappedClassrooms: ClassroomData[] =
+          classesJson.classrooms?.map((c) => ({
+            id: String(c.classroomId),
+            grade: `${c.gradeLevel}학년`,
+            class: `${c.classNumber}반`,
+            studentCount: c.studentCount,
+            materialCount: c.materialCount,
+          })) ?? [];
+
+        setClassrooms(mappedClassrooms);
+
+        if (mappedClassrooms.length === 0) {
+          setStudentsByClassroom({});
+          return;
+        }
+
+        // 2) 담당 학생 전체 조회
+        const classroomIds = mappedClassrooms.map((c) => Number(c.id));
+        const query = classroomIds
+          .map((id) => `classroomIds=${encodeURIComponent(String(id))}`)
+          .join('&');
+
+        const studentsRes = await fetch(
+          `${API_BASE}/api/classes/students?${query}`,
+          {
+            method: 'GET',
+            headers: commonHeaders,
+            credentials: 'include',
+          },
+        );
+
+        if (!studentsRes.ok) {
+          const text = await studentsRes.text().catch(() => '');
+          throw new Error(
+            text ||
+              `담당 학생 목록 조회에 실패했습니다. (status: ${studentsRes.status})`,
+          );
+        }
+
+        const studentsJson = (await studentsRes.json()) as ClassStudentsDto[];
+
+        const map: Record<string, StudentLite[]> = {};
+        studentsJson.forEach((cls) => {
+          map[String(cls.classroomId)] =
+            cls.students?.map((s) => ({
+              id: String(s.studentId),
+              name: s.studentName,
+              grade: `${cls.gradeLevel}학년 ${cls.classNumber}반`,
+            })) ?? [];
+        });
+
+        setStudentsByClassroom(map);
+      } catch (err: any) {
+        console.error('담당 반/학생 목록 조회 실패', err);
+        Swal.fire({
+          icon: 'error',
+          title: '반/학생 정보를 불러오지 못했습니다',
+          text: err?.message ?? '잠시 후 다시 시도해 주세요.',
+          confirmButtonColor: '#192b55',
+        });
+      }
+    };
+
+    void fetchClassesAndStudents();
+  }, [API_BASE]);
+
   useEffect(() => {
     setLastUpdatedAt(new Date());
   }, [materials]);
@@ -439,37 +565,6 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
     email: 'teacher@school.com',
     avatar: teacherAvatar,
   };
-
-  const classrooms: ClassroomData[] = [
-    {
-      id: '1',
-      grade: '3학년',
-      class: '1반',
-      studentCount: 28,
-      materialCount: 5,
-    },
-    {
-      id: '2',
-      grade: '3학년',
-      class: '2반',
-      studentCount: 26,
-      materialCount: 3,
-    },
-    {
-      id: '3',
-      grade: '2학년',
-      class: '1반',
-      studentCount: 30,
-      materialCount: 8,
-    },
-    {
-      id: '4',
-      grade: '2학년',
-      class: '3반',
-      studentCount: 25,
-      materialCount: 4,
-    },
-  ];
 
   const handleSelectClassroom = (classroomId: string) => {
     navigate(`/classroom/${classroomId}`);
@@ -554,6 +649,117 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
     if (!m) return;
     setSelectedMaterial(m);
     setShowSendModal(true);
+  };
+
+  // 자료 공유 API 호출
+  const shareMaterial = async (
+    studentIds: string[],
+    classroomIds: string[],
+    material: Material,
+  ) => {
+    if (!API_BASE) return;
+
+    try {
+      const accessToken = localStorage.getItem('accessToken');
+      const headers: HeadersInit = {
+        accept: '*/*',
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      };
+
+      // classroomId별 선택된 학생만 묶어서 body 생성
+      const body: MaterialShareRequest = {
+        materialId: Number(material.id),
+        shares: {},
+      };
+
+      classroomIds.forEach((cid) => {
+        const allStudents = studentsByClassroom[cid] || [];
+        const selectedInClass = allStudents.filter((s) =>
+          studentIds.includes(s.id),
+        );
+        if (selectedInClass.length === 0) return;
+        body.shares[cid] = {
+          type: 'CLASS',
+          studentIds: selectedInClass.map((s) => Number(s.id)),
+        };
+      });
+
+      if (Object.keys(body.shares).length === 0) {
+        await Swal.fire({
+          icon: 'warning',
+          title: '선택된 학생이 없습니다',
+          text: '공유할 학생을 선택해 주세요.',
+          confirmButtonColor: '#192b55',
+        });
+        return;
+      }
+
+      void Swal.fire({
+        title: '자료를 공유하는 중입니다',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading(),
+      });
+
+      const res = await fetch(`${API_BASE}/api/materials/share`, {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(
+          text ||
+            `자료 공유에 실패했습니다. (status: ${res.status})`,
+        );
+      }
+
+      await Swal.close();
+
+      // 성공 메시지용 정보 구성
+      const allSelectedStudents = classroomIds.flatMap(
+        (cid) => (studentsByClassroom[cid] || []).filter((s) =>
+          studentIds.includes(s.id),
+        ),
+      );
+      const names = allSelectedStudents.map((s) => s.name);
+
+      const classroomNames = classroomIds
+        .map((cid) => {
+          const c = classrooms.find((cl) => cl.id === cid);
+          return c ? `${c.grade} ${c.class}` : cid;
+        })
+        .join(', ');
+
+      await Swal.fire({
+        icon: 'success',
+        title: '자료가 공유되었습니다!',
+        html: `
+          <div style="text-align:left;line-height:1.5">
+            <p style="margin:0 0 8px 0"><strong>"${material.title}"</strong></p>
+            <p style="margin:0 0 6px 0;color:#374151;"><strong>공유한 반</strong> ${classroomNames}</p>
+            <p style="margin:0 0 6px 0;color:#374151;"><strong>공유한 학생</strong> ${names.join(', ')}</p>
+            <p style="margin:4px 0 0 0;color:#6b7280;font-size:14px;">${names.length}명에게 공유되었습니다</p>
+          </div>
+        `,
+        confirmButtonColor: '#192b55',
+      });
+
+      setShowSendModal(false);
+      setSelectedMaterial(null);
+    } catch (err: any) {
+      console.error('자료 공유 실패', err);
+      await Swal.close();
+      await Swal.fire({
+        icon: 'error',
+        title: '자료 공유에 실패했습니다',
+        text: err?.message ?? '잠시 후 다시 시도해 주세요.',
+        confirmButtonColor: '#192b55',
+      });
+    }
   };
 
   const handleDeleteMaterial = (materialId: string) => {
@@ -729,7 +935,9 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
                     <div className="cl-stat">
                       <Users size={18} />
                       <div className="cl-stat-info">
-                        <p className="cl-stat-num">{classroom.studentCount}</p>
+                        <p className="cl-stat-num">
+                          {classroom.studentCount}
+                        </p>
                         <p className="cl-stat-text">학생</p>
                       </div>
                     </div>
@@ -737,7 +945,9 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
                     <div className="cl-stat">
                       <BookOpen size={18} />
                       <div className="cl-stat-info">
-                        <p className="cl-stat-num">{classroom.materialCount}</p>
+                        <p className="cl-stat-num">
+                          {classroom.materialCount}
+                        </p>
                         <p className="cl-stat-text">자료</p>
                       </div>
                     </div>
@@ -860,9 +1070,9 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
           classrooms={classrooms.map((c) => ({
             id: c.id,
             name: `${c.grade} ${c.class}`,
-            count: (STUDENTS_BY_CLASSROOM[c.id] || []).length,
+            count: (studentsByClassroom[c.id] || []).length,
           }))}
-          studentsByClassroom={STUDENTS_BY_CLASSROOM}
+          studentsByClassroom={studentsByClassroom}
           selectedMaterial={{
             id: selectedMaterial.id,
             title: selectedMaterial.title,
@@ -874,27 +1084,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
             setSelectedMaterial(null);
           }}
           onSend={(studentIds, classroomIds) => {
-            const all = classroomIds.flatMap(
-              (id) => STUDENTS_BY_CLASSROOM[id] || [],
-            );
-            const names = all
-              .filter((s) => studentIds.includes(s.id))
-              .map((s) => s.name);
-            Swal.fire({
-              icon: 'success',
-              title: '자료가 공유되었습니다!',
-              html: `
-                <div style="text-align:left;line-height:1.5">
-                  <p style="margin:0 0 8px 0"><strong>"${selectedMaterial.title}"</strong></p>
-                  <p style="margin:0 0 6px 0;color:#374151;"><strong>공유할 반</strong> ${classroomIds.join(', ')}</p>
-                  <p style="margin:0 0 6px 0;color:#374151;"><strong>공유할 학생</strong> ${names.join(', ')}</p>
-                  <p style="margin:4px 0 0 0;color:#6b7280;font-size:14px;">${names.length}명에게 공유되었습니다</p>
-                </div>
-              `,
-              confirmButtonColor: '#192b55',
-            });
-            setShowSendModal(false);
-            setSelectedMaterial(null);
+            void shareMaterial(studentIds, classroomIds, selectedMaterial);
           }}
           schoolImage={schoolImg}
           maleImage={maleImg}
