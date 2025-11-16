@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import axios from "axios";
 import { LibraryScreenNavigationProp } from "../../navigation/navigationTypes";
 import { Material } from "../../types/material";
 import { useAuthStore } from "../../stores/authStore";
@@ -76,13 +77,29 @@ export default function LibraryScreen() {
             `${displayName} 학생에게 공유된 학습 자료 ${mapped.length}개가 있습니다. 화면을 아래로 쓸어 내려 교재를 탐색하세요.`
           );
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error("[LibraryScreen] 자료 로딩 실패:", e);
-        if (!isMounted) return;
+
+        // 401이면: 자동 로그인도 실패한 상태 → AuthStart로 보내서 다시 로그인
+        if (axios.isAxiosError(e) && e.response?.status === 401) {
+          AccessibilityInfo.announceForAccessibility(
+            "로그인이 만료되었습니다. 생체 인증 로그인 화면으로 이동합니다."
+          );
+
+          // 스택 초기화 후 AuthStart로 이동
+          // (네비게이션 타입 충돌을 피하려고 name을 as never 캐스팅)
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "AuthStart" as never }],
+          });
+
+          setLoading(false);
+          return;
+        }
 
         setError("자료를 불러오는 도중 오류가 발생했습니다.");
         AccessibilityInfo.announceForAccessibility(
-          "서버에서 학습 자료를 불러오는 데 실패했습니다. 네트워크 상태를 확인한 후 다시 시도해 주세요."
+          "서버에서 학습 자료를 불러오는 데 실패했습니다. 네트워크 상태를 확인해 주세요."
         );
       } finally {
         if (isMounted) {
@@ -96,7 +113,7 @@ export default function LibraryScreen() {
     return () => {
       isMounted = false;
     };
-  }, [displayName]);
+  }, [displayName, navigation]);
 
   // 헬퍼: 한글 교재명 / 음성 명령 정규화
   const normalize = (text: string) =>
