@@ -10,5 +10,4 @@ import lombok.NoArgsConstructor;
 public class BookmarkRequest {
     private Long materialId;
     private String titleId;
-    private String stitleId;
 }

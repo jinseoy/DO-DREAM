@@ -58,7 +58,7 @@ public class BookmarkService {
         Material material = materialRepository.findById(request.getMaterialId())
                 .orElseThrow(() -> new CustomException(ErrorCode.MATERIAL_NOT_FOUND));
 
-        Optional<Bookmark> existing = bookmarkRepository.findByUserAndMaterialAndTitleIdAndSTitleId(user, material, request.getTitleId(), request.getStitleId());
+        Optional<Bookmark> existing = bookmarkRepository.findByUserAndMaterialAndTitleId(user, material, request.getTitleId());
 
         if(existing.isPresent()){
             bookmarkRepository.delete(existing.get());
@@ -69,10 +69,9 @@ public class BookmarkService {
         }
         else {
             //S3에서 JSON 내용 가져오기
-            Map<String, Object> content = getContentByIds(
+            Map<String, Object> content = getContentById(
                     material.getUploadedFile().getId(),
-                    request.getTitleId(),
-                    request.getStitleId()
+                    request.getTitleId()
             );
 
             //북마크 생성
@@ -80,9 +79,7 @@ public class BookmarkService {
                     .user(user)
                     .material(material)
                     .titleId(request.getTitleId())
-                    .sTitleId(request.getStitleId())
-                    .title((String)content.get("index_title"))
-                    .sTitle((String)content.get("s_title"))
+                    .title((String)content.get("title"))
                     .contents((String)content.get("contents"))
                     .build();
 
@@ -109,9 +106,7 @@ public class BookmarkService {
                         bookmark.getMaterial().getId(),
                         bookmark.getMaterial().getTitle(),
                         bookmark.getTitleId(),
-                        bookmark.getSTitleId(),
                         bookmark.getTitle(),
-                        bookmark.getSTitle(),
                         bookmark.getContents(),
                         bookmark.getCreatedAt()
                 ))
@@ -142,35 +137,54 @@ public class BookmarkService {
         }
     }
 
-    private Map<String, Object> getContentByIds(Long pdfId, String titleId, String sTitleId){
+    private Map<String, Object> getContentById(Long pdfId, String titleId){
 
         Map<String, Object> fullJson = getJsonFromS3(pdfId);
 
-        Map<String, Object> parsedData = (Map<String, Object>) fullJson.get("parsedData");
-        List<Map<String, Object>> data = (List<Map<String, Object>>) parsedData.get("data");
+        List<Map<String, Object>> chapters = (List<Map<String, Object>>) fullJson.get("chapters");
 
-        for (Map<String, Object> index : data) {
-            List<Map<String, Object>> titles = (List<Map<String, Object>>) index.get("titles");
+        if(chapters == null || chapters.isEmpty()) {
+            throw new CustomException(ErrorCode.INVALID_JSON_STRUCTURE);
+        }
 
-            for (Map<String, Object> titleMap : titles) {
-                if (titleId.equals(titleMap.get("id"))) {
-                    List<Map<String, Object>> sTitles = (List<Map<String, Object>>) titleMap.get("s_titles");
+        for (Map<String, Object> chapter : chapters) {
+            String chapterId = String.valueOf(chapter.get("id"));
 
-                    for (Map<String, Object> sTitleMap : sTitles) {
-                        if (sTitleId.equals(sTitleMap.get("id"))) {
-                            return Map.of(
-                                    "index_title", index.get("index_title"),
-                                    "title", titleMap.get("title"),
-                                    "s_title", sTitleMap.get("s_title"),
-                                    "contents", sTitleMap.getOrDefault("contents", "")
-                            );
+            if (titleId.equals(chapterId)) {
+                String type = (String) chapter.get("type");
+                String title = (String) chapter.getOrDefault("title", "");
+                String contents = "";
+
+                if("quiz".equals(type)) {
+                    List<Map<String, Object>> qaList = (List<Map<String, Object>>) chapter.get("qa");
+                    if(qaList != null && !qaList.isEmpty()) {
+                        StringBuilder sb = new StringBuilder();
+                        for(int i = 0; i < qaList.size(); i++) {
+                            Map<String, Object> qa = qaList.get(i);
+                            sb.append("Q").append(i+1).append(". ")
+                                    .append(qa.getOrDefault("question", ""))
+                                    .append("\n\n정답: ")
+                                    .append(qa.getOrDefault("answer", ""))
+                                    .append("\n\n---\n\n");
                         }
+                        contents = sb.toString().trim();
                     }
+                } else if("content".equals(type)) {
+                    // content 타입
+                    contents = (String) chapter.getOrDefault("content", "");
+                } else {
+                    // 기타 타입
+                    contents = (String) chapter.getOrDefault("content", "");
                 }
+
+                return Map.of(
+                        "title", title,
+                        "contents", contents
+                );
             }
         }
 
-        throw new RuntimeException("Content not found for titleId: " + titleId + ", sTitleId: " + sTitleId);
+        throw new CustomException(ErrorCode.CONTENT_NOT_FOUND);
     }
 
     @Transactional
@@ -184,7 +198,7 @@ public class BookmarkService {
         List<Bookmark> bookmarks = bookmarkRepository.findByUserAndMaterial(user, material);
 
         Set<String> bookmarkedSTitleIds = bookmarks.stream()
-                .map(Bookmark::getSTitleId)
+                .map(Bookmark::getTitleId)
                 .collect(Collectors.toSet());
 
         return new MaterialBookmarksResponse(materialId, bookmarkedSTitleIds);
