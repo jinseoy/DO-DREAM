@@ -848,6 +848,19 @@ export default function AdvancedEditor({
       return;
     }
 
+    // ✅ Access Token 가져오기
+    const token = localStorage.getItem('accessToken');
+
+    if (!token) {
+      Swal.fire({
+        icon: 'error',
+        title: '인증이 필요합니다',
+        text: '다시 로그인해주세요.',
+        confirmButtonColor: '#192b55',
+      });
+      return;
+    }
+
     const payload = {
       materialTitle,
       labelColor: selectedLabel ? selectedLabel.toUpperCase() : null,
@@ -869,12 +882,13 @@ export default function AdvancedEditor({
         headers: {
           'Content-Type': 'application/json',
           accept: 'application/json',
+          // ✅ Authorization 헤더 추가
+          Authorization: `Bearer ${token}`,
         },
         credentials: 'include',
         body: JSON.stringify(payload),
       });
 
-      // 응답 본문 먼저 읽기
       const responseText = await res.text();
       console.log('📤 Publish Response:', {
         status: res.status,
@@ -885,62 +899,35 @@ export default function AdvancedEditor({
       await Swal.close();
 
       if (!res.ok) {
-        // 403 에러 특별 처리
-        if (res.status === 403) {
-          let errorMessage = '이 자료를 수정할 권한이 없습니다.';
-
-          try {
-            const errorData = JSON.parse(responseText);
-            if (errorData.message) {
-              errorMessage = errorData.message;
-            }
-          } catch {
-            // JSON 파싱 실패 시 기본 메시지 사용
-          }
+        if (res.status === 403 || res.status === 401) {
+          // 토큰 만료 또는 권한 없음
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('isLoggedIn');
 
           Swal.fire({
             icon: 'error',
-            title: '권한 없음',
-            html: `
-            <div style="text-align: left; line-height: 1.7;">
-              <p style="margin-bottom: 12px;">
-                ${errorMessage}
-              </p>
-              <div style="margin-top: 15px; padding: 12px; background: #f3f4f6; border-radius: 8px; font-size: 14px;">
-                <strong>가능한 원인:</strong>
-                <ul style="margin: 8px 0 0 0; padding-left: 20px;">
-                  <li>다른 사용자의 자료입니다</li>
-                  <li>세션이 만료되었습니다</li>
-                  <li>읽기 전용 자료입니다</li>
-                </ul>
-              </div>
-              <p style="margin-top: 15px; font-size: 13px; color: #666;">
-                💡 <strong>해결 방법:</strong> 다시 로그인하거나 자신의 자료를 편집해보세요.
-              </p>
-            </div>
-          `,
+            title: '인증이 만료되었습니다',
+            text: '다시 로그인해주세요.',
             confirmButtonColor: '#192b55',
-            confirmButtonText: '확인',
+          }).then(() => {
+            window.location.href = '/';
           });
           return;
         }
 
-        // 500 에러
         if (res.status === 500) {
           Swal.fire({
             icon: 'error',
             title: '서버 오류',
-            text: '서버에서 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+            text: '서버에서 오류가 발생했습니다.',
             confirmButtonColor: '#192b55',
           });
           return;
         }
 
-        // 기타 에러
         throw new Error(responseText || '서버에서 오류가 발생했습니다');
       }
 
-      // 성공
       await Swal.fire({
         icon: 'success',
         title: '발행되었습니다!',
