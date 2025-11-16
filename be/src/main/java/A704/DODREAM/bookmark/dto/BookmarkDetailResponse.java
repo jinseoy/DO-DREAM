@@ -12,9 +12,7 @@ public class BookmarkDetailResponse {
     private Long materialId;
     private String materialTitle;
     private String titleId;
-    private String sTitleId;
     private String title;
-    private String sTitle;
     private String contents;
     private LocalDateTime createdAt;
 }

@@ -45,6 +45,10 @@ public enum ErrorCode {
     //자료 관련 (MATERIAL)
     MATERIAL_NOT_FOUND("MATERIAL_404", "자료를 찾을 수 없습니다."),
 
+    // 북마크 관련 (BOOKMARK)
+    CONTENT_NOT_FOUND("BOOKMARK_404", "콘텐츠를 찾을 수 없습니다."),
+    INVALID_JSON_STRUCTURE("BOOKMARK_400", "유효하지 않은 JSON 구조입니다."),
+
     // 일반 입력/서버 오류 (COMMON)
     INVALID_INPUT("COMMON_400", "잘못된 입력입니다."),
     DUPLICATED_VALUE("COMMON_409", "중복되는 입력값입니다."),
