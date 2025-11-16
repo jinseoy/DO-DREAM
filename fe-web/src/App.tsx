@@ -4,76 +4,89 @@ import { useState } from 'react';
 import Join from './pages/Join';
 import ClassroomList from './pages/ClassroomList';
 import Classroom from './pages/Classroom';
-import EditorPage from './pages/EditorPage'; 
+import EditorPage from './pages/EditorPage';
 import StudentRoom from './pages/StudentRoom';
 import './index.css';
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // ✅ localStorage에서 초기값 읽기
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    const stored = localStorage.getItem('isLoggedIn');
+    return stored === 'true';
+  });
+
   const navigate = useNavigate();
+  const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
 
   const handleLogin = () => {
     setIsLoggedIn(true);
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+
+      await fetch(`${API_BASE}/api/auth/teacher/logout`, {
+        method: 'POST',
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('로그아웃 요청 실패:', error);
+    } finally {
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('teacherName');
+      localStorage.removeItem('accessToken'); // ✅ 토큰 삭제
+
+      setIsLoggedIn(false);
+      navigate('/');
+    }
   };
 
   return (
     <Routes>
       {/* 로그인/회원가입 페이지 */}
-      <Route 
-        path="/" 
+      <Route
+        path="/"
         element={
-          isLoggedIn ? 
-          <Navigate to="/classrooms" replace /> : 
-          <Join onLoginSuccess={handleLogin} />
-        } 
+          isLoggedIn ? (
+            <Navigate to="/classrooms" replace />
+          ) : (
+            <Join onLoginSuccess={handleLogin} />
+          )
+        }
       />
 
       {/* 반 선택 페이지 */}
-      <Route 
-        path="/classrooms" 
+      <Route
+        path="/classrooms"
         element={
-          isLoggedIn ? 
-          <ClassroomList onLogout={handleLogout} /> : 
-          <Navigate to="/" replace />
-        } 
+          isLoggedIn ? (
+            <ClassroomList onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        }
       />
 
       {/* 반별 자료함 & 학생 관리 페이지 */}
-      <Route 
-        path="/classroom/:classroomId" 
-        element={
-          isLoggedIn ? 
-          <Classroom /> 
-          : 
-          <Navigate to="/" replace />
-        } 
+      <Route
+        path="/classroom/:classroomId"
+        element={isLoggedIn ? <Classroom /> : <Navigate to="/" replace />}
       />
 
-      {/* 에디터 페이지 - EditorPage로 변경! */}
-      <Route 
-        path="/editor" 
-        element={
-          isLoggedIn ? 
-          <EditorPage /> 
-          : 
-          <Navigate to="/" replace />
-        } 
+      {/* 에디터 페이지 */}
+      <Route
+        path="/editor"
+        element={isLoggedIn ? <EditorPage /> : <Navigate to="/" replace />}
       />
 
       {/* 학생 페이지 */}
-      <Route 
-        path="/student/:studentId" 
-        element={
-          isLoggedIn ? 
-          <StudentRoom /> 
-          : 
-          <Navigate to="/" replace />
-        } 
+      <Route
+        path="/student/:studentId"
+        element={isLoggedIn ? <StudentRoom /> : <Navigate to="/" replace />}
       />
 
       {/* 기본 라우트 */}

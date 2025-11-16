@@ -1,3 +1,4 @@
+// src/pages/Join.tsx
 import { useEffect, useState, useCallback } from 'react';
 import Swal from 'sweetalert2';
 import './Join.css';
@@ -12,8 +13,6 @@ export default function Join({ onLoginSuccess }: JoinProps) {
   const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
 
   const [mode, setMode] = useState<Mode>('sign-in');
-
-  // ▼ 신규: 회원가입 2단계 제어용 상태
   const [isVerifying, setIsVerifying] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [signupName, setSignupName] = useState('');
@@ -28,7 +27,6 @@ export default function Join({ onLoginSuccess }: JoinProps) {
 
   const toggle = useCallback(() => {
     setMode((m) => (m === 'sign-in' ? 'sign-up' : 'sign-in'));
-    // 폼 전환 시 가입 2단계 상태 초기화
     setIsVerifying(false);
     setIsVerified(false);
     setSignupName('');
@@ -57,7 +55,6 @@ export default function Join({ onLoginSuccess }: JoinProps) {
     });
   };
 
-  // ▼ 로그인
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoggingIn) return;
@@ -82,7 +79,6 @@ export default function Join({ onLoginSuccess }: JoinProps) {
         body: JSON.stringify({ email, password }),
       });
 
-      // AT가 응답 바디로 온다면 필요 시 저장 (예: localStorage)
       let payload: any = null;
       try {
         payload = await res.json();
@@ -92,6 +88,27 @@ export default function Join({ onLoginSuccess }: JoinProps) {
         const msg = payload?.message || '이메일 또는 비밀번호를 확인해주세요';
         throw new Error(msg);
       }
+
+      // ✅ Access Token 저장 (여러 가능한 구조 지원)
+      const token =
+        payload?.data?.accessToken || payload?.accessToken || payload?.token;
+
+      if (token) {
+        localStorage.setItem('accessToken', token);
+        console.log('✅ Token saved:', token.substring(0, 20) + '...');
+      } else {
+        console.warn('⚠️ No token found in response:', payload);
+      }
+
+      // 사용자 정보 저장
+      const teacherName =
+        payload?.data?.teacherName || payload?.teacherName || payload?.name;
+
+      if (teacherName) {
+        localStorage.setItem('teacherName', teacherName);
+      }
+
+      localStorage.setItem('isLoggedIn', 'true');
 
       await Swal.close();
       await Swal.fire({
@@ -103,7 +120,7 @@ export default function Join({ onLoginSuccess }: JoinProps) {
         showConfirmButton: false,
       });
 
-      onLoginSuccess(); // App.tsx에서 isLoggedIn=true → /classrooms
+      onLoginSuccess();
     } catch (err: any) {
       await Swal.close();
       showErrorToast(err?.message || '로그인 중 오류가 발생했습니다');
@@ -112,7 +129,6 @@ export default function Join({ onLoginSuccess }: JoinProps) {
     }
   };
 
-  // ▼ 1단계: 이름+교원번호 인증
   const handleVerify = async () => {
     if (!signupName.trim()) return showErrorToast('사용자 이름을 입력해주세요');
     if (!signupTeacherId.trim())
@@ -120,7 +136,6 @@ export default function Join({ onLoginSuccess }: JoinProps) {
 
     setIsVerifying(true);
 
-    // 로딩 모달 열기 (await 하지 마세요)
     const started = Date.now();
     void Swal.fire({
       title: '사용자 확인 중…',
@@ -142,18 +157,14 @@ export default function Join({ onLoginSuccess }: JoinProps) {
       clearTimeout(kill);
 
       if (!res.ok) {
-        const msg = `${res.status} ${res.statusText || ''}`.trim();
         throw new Error(`사용자 인증 실패`);
       }
 
-      // ▶ 로딩 최소 노출 보장 (깜빡임 방지)
       const elapsed = Date.now() - started;
       if (elapsed < 700) await new Promise((r) => setTimeout(r, 700 - elapsed));
 
-      // 1) 로딩 모달 먼저 닫기
       await Swal.close();
 
-      // 2) 토스트는 그 다음에 띄우기 (이제 안 사라짐)
       await Swal.fire({
         toast: true,
         position: 'top-end',
@@ -168,11 +179,9 @@ export default function Join({ onLoginSuccess }: JoinProps) {
     } catch (err: any) {
       console.error('[verify:error]', err);
 
-      // 로딩 최소 노출 보장
       const elapsed = Date.now() - started;
       if (elapsed < 700) await new Promise((r) => setTimeout(r, 700 - elapsed));
 
-      // 실패도 동일하게: 로딩 닫고 → 토스트
       await Swal.close();
       await Swal.fire({
         toast: true,
@@ -189,13 +198,10 @@ export default function Join({ onLoginSuccess }: JoinProps) {
 
       setIsVerified(false);
     } finally {
-      // ❌ 여기서 Swal.close() 하지 마세요 (토스트까지 닫힘)
       setIsVerifying(false);
     }
   };
 
-  // ▼ 2단계: 회원가입 제출
-  // ▼ 2단계: 회원가입 제출
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -234,21 +240,19 @@ export default function Join({ onLoginSuccess }: JoinProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: signupName, // 1단계 값
-          teacherNo: signupTeacherId, // 1단계 값 (키 이름 teacherNo!)
+          name: signupName,
+          teacherNo: signupTeacherId,
           email,
           password,
         }),
       });
 
-      // 서버에서 메시지 내려줄 수도 있으니 안전하게 파싱 시도
       let payload: any = null;
       try {
         payload = await res.json();
       } catch {}
 
       if (!res.ok) {
-        // 중복 이메일 등 케이스 표시
         const msg =
           payload?.message ||
           (res.status === 409
@@ -268,9 +272,7 @@ export default function Join({ onLoginSuccess }: JoinProps) {
         showConfirmButton: false,
       });
 
-      // 가입 완료 → 로그인 화면으로
       setMode('sign-in');
-      // 필요하면 입력 초기화
       setIsVerified(false);
       setSignupName('');
       setSignupTeacherId('');
@@ -299,7 +301,6 @@ export default function Join({ onLoginSuccess }: JoinProps) {
         <div className="col align-items-center flex-col sign-up">
           <div className="form-wrapper align-items-center">
             <form className="form sign-up" onSubmit={handleSignup}>
-              {/* 1단계: 이름 + 교원번호 + 인증 버튼 */}
               <div className="input-group">
                 <i className="bx bxs-user" />
                 <input
@@ -334,7 +335,6 @@ export default function Join({ onLoginSuccess }: JoinProps) {
                 </button>
               )}
 
-              {/* 2단계: 인증 성공 시 나머지 입력 노출 */}
               <div
                 className={`signup-step2 ${isVerified ? 'open' : 'closed'}`}
                 aria-hidden={!isVerified}
