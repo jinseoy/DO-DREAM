@@ -1,0 +1,81 @@
+{
+  "expo": {
+    "name": "두드림",
+    "slug": "do-dream",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon_dodream.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dodream.app",
+      "icon": "./assets/icon_dodream.png",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to use speech recognition.",
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to use the microphone."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon_dodream.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.dodream.app",
+      "permissions": [
+        "INTERNET",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "POST_NOTIFICATIONS",
+        "RECORD_AUDIO"
+      ],
+      "googleServicesFile": "./google-services.json"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      "./plugins/withAndroidManifestFix",
+      "./plugins/withVolumeKeyTriggers",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 34,
+            "minSdkVersion": 24,
+            "buildToolsVersion": "35.0.0",
+            "kotlinVersion": "2.0.20",
+            "enableProguardInReleaseBuilds": false,
+            "enableShrinkResourcesInReleaseBuilds": false,
+            "extraProguardRules": "-keep class com.facebook.react.** { *; }",
+            "enableMinifyInReleaseBuilds": false
+          }
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "두드림이 마이크에 접근해야 음성 인식을 할 수 있습니다.",
+          "speechRecognitionPermission": "두드림이 음성 인식을 사용합니다.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5a37e042-9faa-4aac-9a40-d659c6777a47"
+      }
+    }
+  }
+}

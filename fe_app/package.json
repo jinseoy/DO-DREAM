@@ -1,0 +1,44 @@
+{
+  "name": "fe_app",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@react-native-firebase/app": "^23.5.0",
+    "@react-native-firebase/messaging": "^23.5.0",
+    "@react-navigation/native": "^7.1.18",
+    "@react-navigation/native-stack": "^7.5.1",
+    "axios": "^1.13.2",
+    "crypto-js": "^4.2.0",
+    "expo": "~54.0.18",
+    "expo-av": "~16.0.7",
+    "expo-build-properties": "~1.0.9",
+    "expo-dev-client": "~6.0.16",
+    "expo-haptics": "~15.0.7",
+    "expo-local-authentication": "~17.0.7",
+    "expo-speech": "~14.0.7",
+    "expo-speech-recognition": "^2.1.5",
+    "expo-status-bar": "~3.0.8",
+    "expo-system-ui": "~6.0.8",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-device-info": "^14.1.1",
+    "react-native-keyevent": "^0.3.2",
+    "react-native-mmkv": "2.12.2",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0",
+    "react-native-tts": "^4.1.1",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@types/crypto-js": "^4.2.2",
+    "@types/react": "~19.1.0",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}
