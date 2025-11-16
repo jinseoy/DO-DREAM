@@ -12,17 +12,17 @@ import java.util.Set;
 
 public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
 
-    Optional<Bookmark> findByUserAndMaterialAndSectionId(
-            User user, Material material, String sectionId
+    @Query("SELECT b FROM Bookmark b " +
+            "WHERE b.user = :user " +
+            "AND b.material = :material " +
+            "AND b.titleId = :titleId ")
+    Optional<Bookmark> findByUserAndMaterialAndTitleId(
+            User user, Material material, String titleId
     );
 
-    List<Bookmark> findByUserAndMaterial(User user, Material material);
-
-    @Query("SELECT b.sectionId FROM Bookmark b " +
-            "WHERE b.user = :user AND b.material =: material")
-    Set<String> findSectionIdsByUserAndMaterial(
-            User user, Material material
-    );
+    List<Bookmark> findByUserOrderByCreatedAtDesc(User user);
 
     long countByUser(User user);
+
+    List<Bookmark> findByUserAndMaterial(User user, Material material);
 }

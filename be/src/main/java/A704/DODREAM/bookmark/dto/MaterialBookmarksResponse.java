@@ -2,12 +2,12 @@ package A704.DODREAM.bookmark.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
+
+import java.util.Set;
 
 @Getter
-@NoArgsConstructor
 @AllArgsConstructor
-public class BookmarkRequest {
+public class MaterialBookmarksResponse {
     private Long materialId;
-    private String titleId;
+    private Set<String> bookmarkedTitleIds;
 }

@@ -33,8 +33,14 @@ public class Bookmark {
     @JoinColumn(name = "material_id", nullable = false)
     private Material material;
 
-    @Column(name = "section_id", nullable = false, length = 50)
-    private String sectionId;
+    @Column(name = "title_id", nullable = false, length = 50)
+    private String titleId;
+
+    @Column(nullable = false)
+    private String title;
+
+    @Column(columnDefinition = "TEXT")
+    private String contents;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)

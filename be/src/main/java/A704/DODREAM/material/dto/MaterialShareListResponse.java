@@ -30,14 +30,6 @@ public class MaterialShareListResponse {
 		private Long shareId;
 		private Long materialId;
 		private String materialTitle;
-		private String originalFileName;
-		private String fileUrl;
-		private Long fileSize;
-		private String subject;
-		private String gradeLevel;
-		private String contentType;
-		private String processingStatus;
-		private LabelColor labelColor;
 
 		private Long teacherId;
 		private String teacherName;
@@ -51,11 +43,6 @@ public class MaterialShareListResponse {
 				.shareId(share.getId())
 				.materialId(share.getMaterial().getId())
 				.materialTitle(share.getMaterial().getTitle())
-				.subject(share.getMaterial().getSubject())
-				.gradeLevel(share.getMaterial().getGradeLevel())
-//				.contentType(share.getMaterial().getContentType().name())
-//				.processingStatus(share.getMaterial().getProcessingStatus().name())
-				.labelColor(share.getMaterial().getLabel())
 				.teacherId(share.getTeacher().getId())
 				.teacherName(share.getTeacher().getName())
 				.sharedAt(share.getSharedAt())

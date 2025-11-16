@@ -17,7 +17,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @Tag(name = "Material Share", description = "학습 자료 공유 API")
 @Slf4j
@@ -84,4 +85,18 @@ public class MaterialShareController {
                 .getSharedMaterialByClass(classId, teacherId);
 		return ResponseEntity.ok(response);
 	}
+
+    @Operation(
+            summary = "공유받은 자료 JSON 조회 (학생/앱)",
+            description = "공유받은 학습 자료의 JSON 데이터를 조회합니다."
+    )
+    @GetMapping("/shared/{materialId}/json")
+    public ResponseEntity<Map<String, Object>> getSharedMaterialJson(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long materialId
+    ) {
+        Long studentId = userPrincipal.userId();
+        Map<String, Object> jsonData = materialShareService.getSharedMaterialJson(studentId, materialId);
+        return ResponseEntity.ok(jsonData);
+    }
 }

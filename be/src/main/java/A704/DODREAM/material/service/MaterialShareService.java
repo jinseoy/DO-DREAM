@@ -8,8 +8,12 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import A704.DODREAM.file.entity.UploadedFile;
+import A704.DODREAM.file.repository.UploadedFileRepository;
 import A704.DODREAM.global.exception.CustomException;
 import A704.DODREAM.global.exception.constant.ErrorCode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +34,10 @@ import A704.DODREAM.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 @Slf4j
 @Service
@@ -40,8 +48,14 @@ public class MaterialShareService {
 	private final MaterialRepository materialRepository;
 	private final UserRepository userRepository;
 	private final ClassroomRepository classroomRepository;
+	private final UploadedFileRepository uploadedFileRepository;
+	private final S3Client s3Client;
+	private final ObjectMapper objectMapper;
 
 	private final FcmService fcmService;
+
+	@Value("${aws.s3.bucket}")
+	private String bucketName;
 
     // 자료 공유
     @Transactional
@@ -227,6 +241,56 @@ public class MaterialShareService {
 			.totalCount(shares.size())
 			.materials(toInfoList(shares))
 			.build();
+	}
+
+	public Map<String, Object> getSharedMaterialJson(Long studentId, Long materialId) {
+		// 1. 공유 권한 확인
+		MaterialShare share = materialShareRepository.findByStudentIdAndMaterialId(studentId, materialId)
+				.orElseThrow(() -> new RuntimeException("공유받지 않은 자료입니다."));
+
+		// 2. Material 조회
+		Material material = share.getMaterial();
+
+		// 3. UploadedFile 조회
+		UploadedFile uploadedFile = material.getUploadedFile();
+
+		if (uploadedFile == null) {
+			throw new RuntimeException("업로드된 파일이 없습니다.");
+		}
+
+		if (uploadedFile.getJsonS3Key() == null) {
+			throw new RuntimeException("파싱된 JSON이 없습니다.");
+		}
+
+		// 4. S3에서 JSON 가져오기
+		try {
+			GetObjectRequest getRequest = GetObjectRequest.builder()
+					.bucket(bucketName)
+					.key(uploadedFile.getJsonS3Key())
+					.build();
+
+			ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getRequest);
+			String jsonString = new String(response.readAllBytes());
+
+			Map<String, Object> jsonData = objectMapper.readValue(jsonString, Map.class);
+
+			List<Map<String, Object>> chapters = (List<Map<String, Object>>) jsonData.get("chapters");
+
+			if (chapters == null) {
+				throw new CustomException(ErrorCode.INVALID_JSON_STRUCTURE);
+			}
+
+			return Map.of(
+					"materialId", materialId,
+					"materialTitle", material.getTitle(),
+					"filename", uploadedFile.getOriginalFileName(),
+					"parsedAt", uploadedFile.getParsedAt() != null ? uploadedFile.getParsedAt() : LocalDateTime.now(),
+					"chapters", chapters
+			);
+
+		} catch (Exception e) {
+			throw new RuntimeException("JSON 조회 실패: " + e.getMessage());
+		}
 	}
 
 	private List<MaterialShareListResponse.SharedMaterialInfo> toInfoList(

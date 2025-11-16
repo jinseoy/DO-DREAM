@@ -1,6 +1,7 @@
 package A704.DODREAM.material.repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -50,4 +51,6 @@ public interface MaterialShareRepository extends JpaRepository<MaterialShare, Lo
 		Long classId,
 		Long teacherId
 	);
+
+	Optional<MaterialShare> findByStudentIdAndMaterialId(Long studentId, Long materialId);
 }

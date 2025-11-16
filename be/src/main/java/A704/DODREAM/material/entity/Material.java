@@ -18,8 +18,7 @@ import A704.DODREAM.user.entity.User;
 
 @Entity
 @Table(name = "materials", indexes = {
-	@Index(name = "idx_teacher", columnList = "teacher_id"),
-	@Index(name = "idx_status", columnList = "processing_status")
+	@Index(name = "idx_teacher", columnList = "teacher_id")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
