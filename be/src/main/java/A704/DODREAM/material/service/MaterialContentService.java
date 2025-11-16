@@ -29,8 +29,8 @@ public class MaterialContentService {
 		// 여기서는 단순 테스트를 위해 임의의 Material을 생성하고 저장합니다.
 		Material material = Material.builder()
 			.title("테스트 문서")
-			.originalFileName("test.pdf")
-			.fileUrl("https://example.com/test.pdf")  // 임시 URL
+//			.originalFileName("test.pdf")
+//			.fileUrl("https://example.com/test.pdf")  // 임시 URL
 			// teacher는 실제로는 User 객체가 필요하지만, 테스트를 위해 null을 허용하도록 Material 엔티티를 수정하거나
 			// 실제 User를 조회하여 설정해야 합니다.
 			.build();

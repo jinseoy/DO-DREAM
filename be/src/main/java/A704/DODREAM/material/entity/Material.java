@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import A704.DODREAM.file.entity.UploadedFile;
+import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -13,26 +15,10 @@ import A704.DODREAM.material.enums.ContentType;
 import A704.DODREAM.material.enums.LabelColor;
 import A704.DODREAM.material.enums.ProcessingStatus;
 import A704.DODREAM.user.entity.User;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "materials", indexes = {
-	@Index(name = "idx_teacher", columnList = "teacher_id"),
-	@Index(name = "idx_status", columnList = "processing_status")
+	@Index(name = "idx_teacher", columnList = "teacher_id")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -50,20 +36,12 @@ public class Material {
 	@JoinColumn(name = "teacher_id", nullable = false)
 	private User teacher;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "uploaded_file_id", nullable = false)
+    private UploadedFile uploadedFile;
+
 	@Column(nullable = false, length = 200)
 	private String title;
-
-	@Column(name = "original_file_name", nullable = false, length = 255)
-	private String originalFileName;
-
-	@Column(name = "file_url", nullable = false, length = 500)
-	private String fileUrl;
-
-    @Column(name = "json_s3_key")
-    private String jsonS3Key;
-
-	@Column(name = "file_size")
-	private Long fileSize;
 
 	@Column(length = 50)
 	private String subject;

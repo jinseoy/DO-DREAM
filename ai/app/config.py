@@ -9,6 +9,11 @@ load_dotenv()
 SECRET_KEY_BASE64 = os.getenv("JWT_SECRET_BASE64")
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_ISSUER = os.getenv("JWT_ISSUER", "dodream")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GMS_KEY = os.getenv("GMS_KEY")
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
 
 # DB 설정
 DATABASE_URL = os.getenv("DATABASE_URL")
