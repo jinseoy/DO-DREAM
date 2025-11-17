@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -30,6 +31,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Stream;
 
 @Service
 @Slf4j
@@ -95,7 +97,7 @@ public class PublishService {
 				RequestBody.fromString(jsonString, StandardCharsets.UTF_8)
 			);
 
-			Optional<Material> materialOpt = materialRepository.findByUploadedFileId(uploadedFile.getId());
+			Optional<Material> materialOpt = materialRepository.findByUploadedFileIdAndDeletedAtIsNull(uploadedFile.getId());
 
 			// Material material; // (수정) 밖으로 이동
 			if(materialOpt.isPresent()){
@@ -254,5 +256,35 @@ public class PublishService {
         }
 
         material.setLabel(label);
+    }
+
+    @Transactional
+    public void deleteMaterial(Long userId, Long materialId) {
+        Material material = materialRepository.findByIdAndTeacherIdAndDeletedAtIsNull(materialId, userId)
+                        .orElseThrow(() -> new CustomException(ErrorCode.FORBIDDEN));
+
+        UploadedFile uploadedFile = material.getUploadedFile();
+
+        Stream.of(
+                        uploadedFile.getS3Key(),
+                        uploadedFile.getJsonS3Key(),
+                        uploadedFile.getConceptCheckJsonS3Key()
+                )
+                .filter(Objects::nonNull)
+                .forEach(s3Key -> {
+                    try {
+                        DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
+                                .bucket(bucketName)
+                                .key(s3Key)
+                                .build();
+                        s3Client.deleteObject(deleteRequest);
+                        log.info("S3 파일 삭제 완료: {}", s3Key);
+                    } catch (Exception e) {
+                        log.error("S3 파일 삭제 실패: {}, 에러: {}", s3Key, e.getMessage());
+                    }
+                });
+
+        material.softDelete();
+        materialRepository.save(material);
     }
 }

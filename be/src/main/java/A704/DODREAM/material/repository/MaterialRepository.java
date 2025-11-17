@@ -9,13 +9,14 @@ import java.util.List;
 import java.util.Optional;
 
 public interface MaterialRepository extends JpaRepository<Material, Long> {
-    Optional<Material> findByIdAndTeacherId(Long materialId, Long teacherId);
+    Optional<Material> findByIdAndTeacherIdAndDeletedAtIsNull(Long materialId, Long teacherId);
 
-    Optional<Material> findByUploadedFileId(Long pdfId);
+    Optional<Material> findByUploadedFileIdAndDeletedAtIsNull(Long pdfId);
 
     @Query("SELECT m FROM Material m " +
             "JOIN FETCH m.uploadedFile " +
             "WHERE m.teacher.id = :id " +
+            "AND m.deletedAt IS NULL " +
             "ORDER BY m.createdAt DESC")
     List<Material> findAllByTeacherIdWithUploadedFile(Long id);
 }
