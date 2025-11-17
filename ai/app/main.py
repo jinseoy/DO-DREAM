@@ -1,6 +1,10 @@
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.rag import models as rag_models
+from app.rag.database import engine as rag_engine
+
+rag_models.Base.metadata.create_all(bind=rag_engine)
 
 # (수정) /api 같은 하위 경로에서 실행할 경우를 대비해 root_path를 설정합니다.
 # 서버의 실제 하위 경로에 맞춰 "/api" 부분을 수정하거나, 하위 경로가 없다면 이 줄을 제거하세요.
@@ -28,11 +32,13 @@ app.add_middleware(
 # 각 기능별 라우터 파일을 임포트합니다.
 from app.user import router as user_router
 from app.document_processor.router import router as document_router
+from app.rag.router import router as rag_router
 
 # --- 라우터 포함 ---
 # 각 라우터에 prefix를 지정하여 URL 경로를 분리합니다.
 app.include_router(user_router.router, prefix="/users", tags=["Users"])
 app.include_router(document_router)
+app.include_router(rag_router)
 
 # --- 루트 엔드포인트 ---
 # 서버가 살아있는지 확인하는 헬스 체크용 엔드포인트

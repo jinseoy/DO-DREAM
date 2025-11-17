@@ -22,6 +22,8 @@ public class StudentRegistry {
 
 	private String studentNumber;
 
+	private String gender;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "school_id")
 	private SchoolRegistry school;

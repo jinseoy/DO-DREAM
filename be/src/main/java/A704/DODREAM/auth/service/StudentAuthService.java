@@ -85,7 +85,7 @@ public class StudentAuthService {
 
 		// 7) 프로필 생성(+ Classroom 연결)
 		//    StudentProfile.create(...)는 classroom 세팅이 없어 setter로 연결
-		StudentProfile profile = StudentProfile.create(user, schoolName, req.studentNumber(), classroom);
+		StudentProfile profile = StudentProfile.create(user, schoolName, req.studentNumber(), classroom, sr.getGender());
 		studentProfileRepository.save(profile);
 
 		// 8) 기기 크리덴셜 저장 (secret -> BCrypt)
