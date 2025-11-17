@@ -41,6 +41,7 @@ import {
   toggleBookmark,
   fetchBookmarksByMaterial,
 } from "../../api/bookmarkApi";
+import { updateProgress } from "../../api/progressApi";
 
 type PlayModeKey = "single" | "continuous" | "repeat";
 
@@ -262,6 +263,26 @@ export default function PlayerScreen() {
     ttsStateRef.current = { currentSectionIndex, playMode };
   }, [currentSectionIndex, playMode]);
 
+  // 백엔드에 진행률 업데이트 (API 호출)
+  const updateProgressToBackend = useCallback(async () => {
+    if (!chapter) return;
+
+    const currentPage = currentSectionIndex + 1; // 1부터 시작
+    const totalPages = chapter.sections.length;
+
+    try {
+      const response = await updateProgress({
+        materialId: material.id,
+        currentPage,
+        totalPages,
+      });
+      console.log("[PlayerScreen] 진행률 업데이트 성공:", response.data);
+    } catch (error) {
+      console.error("[PlayerScreen] 진행률 업데이트 실패:", error);
+      // 에러가 발생해도 사용자 경험을 방해하지 않도록 조용히 처리
+    }
+  }, [material.id, chapter, currentSectionIndex]);
+
   // 스크린리더 상태 추적
   useEffect(() => {
     let mounted = true;
@@ -283,14 +304,18 @@ export default function PlayerScreen() {
     const unsubscribe = navigation.addListener("beforeRemove", async () => {
       console.log("[PlayerScreen] 화면 이탈 감지 - TTS 정지");
       saveProgressData(false);
+      // 백엔드에 진행률 업데이트
+      await updateProgressToBackend();
     });
 
     return unsubscribe;
-  }, [navigation, saveProgressData]);
+  }, [navigation, saveProgressData, updateProgressToBackend]);
 
   // 질문하기
   const handleQuestionPress = useCallback(async () => {
     await ttsActions.pause();
+    // 백엔드에 진행률 업데이트
+    await updateProgressToBackend();
 
     AccessibilityInfo.announceForAccessibility(
       "질문하기 화면으로 이동합니다. 음성 인식 버튼을 누른 후 질문해주세요."
@@ -302,7 +327,7 @@ export default function PlayerScreen() {
         sectionIndex: currentSectionIndex,
       });
     }, 300);
-  }, [navigation, material, chapterId, currentSectionIndex, ttsActions]);
+  }, [navigation, material, chapterId, currentSectionIndex, ttsActions, updateProgressToBackend]);
 
   // 설정 변경 버튼
   const handleOpenSettings = useCallback(async () => {
@@ -371,7 +396,7 @@ export default function PlayerScreen() {
 
   // 🔁 이전/다음 챕터로 이동
   const handleMoveChapter = useCallback(
-    (direction: "prev" | "next") => {
+    async (direction: "prev" | "next") => {
       if (!chapter) {
         AccessibilityInfo.announceForAccessibility(
           "챕터 정보를 불러오지 못했습니다."
@@ -404,6 +429,8 @@ export default function PlayerScreen() {
       // 현재 진행 상황 저장 + 재생 일시정지
       saveProgressData(false);
       ttsActions.pause();
+      // 백엔드에 진행률 업데이트
+      await updateProgressToBackend();
 
       AccessibilityInfo.announceForAccessibility(
         direction === "prev"
@@ -427,6 +454,7 @@ export default function PlayerScreen() {
       navigation,
       saveProgressData,
       ttsActions,
+      updateProgressToBackend,
     ]
   );
 
@@ -439,10 +467,12 @@ export default function PlayerScreen() {
   }, [handleMoveChapter]);
 
   // 뒤로가기
-  const handleBackPress = useCallback(() => {
+  const handleBackPress = useCallback(async () => {
     saveProgressData(false);
+    // 백엔드에 진행률 업데이트
+    await updateProgressToBackend();
     navigation.goBack();
-  }, [navigation, saveProgressData]);
+  }, [navigation, saveProgressData, updateProgressToBackend]);
 
   // 챕터 완료 후 퀴즈 이동 (지금은 사용 X)
   const handleQuizNavigation = useCallback(() => {
