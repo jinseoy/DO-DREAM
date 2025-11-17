@@ -1007,4 +1007,170 @@ public class PdfService {
       throw new RuntimeException("S3 업로드 실패: " + e.getMessage());
     }
   }
+  /**
+   * 스크린리더 친화 형태로 JSON → TXT 변환
+   *
+   * @param pdfId PDF ID
+   * @param userId 사용자 ID
+   * @return 읽기 최적화된 TXT
+   */
+  public String extractTextFromJson(Long pdfId, Long userId) {
+
+    Map<String, Object> jsonResult = getJsonFromS3(pdfId, userId);
+    Map<String, Object> parsedData = (Map<String, Object>) jsonResult.get("parsedData");
+
+    if (parsedData == null) {
+      throw new RuntimeException("파싱된 데이터가 없습니다.");
+    }
+
+    StringBuilder text = new StringBuilder();
+
+    // -----------------------------
+    // 파일명
+    // -----------------------------
+    if (jsonResult.containsKey("filename")) {
+      text.append("파일명: ").append(jsonResult.get("filename")).append("\n\n");
+    }
+
+    // -----------------------------
+    // 목차
+    // -----------------------------
+    if (parsedData.containsKey("indexes")) {
+      List<String> indexes = (List<String>) parsedData.get("indexes");
+      if (indexes != null && !indexes.isEmpty()) {
+        text.append("목차\n\n");
+        for (String index : indexes) {
+          text.append(index).append("\n");
+        }
+        text.append("\n");
+      }
+    }
+
+    // -----------------------------
+    // 본문 내용
+    // -----------------------------
+    List<Map<String, Object>> dataList = (List<Map<String, Object>>) parsedData.get("data");
+
+    if (dataList != null) {
+      for (Map<String, Object> dataItem : dataList) {
+
+        // index + index_title
+        if (dataItem.containsKey("index") && dataItem.containsKey("index_title")) {
+          text.append(dataItem.get("index"))
+              .append(" ")
+              .append(dataItem.get("index_title"))
+              .append("\n\n");
+        }
+
+        // titles
+        List<Map<String, Object>> titles = (List<Map<String, Object>>) dataItem.get("titles");
+        if (titles != null) {
+          for (Map<String, Object> titleItem : titles) {
+
+            // title
+            if (titleItem.containsKey("title")) {
+              text.append(titleItem.get("title")).append("\n");
+            }
+
+            // s_titles
+            List<Map<String, Object>> sTitles = (List<Map<String, Object>>) titleItem.get("s_titles");
+            if (sTitles != null) {
+              for (Map<String, Object> sTitleItem : sTitles) {
+
+                // s_title
+                if (sTitleItem.containsKey("s_title")) {
+                  text.append("  ").append(sTitleItem.get("s_title")).append("\n");
+                }
+
+                // contents
+                String contents = (String) sTitleItem.get("contents");
+                if (contents != null && !contents.isBlank()) {
+                  text.append("    ").append(contents).append("\n");
+                }
+
+                // ss_titles
+                List<Map<String, Object>> ssTitles =
+                    (List<Map<String, Object>>) sTitleItem.get("ss_titles");
+
+                if (ssTitles != null) {
+                  for (Map<String, Object> ssTitleItem : ssTitles) {
+
+                    if (ssTitleItem.containsKey("ss_title")) {
+                      text.append("    - ").append(ssTitleItem.get("ss_title")).append("\n");
+                    }
+
+                    String ssContents = (String) ssTitleItem.get("contents");
+                    if (ssContents != null && !ssContents.isBlank()) {
+                      text.append("      ").append(ssContents).append("\n");
+                    }
+                  }
+                }
+                text.append("\n");
+              }
+            }
+
+            text.append("\n");
+          }
+        }
+
+        // concept_checks 처리
+        List<Map<String, Object>> conceptChecks = (List<Map<String, Object>>) dataItem.get("concept_checks");
+        if (conceptChecks != null && !conceptChecks.isEmpty()) {
+          for (Map<String, Object> conceptCheck : conceptChecks) {
+
+            // title (예: "개념 Check")
+            if (conceptCheck.containsKey("title")) {
+              text.append(conceptCheck.get("title")).append("\n");
+            }
+
+            // questions
+            Object questionsObj = conceptCheck.get("questions");
+            if (questionsObj != null) {
+              List<Map<String, Object>> questions = null;
+
+              // questions가 List 또는 String으로 올 수 있음
+              if (questionsObj instanceof List) {
+                questions = (List<Map<String, Object>>) questionsObj;
+              } else if (questionsObj instanceof String) {
+                try {
+                  questions = objectMapper.readValue((String) questionsObj, List.class);
+                } catch (JsonProcessingException e) {
+                  log.warn("questions JSON 파싱 실패: {}", e.getMessage());
+                }
+              }
+
+              if (questions != null) {
+                for (Map<String, Object> questionItem : questions) {
+                  String question = questionItem.get("question") != null ?
+                      questionItem.get("question").toString() : "";
+                  String answer = questionItem.get("answer") != null ?
+                      questionItem.get("answer").toString() : "";
+
+                  if (!question.isBlank()) {
+                    text.append("  질문: ").append(question).append("\n");
+                  }
+                  if (!answer.isBlank()) {
+                    text.append("  답: ").append(answer).append("\n");
+                  }
+                  text.append("\n");
+                }
+              }
+            }
+
+            text.append("\n");
+          }
+        }
+      }
+    }
+
+    // -----------------------------
+    // 메타데이터
+    // -----------------------------
+    if (jsonResult.containsKey("parsedAt")) {
+      text.append("\n파싱 일시: ").append(jsonResult.get("parsedAt")).append("\n");
+    }
+
+    String result = text.toString().trim();
+    return result.isEmpty() ? "추출된 텍스트가 없습니다." : result;
+  }
 }
