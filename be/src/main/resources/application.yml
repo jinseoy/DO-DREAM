@@ -15,7 +15,16 @@ management:
   metrics:
     tags:
       application: monitoring
-
+    distribution:
+      # 👉 HTTP 요청에 대해 histogram 활성화 (p50/p90/p99, SLO burn용)
+      percentiles-histogram:
+        http.server.requests: true
+      # (선택) SLO 구간
+      enable:
+        # 👉 GC / 메모리 등 JVM 메트릭
+        jvm: true
+        # 👉 HikariCP 커넥션 메트릭
+        hikaricp: true
 spring:
   application:
     name: DODREAM
