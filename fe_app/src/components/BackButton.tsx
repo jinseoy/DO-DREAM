@@ -8,6 +8,7 @@ import {
   TextStyle,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { COLORS } from "../constants/colors";
 
 type BackButtonProps = {
   /**
@@ -26,7 +27,11 @@ type BackButtonProps = {
   onPress?: () => void;
 };
 
-export default function BackButton({ style, textStyle, onPress }: BackButtonProps) {
+export default function BackButton({
+  style,
+  textStyle,
+  onPress,
+}: BackButtonProps) {
   const navigation = useNavigation();
   const handlePress = onPress || (() => navigation.goBack());
 
@@ -37,7 +42,8 @@ export default function BackButton({ style, textStyle, onPress }: BackButtonProp
       accessible={true}
       accessibilityLabel="뒤로가기"
       accessibilityRole="button"
-      accessibilityHint="이전 화면으로 돌아갑니다"
+      accessibilityHint="이전 화면으로 돌아갑니다."
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
       <Text style={[styles.backButtonText, textStyle]}>← 뒤로</Text>
     </TouchableOpacity>
@@ -49,10 +55,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     alignSelf: "flex-start",
+    minHeight: 48,
+    justifyContent: "center",
   },
   backButtonText: {
-    fontSize: 20,
-    color: "#2196F3",
-    fontWeight: "600",
+    fontSize: 22, // 가독성 향상
+    color: COLORS.primary.main, // #192b55 메인 남색
+    fontWeight: "700",
   },
 });

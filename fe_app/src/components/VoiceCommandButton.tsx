@@ -9,11 +9,12 @@ import {
   TextStyle,
 } from "react-native";
 import { TriggerContext } from "../triggers/TriggerContext";
+import { COLORS } from "../constants/colors";
 
 type VoiceCommandButtonProps = {
   /**
    * 버튼 레이블 (시각적으로 보이는 텍스트)
-   * 기본값: "음성 명령"
+   * 기본값: "🎤 음성 명령"
    */
   label?: string;
 
@@ -47,7 +48,7 @@ type VoiceCommandButtonProps = {
 };
 
 export default function VoiceCommandButton({
-  label = "음성 명령",
+  label = "🎤 음성 명령",
   listeningLabel = "듣는 중…",
   accessibilityHint,
   style,
@@ -105,6 +106,7 @@ export default function VoiceCommandButton({
         accessibilityHint ??
         "두 번 탭한 후 화면에서 안내한 명령어를 말씀하세요. 예: 재생, 일시정지, 다음, 이전, 질문하기, 뒤로 가기 등."
       }
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
       <Text
         style={[
@@ -121,26 +123,27 @@ export default function VoiceCommandButton({
 
 const styles = StyleSheet.create({
   button: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#FF5722",
-    backgroundColor: "#FFF3E0",
-    minHeight: 44,
+    borderWidth: 3, // 경계선 두께 증가 (접근성)
+    borderColor: COLORS.secondary.dark, // 진한 노란색
+    backgroundColor: COLORS.secondary.lightest, // 매우 밝은 노란색 배경
+    minHeight: 52, // 터치 영역 증가 (44px 이상)
+    minWidth: 120,
     justifyContent: "center",
     alignItems: "center",
   },
   buttonActive: {
-    borderColor: "#C62828",
-    backgroundColor: "#FFCDD2",
+    borderColor: COLORS.status.error, // 빨간색 (활성 상태)
+    backgroundColor: COLORS.status.errorLight, // 밝은 빨간색 배경
   },
   buttonText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#E64A19",
+    fontSize: 20, // 가독성 향상
+    fontWeight: "bold",
+    color: COLORS.text.primary, // 검은색 텍스트
   },
   buttonTextActive: {
-    color: "#B71C1C",
+    color: COLORS.status.error, // 빨간색 텍스트 (활성 상태)
   },
 });
