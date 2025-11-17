@@ -11,6 +11,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   AccessibilityInfo,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -111,35 +112,14 @@ export default function PlaybackChoiceScreen() {
       return;
     }
 
-    // 진행률 데이터가 있으면 현재 챕터 번호 사용, 없으면 첫 챕터 사용
-    let targetChapterId = firstChapter.chapterId;
-
-    if (progressData && progressData.currentChapterNumber) {
-      // currentChapterNumber를 사용하여 해당 챕터 찾기
-      const currentChapter = chapters.find(
-        (ch) => ch.chapterNumber === progressData.currentChapterNumber
-      );
-
-      if (currentChapter) {
-        targetChapterId = currentChapter.chapterId;
-        console.log(
-          `[PlaybackChoiceScreen] 진행률 기반 챕터 ${targetChapterId} 선택 (챕터 번호: ${progressData.currentChapterNumber})`
-        );
-      } else {
-        console.warn(
-          `[PlaybackChoiceScreen] 챕터 번호 ${progressData.currentChapterNumber}를 찾지 못함, 첫 챕터 사용`
-        );
-      }
-    }
-
     AccessibilityInfo.announceForAccessibility("이어서 듣기 시작합니다.");
 
     navigation.navigate("Player", {
       material,
-      chapterId: targetChapterId,
+      chapterId: firstChapter.chapterId,
       fromStart: false,
     });
-  }, [firstChapter, material, navigation, progressData, chapters]);
+  }, [firstChapter, material, navigation]);
 
   const handleBookmarkPress = useCallback(() => {
     if (!firstChapter) {
@@ -161,8 +141,11 @@ export default function PlaybackChoiceScreen() {
   const handleQuestionPress = useCallback(() => {
     AccessibilityInfo.announceForAccessibility("질문 목록으로 이동합니다");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    // TODO: 질문 목록 화면으로 이동
-  }, []);
+    
+    navigation.navigate("QuestionList", {
+      material,
+    });
+  }, [material, navigation]);
 
   const handleQuizPress = useCallback(() => {
     AccessibilityInfo.announceForAccessibility(
@@ -322,145 +305,153 @@ export default function PlaybackChoiceScreen() {
         />
       </View>
 
-      {/* 교재 정보 */}
-      <View style={styles.infoSection}>
-        <Text
-          style={styles.subjectText}
-          accessible={true}
-          accessibilityRole="header"
-        >
-          {material.title}
-        </Text>
-        <Text style={styles.chapterText}>{material.currentChapter}챕터</Text>
-      </View>
+      {/* 스크롤 가능한 콘텐츠 영역 */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        accessible={false}
+      >
+        {/* 교재 정보 */}
+        <View style={styles.infoSection}>
+          <Text
+            style={styles.subjectText}
+            accessible={true}
+            accessibilityRole="header"
+          >
+            {material.title}
+          </Text>
+          <Text style={styles.chapterText}>{material.currentChapter}챕터</Text>
+        </View>
 
-      {/* 진행률 표시 */}
-      {!isLoadingProgress && progressData && (
-        <View style={styles.progressSection}>
-          {/* 전체 진행률 */}
-          <View style={styles.overallProgressContainer}>
-            <Text style={styles.progressTitle}>전체 진행률</Text>
-            <View style={styles.progressBarContainer}>
-              <View style={styles.progressBarBackground}>
-                <View
-                  style={[
-                    styles.progressBarFill,
-                    { width: `${progressData.overallProgressPercentage}%` },
-                  ]}
-                />
+        {/* 진행률 표시 */}
+        {!isLoadingProgress && progressData && (
+          <View style={styles.progressSection}>
+            {/* 전체 진행률 */}
+            <View style={styles.overallProgressContainer}>
+              <Text style={styles.progressTitle}>전체 진행률</Text>
+              <View style={styles.progressBarContainer}>
+                <View style={styles.progressBarBackground}>
+                  <View
+                    style={[
+                      styles.progressBarFill,
+                      { width: `${progressData.overallProgressPercentage}%` },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.progressPercentage}>
+                  {progressData.overallProgressPercentage.toFixed(1)}%
+                </Text>
               </View>
-              <Text style={styles.progressPercentage}>
-                {progressData.overallProgressPercentage.toFixed(1)}%
+              <Text style={styles.sectionCountText}>
+                완료: {progressData.completedSections} / {progressData.totalSections} 섹션
               </Text>
             </View>
-            <Text style={styles.sectionCountText}>
-              완료: {progressData.completedSections} / {progressData.totalSections} 섹션
-            </Text>
-          </View>
 
-          {/* 챕터별 진행률 */}
-          {progressData.chapterProgress && progressData.chapterProgress.length > 0 && (
-            <View style={styles.chapterProgressContainer}>
-              <Text style={styles.progressTitle}>챕터별 진행률</Text>
+            {/* 챕터별 진행률 */}
+            {progressData.chapterProgress && progressData.chapterProgress.length > 0 && (
+              <View style={styles.chapterProgressContainer}>
+                <Text style={styles.progressTitle}>챕터별 진행률</Text>
 
-              <View style={styles.chapterNavigationContainer}>
-                <TouchableOpacity
-                  onPress={handlePrevChapterProgress}
-                  style={styles.navButton}
-                  accessibilityLabel="이전 챕터 진행률"
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.navButtonText}>◀</Text>
-                </TouchableOpacity>
+                <View style={styles.chapterNavigationContainer}>
+                  <TouchableOpacity
+                    onPress={handlePrevChapterProgress}
+                    style={styles.navButton}
+                    accessibilityLabel="이전 챕터 진행률"
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.navButtonText}>◀</Text>
+                  </TouchableOpacity>
 
-                <View style={styles.chapterProgressInfo}>
-                  {progressData.chapterProgress[currentProgressChapterIndex] && (
-                    <>
-                      <Text style={styles.chapterTitle}>
-                        {progressData.chapterProgress[currentProgressChapterIndex].chapterTitle}
-                      </Text>
-                      <View style={styles.progressBarContainer}>
-                        <View style={styles.progressBarBackground}>
-                          <View
-                            style={[
-                              styles.progressBarFill,
-                              {
-                                width: `${progressData.chapterProgress[currentProgressChapterIndex].progressPercentage}%`,
-                              },
-                            ]}
-                          />
-                        </View>
-                        <Text style={styles.progressPercentage}>
-                          {progressData.chapterProgress[currentProgressChapterIndex].progressPercentage.toFixed(1)}%
+                  <View style={styles.chapterProgressInfo}>
+                    {progressData.chapterProgress[currentProgressChapterIndex] && (
+                      <>
+                        <Text style={styles.chapterTitle}>
+                          {progressData.chapterProgress[currentProgressChapterIndex].chapterTitle}
                         </Text>
-                      </View>
-                      <Text style={styles.chapterSectionText}>
-                        {progressData.chapterProgress[currentProgressChapterIndex].completedSections} /{" "}
-                        {progressData.chapterProgress[currentProgressChapterIndex].totalSections} 섹션 완료
-                      </Text>
-                    </>
-                  )}
+                        <View style={styles.progressBarContainer}>
+                          <View style={styles.progressBarBackground}>
+                            <View
+                              style={[
+                                styles.progressBarFill,
+                                {
+                                  width: `${progressData.chapterProgress[currentProgressChapterIndex].progressPercentage}%`,
+                                },
+                              ]}
+                            />
+                          </View>
+                          <Text style={styles.progressPercentage}>
+                            {progressData.chapterProgress[currentProgressChapterIndex].progressPercentage.toFixed(1)}%
+                          </Text>
+                        </View>
+                        <Text style={styles.chapterSectionText}>
+                          {progressData.chapterProgress[currentProgressChapterIndex].completedSections} /{" "}
+                          {progressData.chapterProgress[currentProgressChapterIndex].totalSections} 섹션 완료
+                        </Text>
+                      </>
+                    )}
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={handleNextChapterProgress}
+                    style={styles.navButton}
+                    accessibilityLabel="다음 챕터 진행률"
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.navButtonText}>▶</Text>
+                  </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity
-                  onPress={handleNextChapterProgress}
-                  style={styles.navButton}
-                  accessibilityLabel="다음 챕터 진행률"
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.navButtonText}>▶</Text>
-                </TouchableOpacity>
+                <Text style={styles.chapterIndexText}>
+                  {currentProgressChapterIndex + 1} / {progressData.chapterProgress.length}
+                </Text>
               </View>
+            )}
+          </View>
+        )}
 
-              <Text style={styles.chapterIndexText}>
-                {currentProgressChapterIndex + 1} / {progressData.chapterProgress.length}
-              </Text>
-            </View>
+        {/* 선택 버튼들 */}
+        <View style={styles.buttonSection}>
+          {material.hasProgress && (
+            <ChoiceButton
+              onPress={handleContinue}
+              label="이어서 듣기"
+              subLabel="마지막 위치부터"
+              accessibilityLabel="이어서 듣기, 마지막 위치부터"
+            />
+          )}
+
+          <ChoiceButton
+            onPress={handleFromStart}
+            label="처음부터 듣기"
+            subLabel="챕터 처음부터"
+            accessibilityLabel="처음부터 듣기, 챕터 처음부터"
+          />
+
+          <ChoiceButton
+            onPress={handleBookmarkPress}
+            label="저장 목록"
+            subLabel="북마크 보기"
+            accessibilityLabel="저장 목록"
+          />
+
+          <ChoiceButton
+            onPress={handleQuestionPress}
+            label="질문 목록"
+            subLabel="이전 질문 보기"
+            accessibilityLabel="질문 목록"
+          />
+
+          {showQuizButton && (
+            <ChoiceButton
+              onPress={handleQuizPress}
+              label="퀴즈 풀기"
+              subLabel="학습 내용 확인"
+              accessibilityLabel="퀴즈 풀기, 학습 내용 확인"
+            />
           )}
         </View>
-      )}
-
-      {/* 선택 버튼들 */}
-      <View style={styles.buttonSection}>
-        {material.hasProgress && (
-          <ChoiceButton
-            onPress={handleContinue}
-            label="이어서 듣기"
-            subLabel="마지막 위치부터"
-            accessibilityLabel="이어서 듣기, 마지막 위치부터"
-          />
-        )}
-
-        <ChoiceButton
-          onPress={handleFromStart}
-          label="처음부터 듣기"
-          subLabel="챕터 처음부터"
-          accessibilityLabel="처음부터 듣기, 챕터 처음부터"
-        />
-
-        <ChoiceButton
-          onPress={handleBookmarkPress}
-          label="저장 목록"
-          subLabel="북마크 보기"
-          accessibilityLabel="저장 목록"
-        />
-
-        <ChoiceButton
-          onPress={handleQuestionPress}
-          label="질문 목록"
-          subLabel="이전 질문 보기"
-          accessibilityLabel="질문 목록"
-        />
-
-        {showQuizButton && (
-          <ChoiceButton
-            onPress={handleQuizPress}
-            label="퀴즈 풀기"
-            subLabel="학습 내용 확인"
-            accessibilityLabel="퀴즈 풀기, 학습 내용 확인"
-          />
-        )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -469,15 +460,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#ffffff",
-    paddingHorizontal: 24,
-    paddingTop: 0, // SafeAreaView의 기본 패딩을 사용하지 않도록
   },
   header: {
-    marginHorizontal: -24, // 부모의 paddingHorizontal 상쇄
+    paddingHorizontal: 24,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
   },
   infoSection: {
     marginBottom: 24,
     alignItems: "center",
+    paddingTop: 8,
   },
   subjectText: {
     fontSize: 36,
