@@ -22,6 +22,11 @@ export type RootStackParamList = {
     material: Material;
     chapterId: number;
     sectionIndex: number;
+    questionId?: number;      // 기존 질문 히스토리에서 진입 시
+    sessionId?: string;       // 기존 세션으로 이어서 대화할 때
+  };
+  QuestionList: {
+    material: Material;
   };
   QuizList: {
     material: Material;
@@ -88,6 +93,11 @@ export type QuestionScreenNavigationProp = NativeStackNavigationProp<
   'Question'
 >;
 
+export type QuestionListScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'QuestionList'
+>;
+
 export type QuizListScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'QuizList'
@@ -127,6 +137,11 @@ export type PlayerScreenRouteProp = RouteProp<
 export type QuestionScreenRouteProp = RouteProp<
   RootStackParamList,
   'Question'
+>;
+
+export type QuestionListScreenRouteProp = RouteProp<
+  RootStackParamList,
+  'QuestionList'
 >;
 
 export type QuizListScreenRouteProp = RouteProp<

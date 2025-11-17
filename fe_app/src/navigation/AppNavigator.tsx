@@ -20,6 +20,7 @@ import BookmarkListScreen from "../screens/library/BookmarkListScreen";
 import SettingsScreen from "../screens/settings/SettingsScreen";
 
 import { navigationRef } from "./RootNavigation";
+import QuestionListScreen from "../screens/player/QuestionListScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -93,6 +94,11 @@ export default function AppNavigator() {
           name="Question"
           component={QuestionScreen}
           options={{ title: "질문하기" }}
+        />
+        <Stack.Screen
+          name="QuestionList"
+          component={QuestionListScreen}
+          options={{ title: "질문 목록" , headerShown: false}}
         />
         <Stack.Screen
           name="QuizList"
