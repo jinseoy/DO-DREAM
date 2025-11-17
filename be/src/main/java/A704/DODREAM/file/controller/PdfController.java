@@ -13,6 +13,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -180,7 +182,7 @@ public class PdfController {
 //    Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
 //    Map<String, Object> result = pdfService.extractConceptCheck(pdfId, userId);
 //    return ResponseEntity.ok(result);
-//  }
+//  }dfdf
 
   /**
    * 임시 저장 (Redis)
@@ -237,5 +239,39 @@ public class PdfController {
         "message", "임시 저장 데이터를 불러왔습니다.",
         "data", tempData
     ));
+  }
+
+  /**
+   * 텍스트 추출 (JSON → TXT 다운로드)
+   */
+  @Operation(
+      summary = "텍스트 추출 (JSON → TXT 다운로드)",
+      description = "파싱된 PDF의 JSON 데이터에서 텍스트를 추출하여 TXT 파일로 다운로드합니다. " +
+          "프론트엔드에서 '텍스트 추출' 버튼 클릭 시 호출합니다. " +
+          "JSON 구조에서 텍스트 내용을 추출하여 읽기 쉬운 TXT 형태로 변환합니다."
+  )
+  @GetMapping("/{pdfId}/extract-text")
+  public ResponseEntity<ByteArrayResource> extractTextToFile(
+      @PathVariable Long pdfId,
+      @AuthenticationPrincipal UserPrincipal userPrincipal
+  ) {
+    Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
+
+    // 서비스에서 텍스트 추출
+    String textContent = pdfService.extractTextFromJson(pdfId, userId);
+
+    // 바이트 배열로 변환
+    byte[] textBytes = textContent.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    ByteArrayResource resource = new ByteArrayResource(textBytes);
+
+    // 파일명 생성 (pdfId 기반)
+    String filename = "extracted_text_" + pdfId + ".txt";
+
+    // 다운로드 응답 생성
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+        .contentType(MediaType.TEXT_PLAIN)
+        .contentLength(textBytes.length)
+        .body(resource);
   }
 }
