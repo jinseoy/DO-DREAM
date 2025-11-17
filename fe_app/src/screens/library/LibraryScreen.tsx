@@ -27,6 +27,8 @@ import {
   fetchMaterialJson,
 } from "../../api/materialApi";
 import { SharedMaterialSummary } from "../../types/api/materialApiTypes";
+import { fetchAllProgress } from "../../api/progressApi";
+import type { MaterialProgress } from "../../types/api/progressApiTypes";
 
 export default function LibraryScreen() {
   const navigation = useNavigation<LibraryScreenNavigationProp>();
@@ -44,6 +46,9 @@ export default function LibraryScreen() {
     null
   );
   const [error, setError] = useState<string | null>(null);
+
+  // 모든 교재의 진행률 데이터 (materialId를 키로 하는 Map)
+  const [progressDataMap, setProgressDataMap] = useState<Map<number, MaterialProgress>>(new Map());
 
   // 공유 목록 → Material 도메인으로 매핑
   const mapSharedToMaterial = (
@@ -63,7 +68,7 @@ export default function LibraryScreen() {
     };
   };
 
-  // 서버에서 공유 자료 목록 불러오기
+  // 서버에서 공유 자료 목록 + 진행률 불러오기
   useEffect(() => {
     let isMounted = true;
 
@@ -72,11 +77,39 @@ export default function LibraryScreen() {
       setError(null);
 
       try {
+        // 1. 공유된 교재 목록 조회
         const response = await fetchSharedMaterials();
         if (!isMounted) return;
 
         const mapped = response.materials.map(mapSharedToMaterial);
         setMaterials(mapped);
+
+        // 2. 모든 교재의 진행률 조회
+        try {
+          const progressResponse = await fetchAllProgress();
+          if (!isMounted) return;
+
+          console.log("[LibraryScreen] 진행률 API 응답:", progressResponse);
+
+          // materialId를 키로 하는 Map으로 변환
+          const progressMap = new Map<number, MaterialProgress>();
+          if (progressResponse.data && Array.isArray(progressResponse.data)) {
+            progressResponse.data.forEach((progress) => {
+              progressMap.set(progress.materialId, progress);
+            });
+            setProgressDataMap(progressMap);
+            console.log("[LibraryScreen] 진행률 조회 성공:", progressResponse.data.length, "개");
+          } else {
+            console.warn("[LibraryScreen] 진행률 데이터가 배열이 아닙니다:", progressResponse.data);
+          }
+        } catch (progressError: any) {
+          console.error("[LibraryScreen] 진행률 조회 실패:", progressError);
+          if (progressError.response) {
+            console.error("[LibraryScreen] 에러 응답 상태:", progressError.response.status);
+            console.error("[LibraryScreen] 에러 응답 데이터:", progressError.response.data);
+          }
+          // 진행률 조회 실패해도 교재 목록은 표시
+        }
 
         if (mapped.length === 0) {
           AccessibilityInfo.announceForAccessibility(
@@ -341,11 +374,17 @@ export default function LibraryScreen() {
   };
 
   const renderMaterialButton = ({ item }: { item: Material }) => {
+    // 백엔드에서 조회한 진행률 데이터
+    const progressData = progressDataMap.get(item.id);
+
     const hasChapterInfo =
       typeof item.currentChapter === "number" &&
       typeof item.totalChapters === "number";
 
-    const chapterDescription = hasChapterInfo
+    // 진행률 데이터가 있으면 우선적으로 사용
+    const chapterDescription = progressData
+      ? `진행률 ${progressData.overallProgressPercentage.toFixed(1)}%, ${progressData.completedSections}/${progressData.totalSections} 섹션 완료. `
+      : hasChapterInfo
       ? `현재 ${item.currentChapter}챕터, 전체 ${item.totalChapters}챕터 중. `
       : item.hasProgress
       ? "이어서 듣기가 가능합니다. "
@@ -376,21 +415,31 @@ export default function LibraryScreen() {
         }
       >
         <View style={styles.materialContent}>
-          <Text style={[styles.subjectText, { fontSize: scaledFontSize }]}>
-            {item.title}
-          </Text>
+          <View style={styles.materialTextContainer}>
+            <Text style={[styles.subjectText, { fontSize: scaledFontSize }]}>
+              {item.title}
+            </Text>
 
-          <Text
-            style={[styles.chapterText, { fontSize: scaledChapterFontSize }]}
-          >
-            {hasChapterInfo
-              ? `현재 ${item.currentChapter}챕터`
-              : item.hasProgress
-              ? "이어서 듣기 가능"
-              : "처음부터 시작"}
-          </Text>
+            <Text
+              style={[styles.chapterText, { fontSize: scaledChapterFontSize }]}
+            >
+              {progressData
+                ? `${progressData.overallProgressPercentage.toFixed(1)}% 완료`
+                : hasChapterInfo
+                ? `현재 ${item.currentChapter}챕터`
+                : item.hasProgress
+                ? "이어서 듣기 가능"
+                : "처음부터 시작"}
+            </Text>
 
-          {item.hasProgress && (
+            {progressData && (
+              <Text style={styles.sectionProgressText}>
+                {progressData.completedSections} / {progressData.totalSections} 섹션
+              </Text>
+            )}
+          </View>
+
+          {(item.hasProgress || progressData) && (
             <View style={styles.progressIndicator}>
               <Text style={styles.progressText}>이어듣기</Text>
             </View>
@@ -570,16 +619,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  materialTextContainer: {
+    flex: 1,
+  },
   subjectText: {
     fontSize: 24,
     fontWeight: "600",
     color: "#333333",
-    flex: 1,
+    marginBottom: 4,
   },
   chapterText: {
     fontSize: 18,
     color: "#666666",
-    marginLeft: 12,
+    marginBottom: 2,
+  },
+  sectionProgressText: {
+    fontSize: 14,
+    color: "#888888",
+    marginTop: 2,
   },
   progressIndicator: {
     backgroundColor: "#4CAF50",
