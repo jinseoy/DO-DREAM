@@ -72,34 +72,8 @@ public class ProgressReportService {
         log.info("=== JSON 구조 상세 분석 시작 ===");
         log.info("최상위 keys: {}", jsonData.keySet());
         
-        // parsedData 구조 확인 및 chapters 추출
-        List<Map<String, Object>> chapters = null;
-        
-        // 패턴 1: parsedData.data 구조
-        Map<String, Object> parsedData = (Map<String, Object>) jsonData.get("parsedData");
-        if (parsedData != null) {
-            log.info("parsedData 존재 - keys: {}", parsedData.keySet());
-            chapters = (List<Map<String, Object>>) parsedData.get("data");
-            if (chapters != null) {
-                log.info("parsedData.data에서 챕터 발견 - 개수: {}", chapters.size());
-            }
-        }
-        
-        // 패턴 2: 직접 data 구조 (fallback)
-        if (chapters == null) {
-            log.warn("parsedData.data를 찾을 수 없어서 직접 data를 확인합니다.");
-            chapters = (List<Map<String, Object>>) jsonData.get("data");
-            if (chapters != null) {
-                log.info("직접 data에서 챕터 발견 - 개수: {}", chapters.size());
-            }
-        }
-
-        if (chapters == null || chapters.isEmpty()) {
-            log.error("chapters를 찾을 수 없습니다. JSON keys: {}, parsedData keys: {}", 
-                    jsonData.keySet(), 
-                    parsedData != null ? parsedData.keySet() : "null");
-            throw new CustomException(ErrorCode.INVALID_JSON_STRUCTURE);
-        }
+        // extractChapters 메서드로 3가지 패턴 모두 지원 (parsedData.data / data / chapters)
+        List<Map<String, Object>> chapters = extractChapters(jsonData);
         
         log.info("총 챕터 수: {}", chapters.size());
         
@@ -107,17 +81,28 @@ public class ProgressReportService {
         if (!chapters.isEmpty()) {
             Map<String, Object> firstChapter = chapters.get(0);
             log.info("첫 번째 챕터 keys: {}", firstChapter.keySet());
-            log.info("첫 번째 챕터 - index: {}, index_title: {}", 
-                    firstChapter.get("index"), 
-                    firstChapter.get("index_title"));
             
-            // titles 구조 확인
-            List<Map<String, Object>> titles = (List<Map<String, Object>>) firstChapter.get("titles");
-            if (titles != null && !titles.isEmpty()) {
-                log.info("titles 개수: {}", titles.size());
-                Map<String, Object> firstTitle = titles.get(0);
-                log.info("첫 번째 title keys: {}", firstTitle.keySet());
-                log.info("첫 번째 title - title: {}", firstTitle.get("title"));
+            // 두 가지 구조 모두 로깅
+            if (firstChapter.containsKey("index")) {
+                // 이전 구조
+                log.info("첫 번째 챕터 (이전 구조) - index: {}, index_title: {}", 
+                        firstChapter.get("index"), 
+                        firstChapter.get("index_title"));
+                
+                // titles 구조 확인
+                List<Map<String, Object>> titles = (List<Map<String, Object>>) firstChapter.get("titles");
+                if (titles != null && !titles.isEmpty()) {
+                    log.info("titles 개수: {}", titles.size());
+                    Map<String, Object> firstTitle = titles.get(0);
+                    log.info("첫 번째 title keys: {}", firstTitle.keySet());
+                    log.info("첫 번째 title - title: {}", firstTitle.get("title"));
+                }
+            } else {
+                // 새로운 구조
+                log.info("첫 번째 챕터 (새로운 구조) - id: {}, title: {}, type: {}", 
+                        firstChapter.get("id"), 
+                        firstChapter.get("title"),
+                        firstChapter.get("type"));
             }
         }
         log.info("=== JSON 구조 분석 완료 ===");

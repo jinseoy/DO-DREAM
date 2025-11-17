@@ -91,7 +91,7 @@ clova:
 
 jwt:
   secret: ${jwtSecret}
-  access-exp-seconds: 900
+  access-exp-seconds: 86400
   refresh-exp-seconds: 1209600
 
 aws:

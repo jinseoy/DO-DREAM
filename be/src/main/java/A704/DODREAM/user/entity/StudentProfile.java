@@ -33,6 +33,8 @@ public class StudentProfile {
 	@JoinColumn(name = "user_id", nullable = false)
 	private User user;
 
+	private String gender;
+
 	@Column(length = 100)
 	private String schoolName;
 
@@ -43,11 +45,13 @@ public class StudentProfile {
 	@JoinColumn(name = "classroom_id")
 	private Classroom classroom;
 
-	public static StudentProfile create(User user, String schoolName, String studentNumber, Classroom classroom) {
+	public static StudentProfile create(User user, String schoolName, String studentNumber, Classroom classroom, String gender) {
 		StudentProfile studentProfile = new StudentProfile();
 		studentProfile.user = user;
 		studentProfile.schoolName = schoolName;
 		studentProfile.studentNumber = studentNumber;
+		studentProfile.classroom = classroom;
+		studentProfile.gender = gender;
 		return studentProfile;
 	}
 }
