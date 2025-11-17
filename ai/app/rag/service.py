@@ -134,7 +134,6 @@ def create_and_store_embeddings(document_id: str, documents: list[Document]):
         collection_name=collection_name, 
         persist_directory=CHROMA_PERSIST_DIRECTORY
     )
-    vector_store.persist() 
     print(f"'{document_id}' (컬렉션: {collection_name}) 임베딩 및 저장 완료.")
 
 
