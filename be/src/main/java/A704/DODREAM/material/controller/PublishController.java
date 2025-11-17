@@ -74,4 +74,17 @@ public class PublishController {
 
         return ResponseEntity.ok().build();
     }
+
+    @Operation(summary = "자료 삭제")
+    @DeleteMapping("/{materialId}")
+    public ResponseEntity<String> deleteMaterial(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long materialId
+    ){
+        Long userId = userPrincipal.userId();
+
+        publishService.deleteMaterial(userId, materialId);
+
+        return ResponseEntity.ok("자료가 삭제되었습니다.");
+    }
 }
