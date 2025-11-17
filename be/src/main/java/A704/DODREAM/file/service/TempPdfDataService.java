@@ -1,9 +1,22 @@
 package A704.DODREAM.file.service;
 
+import A704.DODREAM.file.entity.UploadedFile;
+import A704.DODREAM.file.enums.PostStatus;
+import A704.DODREAM.file.repository.UploadedFileRepository;
+import A704.DODREAM.global.exception.CustomException;
+import A704.DODREAM.global.exception.constant.ErrorCode;
+import A704.DODREAM.material.dto.PublishRequest;
+import A704.DODREAM.material.entity.Material;
+import A704.DODREAM.material.repository.MaterialRepository;
+import A704.DODREAM.user.entity.User;
+import A704.DODREAM.user.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Optional;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -13,6 +26,10 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 @Slf4j
 public class TempPdfDataService {
+
+    private final UserRepository userRepository;
+    private final UploadedFileRepository uploadedFileRepository;
+    private final MaterialRepository materialRepository;
 
   private final StringRedisTemplate redis;
   private final ObjectMapper objectMapper;
@@ -30,11 +47,36 @@ public class TempPdfDataService {
    * 임시 저장 데이터를 Redis에 저장
    * @param pdfId PDF ID
    * @param userId 사용자 ID
-   * @param editedJson 수정된 JSON 데이터
    */
-  public void save(Long pdfId, Long userId, Map<String, Object> editedJson) {
+  public void save(Long pdfId, Long userId, PublishRequest request) {
     try {
-      String jsonString = objectMapper.writeValueAsString(editedJson);
+        User teacher = userRepository.findById(userId)
+                .orElseThrow(()-> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        UploadedFile uploadedFile = uploadedFileRepository.findById(pdfId)
+                .orElseThrow(() -> new CustomException(ErrorCode.FILE_NOT_FOUND));
+
+        Optional<Material> materialOpt = materialRepository.findByUploadedFileId(uploadedFile.getId());
+
+         Material material;
+        if(materialOpt.isPresent()){
+            material = materialOpt.get();
+            material.setTitle(request.getMaterialTitle());
+            material.setLabel(request.getLabelColor());
+            material.setUpdatedAt(LocalDateTime.now());
+            material.setPostStatus(PostStatus.DRAFT);
+        } else {
+            material = Material.builder()
+                    .uploadedFile(uploadedFile)
+                    .teacher(teacher)
+                    .title(request.getMaterialTitle())
+                    .label(request.getLabelColor())
+                    .postStatus(PostStatus.DRAFT)
+                    .build();
+        }
+
+        materialRepository.save(material);
+      String jsonString = objectMapper.writeValueAsString(request.getEditedJson());
       redis.opsForValue().set(key(pdfId, userId), jsonString, TTL);
       log.info("임시 저장 완료: pdfId={}, userId={}", pdfId, userId);
     } catch (JsonProcessingException e) {

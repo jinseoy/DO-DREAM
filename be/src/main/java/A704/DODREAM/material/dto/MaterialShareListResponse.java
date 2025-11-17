@@ -33,6 +33,7 @@ public class MaterialShareListResponse {
 
 		private Long teacherId;
 		private String teacherName;
+        private LabelColor labelColor;
 
 		private LocalDateTime sharedAt;
 		private LocalDateTime accessedAt;
@@ -45,6 +46,7 @@ public class MaterialShareListResponse {
 				.materialTitle(share.getMaterial().getTitle())
 				.teacherId(share.getTeacher().getId())
 				.teacherName(share.getTeacher().getName())
+                .labelColor(share.getMaterial().getLabel())
 				.sharedAt(share.getSharedAt())
 				.accessedAt(share.getAccessedAt())
 				.isAccessed(share.getAccessedAt() != null)

@@ -1,5 +1,6 @@
 package A704.DODREAM.material.service;
 
+import A704.DODREAM.file.enums.PostStatus;
 import A704.DODREAM.file.service.CloudFrontService;
 import A704.DODREAM.material.dto.PublishRequest;
 import A704.DODREAM.material.dto.PublishResponseDto;
@@ -102,12 +103,14 @@ public class PublishService {
 				material.setTitle(publishRequest.getMaterialTitle());
 				material.setLabel(publishRequest.getLabelColor());
 				material.setUpdatedAt(LocalDateTime.now());
+                material.setPostStatus(PostStatus.PUBLISHED);
 			} else {
 				material = Material.builder()
 					.uploadedFile(uploadedFile)
 					.teacher(teacher)
 					.title(publishRequest.getMaterialTitle())
 					.label(publishRequest.getLabelColor())
+                    .postStatus(PostStatus.PUBLISHED)
 					.build();
 			}
 

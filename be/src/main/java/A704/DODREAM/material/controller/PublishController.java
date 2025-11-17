@@ -54,7 +54,7 @@ public class PublishController {
 
     @Operation(summary = "발행한 자료 목록 조회")
     @GetMapping("/published")
-    public ResponseEntity<PublishedMaterialListResponse> publisedMaterialList(
+    public ResponseEntity<PublishedMaterialListResponse> publishedMaterialList(
             @AuthenticationPrincipal UserPrincipal userPrincipal
     ){
         Long userId = userPrincipal.userId();

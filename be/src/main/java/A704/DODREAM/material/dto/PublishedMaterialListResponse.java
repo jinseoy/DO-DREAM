@@ -1,5 +1,6 @@
 package A704.DODREAM.material.dto;
 
+import A704.DODREAM.file.enums.PostStatus;
 import A704.DODREAM.material.entity.Material;
 import A704.DODREAM.material.enums.LabelColor;
 import lombok.AllArgsConstructor;
@@ -40,6 +41,7 @@ public class PublishedMaterialListResponse {
         private String title;
         private String originalFileName;
         private LabelColor label;
+        private PostStatus postStatus;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
@@ -50,6 +52,7 @@ public class PublishedMaterialListResponse {
                     .title(material.getTitle())
                     .originalFileName(material.getUploadedFile().getOriginalFileName())
                     .label(material.getLabel())
+                    .postStatus(material.getPostStatus())
                     .createdAt(material.getCreatedAt())
                     .updatedAt(material.getUpdatedAt())
                     .build();

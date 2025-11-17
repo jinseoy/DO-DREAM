@@ -1,8 +1,11 @@
 package A704.DODREAM.file.controller;
 
 import A704.DODREAM.auth.dto.request.UserPrincipal;
+import A704.DODREAM.file.entity.UploadedFile;
 import A704.DODREAM.file.service.PdfService;
 import A704.DODREAM.file.service.TempPdfDataService;
+import A704.DODREAM.material.dto.PublishRequest;
+import A704.DODREAM.material.service.PublishService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,6 +38,9 @@ public class PdfController {
   @Autowired
   private TempPdfDataService tempPdfDataService;
 
+  @Autowired
+  private PublishService publishService;
+
   /**
    * PDF 업로드 + 파싱 통합 API (바이너리 직접 전송 - 권장)
    * Content-Type: application/pdf로 바이너리 직접 전송
@@ -63,42 +69,42 @@ public class PdfController {
    * PDF 업로드 + 파싱 통합 API (multipart/form-data)
    * 폼 데이터로 파일 전송
    */
-  @Operation(
-      summary = "PDF 업로드 및 파싱 (multipart/form-data)",
-      description = "PDF 파일을 multipart/form-data 형식으로 업로드하고 즉시 Gemini AI로 파싱합니다. " +
-          "한 번의 요청으로 S3 업로드, DB 저장, AI 파싱, JSON 저장이 모두 처리됩니다. " +
-          "파싱 처리 시간은 PDF 크기에 따라 수십 초에서 수 분이 걸릴 수 있습니다. " +
-          "응답으로 파싱된 JSON 데이터와 메타데이터를 즉시 반환합니다."
-  )
-  @PostMapping(value = "/upload-and-parse-multipart", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  public ResponseEntity<Map<String, Object>> uploadAndParsePdfMultipart(
-      @RequestParam("file") MultipartFile file,
-      @AuthenticationPrincipal UserPrincipal userPrincipal
-  ) {
-    Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L; // 기본값 1L (테스트용)
-    Map<String, Object> result = pdfService.uploadAndParsePdf(file, userId);
-    return ResponseEntity.ok(result);
-  }
+//  @Operation(
+//      summary = "PDF 업로드 및 파싱 (multipart/form-data)",
+//      description = "PDF 파일을 multipart/form-data 형식으로 업로드하고 즉시 Gemini AI로 파싱합니다. " +
+//          "한 번의 요청으로 S3 업로드, DB 저장, AI 파싱, JSON 저장이 모두 처리됩니다. " +
+//          "파싱 처리 시간은 PDF 크기에 따라 수십 초에서 수 분이 걸릴 수 있습니다. " +
+//          "응답으로 파싱된 JSON 데이터와 메타데이터를 즉시 반환합니다."
+//  )
+//  @PostMapping(value = "/upload-and-parse-multipart", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+//  public ResponseEntity<Map<String, Object>> uploadAndParsePdfMultipart(
+//      @RequestParam("file") MultipartFile file,
+//      @AuthenticationPrincipal UserPrincipal userPrincipal
+//  ) {
+//    Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L; // 기본값 1L (테스트용)
+//    Map<String, Object> result = pdfService.uploadAndParsePdf(file, userId);
+//    return ResponseEntity.ok(result);
+//  }
 
   /**
    * PDF 파싱 (기존 방식 - presigned URL로 업로드된 파일 파싱)
    */
-  @Operation(
-      summary = "PDF 파싱 및 구조 추출 (기존 방식)",
-      description = "이미 S3에 업로드된 PDF를 CloudFront를 통해 다운로드하여 Gemini AI로 파싱합니다. " +
-          "PDF의 텍스트, 목차, 구조를 추출하여 JSON 형태로 S3에 저장하고 결과를 반환합니다. " +
-          "파싱 처리 시간은 PDF 크기에 따라 수십 초에서 수 분이 걸릴 수 있습니다. " +
-          "이 방식은 presigned URL로 이미 업로드된 파일에 사용합니다."
-  )
-  @PostMapping("/{pdfId}/parse")
-  public ResponseEntity<Map<String, Object>> parsePdf(
-      @PathVariable Long pdfId,
-      @AuthenticationPrincipal UserPrincipal userPrincipal
-  ) {
-    Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L; // 기본값 1L (테스트용)
-    Map<String, Object> result = pdfService.parsePdfAndSave(pdfId, userId);
-    return ResponseEntity.ok(result);
-  }
+//  @Operation(
+//      summary = "PDF 파싱 및 구조 추출 (기존 방식)",
+//      description = "이미 S3에 업로드된 PDF를 CloudFront를 통해 다운로드하여 Gemini AI로 파싱합니다. " +
+//          "PDF의 텍스트, 목차, 구조를 추출하여 JSON 형태로 S3에 저장하고 결과를 반환합니다. " +
+//          "파싱 처리 시간은 PDF 크기에 따라 수십 초에서 수 분이 걸릴 수 있습니다. " +
+//          "이 방식은 presigned URL로 이미 업로드된 파일에 사용합니다."
+//  )
+//  @PostMapping("/{pdfId}/parse")
+//  public ResponseEntity<Map<String, Object>> parsePdf(
+//      @PathVariable Long pdfId,
+//      @AuthenticationPrincipal UserPrincipal userPrincipal
+//  ) {
+//    Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L; // 기본값 1L (테스트용)
+//    Map<String, Object> result = pdfService.parsePdfAndSave(pdfId, userId);
+//    return ResponseEntity.ok(result);
+//  }
 
   /**
    * S3에서 JSON 조회 (이미 파싱된 경우)
@@ -158,23 +164,23 @@ public class PdfController {
   /**
    * 개념 Check 추출 및 AI 가공 (POST - 느린 응답)
    */
-  @Operation(
-      summary = "개념 Check 추출 및 가공 (AI 처리)",
-      description = "이미 파싱된 PDF의 JSON에서 s_title이 '개념 Check'인 항목만 필터링하여 " +
-          "FastAPI로 전송 후 Gemini AI로 가공된 결과를 S3에 저장합니다. " +
-          "가공된 JSON은 concept-check-json/ 경로에 저장되며, " +
-          "응답으로 가공된 데이터를 즉시 반환합니다. " +
-          "처리 시간이 오래 걸리므로 단순 조회는 GET /concept-check를 사용하세요."
-  )
-  @PostMapping("/{pdfId}/concept-check")
-  public ResponseEntity<Map<String, Object>> extractConceptCheck(
-      @PathVariable Long pdfId,
-      @AuthenticationPrincipal UserPrincipal userPrincipal
-  ) {
-    Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
-    Map<String, Object> result = pdfService.extractConceptCheck(pdfId, userId);
-    return ResponseEntity.ok(result);
-  }
+//  @Operation(
+//      summary = "개념 Check 추출 및 가공 (AI 처리)",
+//      description = "이미 파싱된 PDF의 JSON에서 s_title이 '개념 Check'인 항목만 필터링하여 " +
+//          "FastAPI로 전송 후 Gemini AI로 가공된 결과를 S3에 저장합니다. " +
+//          "가공된 JSON은 concept-check-json/ 경로에 저장되며, " +
+//          "응답으로 가공된 데이터를 즉시 반환합니다. " +
+//          "처리 시간이 오래 걸리므로 단순 조회는 GET /concept-check를 사용하세요."
+//  )
+//  @PostMapping("/{pdfId}/concept-check")
+//  public ResponseEntity<Map<String, Object>> extractConceptCheck(
+//      @PathVariable Long pdfId,
+//      @AuthenticationPrincipal UserPrincipal userPrincipal
+//  ) {
+//    Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
+//    Map<String, Object> result = pdfService.extractConceptCheck(pdfId, userId);
+//    return ResponseEntity.ok(result);
+//  }
 
   /**
    * 임시 저장 (Redis)
@@ -188,12 +194,13 @@ public class PdfController {
   )
   @PostMapping("/{pdfId}/temp-save")
   public ResponseEntity<Map<String, Object>> saveTempData(
-      @PathVariable Long pdfId,
-      @RequestBody Map<String, Object> editedJson,
-      @AuthenticationPrincipal UserPrincipal userPrincipal
+          @PathVariable Long pdfId,
+          @RequestBody PublishRequest request,
+          @AuthenticationPrincipal UserPrincipal userPrincipal
   ) {
     Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
-    tempPdfDataService.save(pdfId, userId, editedJson);
+    tempPdfDataService.save(pdfId, userId, request);
+
     return ResponseEntity.ok(Map.of(
         "success", true,
         "message", "임시 저장이 완료되었습니다.",
