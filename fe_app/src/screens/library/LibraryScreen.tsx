@@ -517,7 +517,7 @@ export default function LibraryScreen() {
 
   return (
     <SafeAreaView
-      style={[commonStyles.headerContainer && styles.container, HC && styles.containerHC]}
+      style={[styles.container, HC && styles.containerHC]}
       edges={["top", "bottom"]}
     >
       <View style={[styles.header, HC && styles.headerHC]}>
@@ -613,17 +613,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     minWidth: 44,
-    minHeight: 44,
+    minHeight: 52,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: COLORS.primary.lightest,
     borderColor: COLORS.primary.main,
     borderRadius: 12,
-    borderWidth: 2,
-    marginHorizontal: 8,
+    borderWidth: 3,
+    marginHorizontal: 4,
   },
   settingsIcon: {
-    fontSize: 20,
+    fontSize: 18,
     color: COLORS.primary.main,
     fontWeight: "bold",
   },
@@ -634,12 +634,14 @@ const styles = StyleSheet.create({
   },
   materialButton: {
     backgroundColor: COLORS.background.elevated,
-    borderRadius: 12,
-    marginBottom: 16,
-    padding: 20,
+    borderRadius: 16,
+    marginBottom: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
     borderWidth: 3,
-    borderColor: COLORS.border.light,
-    minHeight: 88,
+    borderColor: COLORS.primary.main,
+    minHeight: 100,
+    justifyContent: "center",
   },
   materialButtonLoading: {
     opacity: 0.7,
