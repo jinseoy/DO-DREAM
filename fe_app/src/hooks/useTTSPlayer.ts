@@ -49,8 +49,12 @@ export function useTTSPlayer({
     return () => clearInterval(pollInterval);
   }, []);
 
-  // TTS 초기화 및 설정 동기화
+  // TTS 초기화 (chapter 변경 시에만 실행)
   useEffect(() => {
+    console.log("[useTTSPlayer] 초기화 useEffect 실행");
+    console.log("[useTTSPlayer] chapter:", chapter?.title);
+    console.log("[useTTSPlayer] sections 개수:", chapter?.sections?.length);
+
     // 챕터 또는 섹션이 없으면 초기화하지 않고 경고만 남김
     if (!chapter || !chapter.sections || chapter.sections.length === 0) {
       console.warn("[useTTSPlayer] No sections found for this chapter.");
@@ -60,6 +64,8 @@ export function useTTSPlayer({
     // 저장된 섹션 인덱스가 범위를 벗어날 경우 방어
     const maxIndex = chapter.sections.length - 1;
     const safeInitialIndex = Math.min(initialSectionIndex, maxIndex);
+
+    console.log("[useTTSPlayer] safeInitialIndex:", safeInitialIndex);
 
     // state도 안전한 인덱스로 맞춰주기
     setCurrentSectionIndex(safeInitialIndex);
@@ -92,11 +98,14 @@ export function useTTSPlayer({
       },
     });
 
+    console.log("[useTTSPlayer] TTS 초기화 완료");
+
     // 컴포넌트 언마운트 시 TTS 정리
     return () => {
+      console.log("[useTTSPlayer] cleanup 실행");
       ttsService.cleanup();
     };
-  }, [chapter, initialSectionIndex, initialPlayMode, onCompletion, onSectionChange, appSettings.ttsRate, appSettings.ttsPitch, appSettings.ttsVolume, appSettings.ttsVoiceId]);
+  }, [chapter, initialSectionIndex, initialPlayMode, onCompletion, onSectionChange]);
 
   // 재생 가능한 섹션이 있는지 공통 체크
   const hasPlayableSections = !!chapter &&
@@ -188,7 +197,7 @@ export function useTTSPlayer({
     }
   }, [hasPlayableSections]);
 
-  // 설정 변경 시 TTS에 즉시 반영
+  // 설정 변경 시 TTS에 즉시 반영 (재초기화 없이 설정만 변경)
   useEffect(() => {
     ttsService.setRate(appSettings.ttsRate);
   }, [appSettings.ttsRate]);
@@ -216,7 +225,6 @@ export function useTTSPlayer({
       playPrevious,
       playNext,
       changePlayMode,
-      // ensureAutoPlay 제거: 완전 수동형
       pause,
       play,
     },
