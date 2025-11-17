@@ -120,30 +120,42 @@ export default function AdvancedEditor({
     null,
   );
 
-  const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [activeChapterId, setActiveChapterId] = useState<string>('');
   const [editingChapterId, setEditingChapterId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
 
   const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
 
-  useEffect(() => {
+  const [chapters, setChapters] = useState<Chapter[]>(() => {
+    console.log('🔍 [AdvancedEditor] chapters 초기화:', {
+      initialChapters,
+      initialChaptersLength: initialChapters?.length,
+    });
+
     if (initialChapters && initialChapters.length > 0) {
-      setChapters(initialChapters);
-      setActiveChapterId(initialChapters[0].id);
-    } else {
-      const defaultContent = extractedText || '<p>내용을 입력하세요...</p>';
-      setChapters([
-        {
-          id: '1',
-          title: '챕터 1',
-          content: defaultContent,
-          type: 'content',
-        },
-      ]);
-      setActiveChapterId('1');
+      console.log('✅ initialChapters 사용:', initialChapters.length, '개');
+      return initialChapters;
     }
-  }, [initialChapters, extractedText]);
+
+    console.log('✅ 기본 챕터 생성');
+    const defaultContent = extractedText || '<p>내용을 입력하세요...</p>';
+    return [
+      {
+        id: '1',
+        title: '챕터 1',
+        content: defaultContent,
+        type: 'content',
+      },
+    ];
+  });
+
+  const [activeChapterId, setActiveChapterId] = useState<string>(() => {
+    if (initialChapters && initialChapters.length > 0) {
+      console.log('✅ activeChapterId 설정:', initialChapters[0].id);
+      return initialChapters[0].id;
+    }
+    console.log('✅ 기본 activeChapterId: 1');
+    return '1';
+  });
 
   const activeChapter = useMemo(
     () => chapters.find((c) => c.id === activeChapterId),
@@ -988,6 +1000,10 @@ export default function AdvancedEditor({
   };
 
   if (chapters.length === 0 || !activeChapterId) {
+    console.log('⏳ 로딩 중:', {
+      chaptersLength: chapters.length,
+      activeChapterId,
+    });
     return (
       <div
         style={{
@@ -1003,6 +1019,8 @@ export default function AdvancedEditor({
       </div>
     );
   }
+
+  console.log('✅ 에디터 렌더링:', { chapters, activeChapterId });
 
   return (
     <div className={`ae-root ${darkMode ? 'dark' : ''}`}>

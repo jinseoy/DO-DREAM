@@ -11,7 +11,7 @@ import {
   Send,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, useRef, ChangeEvent } from 'react';
-import { useGlobalMemo  } from '@/contexts/MemoContext';
+import { useGlobalMemo } from '@/contexts/MemoContext';
 import teacherAvatar from '../assets/classList/teacher.png';
 import './ClassroomList.css';
 
@@ -34,6 +34,7 @@ type Material = {
   uploadDate: string; // 'YYYY.MM.DD'
   label?: string;
   status: 'draft' | 'published';
+  uploadedFileId?: number;
 };
 
 type ClassroomListProps = {
@@ -287,6 +288,181 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
     return chapters;
   }
 
+  // ✅ 수정된 handleViewMaterial 함수 전체 - ClassroomList.tsx에 복사해서 사용하세요
+
+  const handleViewMaterial = async (materialId: string) => {
+    try {
+      const material = materials.find((m) => m.id === materialId);
+      if (!material) {
+        await Swal.fire({
+          icon: 'error',
+          title: '자료를 찾을 수 없습니다',
+          confirmButtonColor: '#192b55',
+        });
+        return;
+      }
+
+      const pdfId = material.uploadedFileId;
+
+      if (!pdfId) {
+        await Swal.fire({
+          icon: 'error',
+          title: '자료 정보가 부족합니다',
+          text: '파일 ID를 찾을 수 없습니다.',
+          confirmButtonColor: '#192b55',
+        });
+        return;
+      }
+
+      void Swal.fire({
+        title: '자료를 불러오는 중입니다',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading(),
+      });
+
+      const accessToken = localStorage.getItem('accessToken');
+
+      const pdfRes = await fetch(`${API_BASE}/api/pdf/${pdfId}/json`, {
+        method: 'GET',
+        headers: {
+          accept: '*/*',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        credentials: 'include',
+      });
+
+      if (!pdfRes.ok) {
+        const text = await pdfRes.text().catch(() => '');
+        throw new Error(
+          text || `자료 내용을 불러오지 못했습니다. (status: ${pdfRes.status})`,
+        );
+      }
+
+      const parsedData = await pdfRes.json();
+
+      console.log('🔍 Raw parsedData:', parsedData);
+      console.log('🔍 parsedData 구조 분석:');
+      console.log('  - parsedData.chapters:', parsedData.chapters);
+      console.log('  - parsedData.parsedData:', parsedData.parsedData);
+      console.log(
+        '  - parsedData.parsedData?.chapters:',
+        parsedData.parsedData?.chapters,
+      );
+      console.log(
+        '  - parsedData.editedJson?.chapters:',
+        parsedData.editedJson?.chapters,
+      );
+
+      // ✅ 올바른 경로에서 chapters 추출
+      let chapters: any[] = [];
+
+      // 1) parsedData.chapters가 배열이면 사용
+      if (parsedData.chapters && Array.isArray(parsedData.chapters)) {
+        chapters = parsedData.chapters;
+        console.log('✅ parsedData.chapters 사용:', chapters.length);
+      }
+      // 2) parsedData.parsedData.chapters가 배열이면 사용
+      else if (
+        parsedData.parsedData?.chapters &&
+        Array.isArray(parsedData.parsedData.chapters)
+      ) {
+        chapters = parsedData.parsedData.chapters;
+        console.log('✅ parsedData.parsedData.chapters 사용:', chapters.length);
+      }
+      // 3) parsedData.editedJson?.chapters가 배열이면 사용 (발행된 자료일 경우)
+      else if (
+        parsedData.editedJson?.chapters &&
+        Array.isArray(parsedData.editedJson.chapters)
+      ) {
+        chapters = parsedData.editedJson.chapters;
+        console.log('✅ parsedData.editedJson.chapters 사용:', chapters.length);
+      }
+      // 4) chapters가 객체 형태라면 Object.values로 변환
+      else if (parsedData.chapters && typeof parsedData.chapters === 'object') {
+        chapters = Object.values(parsedData.chapters);
+        console.log(
+          '✅ Object.values(parsedData.chapters) 사용:',
+          chapters.length,
+        );
+      }
+      // 5) parsedData.parsedData.chapters가 객체라면 변환
+      else if (
+        parsedData.parsedData?.chapters &&
+        typeof parsedData.parsedData.chapters === 'object'
+      ) {
+        chapters = Object.values(parsedData.parsedData.chapters);
+        console.log(
+          '✅ Object.values(parsedData.parsedData.chapters) 사용:',
+          chapters.length,
+        );
+      }
+      // 6) parsedData.editedJson?.chapters가 객체라면 변환
+      else if (
+        parsedData.editedJson?.chapters &&
+        typeof parsedData.editedJson.chapters === 'object'
+      ) {
+        chapters = Object.values(parsedData.editedJson.chapters);
+        console.log(
+          '✅ Object.values(parsedData.editedJson.chapters) 사용:',
+          chapters.length,
+        );
+      } else {
+        console.error(
+          '❌ chapters를 찾을 수 없습니다. parsedData 구조:',
+          parsedData,
+        );
+      }
+
+      console.log('🎯 Final chapters:', chapters);
+      console.log('🎯 First chapter structure:', chapters[0]);
+
+      // ✅ 검증: chapters가 올바른 형태인지 확인
+      if (chapters.length > 0) {
+        if (chapters[0]?.id !== undefined && chapters[0]?.title !== undefined) {
+          console.log('✅ 올바른 Chapter 객체입니다!');
+        } else {
+          console.warn('⚠️ Chapter 객체 구조가 예상과 다릅니다:', chapters[0]);
+        }
+      }
+
+      await Swal.close();
+
+      if (!chapters || chapters.length === 0) {
+        await Swal.fire({
+          icon: 'warning',
+          title: '내용이 없습니다',
+          text: '이 자료에는 표시할 내용이 없습니다.',
+          confirmButtonColor: '#192b55',
+        });
+        return;
+      }
+
+      console.log('🚀 Navigating to editor with chapters:', chapters);
+
+      // 에디터로 이동
+      navigate('/editor', {
+        state: {
+          fileName: material.title,
+          chapters: chapters,
+          pdfId: pdfId,
+          materialId: materialId,
+          from: 'classroom',
+          mode: 'view',
+        },
+      });
+    } catch (err: any) {
+      console.error('자료 조회 실패', err);
+      await Swal.close();
+      await Swal.fire({
+        icon: 'error',
+        title: '자료를 불러올 수 없습니다',
+        text: err?.message ?? '잠시 후 다시 시도해 주세요.',
+        confirmButtonColor: '#192b55',
+      });
+    }
+  };
+
   const handleCreateMaterial = () => {
     if (fileInputRef.current) fileInputRef.current.click();
   };
@@ -426,6 +602,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
           uploadDate: formatKST(new Date(m.createdAt)),
           label: m.label ? m.label.toLowerCase() : undefined,
           status: 'published',
+          uploadedFileId: m.uploadedFileId,
         }));
 
         setMaterials(mapped);
@@ -1046,6 +1223,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
                 </div>
               ) : (
                 materials.map((material) => (
+                  // 기존 코드에서 수정
                   <div key={material.id} className="cl-material-item">
                     {material.label && (
                       <div
@@ -1055,42 +1233,65 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
                         }}
                       />
                     )}
-                    <div className="cl-material-icon">
-                      <FileText size={18} />
-                    </div>
-                    <div className="cl-material-info">
-                      <h3 className="cl-material-title">{material.title}</h3>
-                      <div className="cl-material-meta">
-                        <span className="cl-material-date">
-                          {material.uploadDate}
-                        </span>
-                        <span
-                          className={`cl-material-status ${material.status}`}
-                        >
-                          {material.status === 'draft' ? '작성중' : '발행됨'}
-                        </span>
+
+                    {/* ✅ 클릭 가능한 영역 추가 */}
+                    <div
+                      className="cl-material-clickable"
+                      onClick={() => handleViewMaterial(material.id)}
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        minWidth: 0, // overflow 처리용
+                      }}
+                    >
+                      <div className="cl-material-icon">
+                        <FileText size={18} />
+                      </div>
+                      <div className="cl-material-info">
+                        <h3 className="cl-material-title">{material.title}</h3>
+                        <div className="cl-material-meta">
+                          <span className="cl-material-date">
+                            {material.uploadDate}
+                          </span>
+                          <span
+                            className={`cl-material-status ${material.status}`}
+                          >
+                            {material.status === 'draft' ? '작성중' : '발행됨'}
+                          </span>
+                        </div>
                       </div>
                     </div>
+
+                    {/* ✅ 액션 버튼들은 이벤트 전파 방지 */}
                     <div className="cl-material-actions">
                       <button
                         className="cl-material-action-btn send-btn"
-                        onClick={() => handleSendMaterial(material.id)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // 부모 클릭 이벤트 방지
+                          handleSendMaterial(material.id);
+                        }}
                         title="자료 공유"
                       >
                         <Send size={16} />
                       </button>
                       <button
                         className="cl-material-action-btn label-btn"
-                        onClick={() =>
-                          handleLabelMaterial(material.id, material.label)
-                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLabelMaterial(material.id, material.label);
+                        }}
                         title="라벨 편집"
                       >
                         <Tag size={16} />
                       </button>
                       <button
                         className="cl-material-action-btn delete-btn"
-                        onClick={() => handleDeleteMaterial(material.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteMaterial(material.id);
+                        }}
                         title="삭제"
                       >
                         <Trash2 size={16} />

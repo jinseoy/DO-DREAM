@@ -644,6 +644,7 @@
   flex-shrink: 0;
   border: 1px solid rgba(226, 232, 240, 0.3);
   transition: all var(--transition-fast);
+  margin-right: 10px;
 }
 
 .cl-material-item:hover .cl-material-icon {
@@ -964,3 +965,4 @@
     grid-template-columns: 1fr;
   }
 }
+
