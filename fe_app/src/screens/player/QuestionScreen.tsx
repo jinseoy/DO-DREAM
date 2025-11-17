@@ -307,7 +307,11 @@ export default function QuestionScreen() {
           session_id: sessionId,
         };
 
+        console.log("[QuestionScreen] RAG API 요청:", payload);
+
         const response = await ragApi.chat(payload);
+
+        console.log("[QuestionScreen] RAG API 응답:", response);
 
         // 세션 ID 업데이트 (연속 대화 지원)
         setSessionId(response.session_id);
@@ -315,12 +319,25 @@ export default function QuestionScreen() {
         // 봇 응답 추가
         addBotMessage(response.answer);
       } catch (error: any) {
-        console.error("RAG API 호출 실패:", error);
+        console.error("[QuestionScreen] RAG API 호출 실패:", error);
+        console.error("[QuestionScreen] 에러 상세:", {
+          message: error?.message,
+          response: error?.response?.data,
+          status: error?.response?.status,
+          code: error?.code,
+        });
 
-        const errorMessage =
-          error?.response?.data?.detail ||
-          error?.message ||
-          "질문을 처리하는 중 오류가 발생했습니다. 다시 시도해주세요.";
+        let errorMessage = "질문을 처리하는 중 오류가 발생했습니다. 다시 시도해주세요.";
+
+        if (error?.response?.data?.detail) {
+          errorMessage = error.response.data.detail;
+        } else if (error?.message === "Network Error") {
+          errorMessage = "네트워크 연결을 확인해주세요. 서버와 통신할 수 없습니다.";
+        } else if (error?.code === "ECONNABORTED") {
+          errorMessage = "서버 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.";
+        } else if (error?.message) {
+          errorMessage = error.message;
+        }
 
         addBotMessage(errorMessage);
         AccessibilityInfo.announceForAccessibility(

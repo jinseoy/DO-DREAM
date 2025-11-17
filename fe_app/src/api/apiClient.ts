@@ -9,10 +9,11 @@ class ApiClient {
   constructor() {
     this.instance = axios.create({
       baseURL: API_BASE_URL,
-      withCredentials: true, // 쿠키를 주고받기 위해 추가
-      timeout: 10000,
+      withCredentials: false, // React Native에서는 쿠키 대신 Authorization 헤더 사용
+      timeout: 300000, // RAG API는 응답 생성에 시간이 걸릴 수 있으므로 5분으로 증가
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
     });
 
