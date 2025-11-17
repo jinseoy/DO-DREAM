@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from typing import Optional
-import uuid # 세션 ID 생성을 위해 추가
+import uuid 
 
 # --- RAG 모듈 임포트 ---
-# RAG 서비스 로직 (임베딩 생성, RAG 체인)
+# (수정) tasks.py 임포트 (1순위 고도화 - Celery)
+# from app.rag.tasks import create_embedding_task
+# (수정) 1순위 고도화를 아직 적용하지 않았으므로, service.py에서 직접 임포트
 from app.rag.service import (
-    download_json_from_cloudfront, # (수정) httpx 다운로드 함수 임포트
+    download_json_from_cloudfront, 
     extract_data_from_json, 
     create_and_store_embeddings,
     get_rag_chain
@@ -16,21 +18,19 @@ from app.rag.database import get_rag_db
 # RAG DB(SQLite) 모델 (ChatSession, ChatMessage)
 from app.rag import models as rag_models
 
-# --- 인증 모듈 임포트 (사용자 예시와 동일) ---
-# JWT 검증 및 사용자 정보 로드 의존성
+# --- 인증 모듈 임포트 ---
 from app.security.auth import get_current_user
-# Pydantic User 스키마 (인증된 사용자 정보)
 from app.security.models import User 
 
-# --- (삭제) S3 버킷 이름 임포트 불필요 ---
-# from app.config import S3_BUCKET_NAME
+# --- Pydantic 스키마 ---
+from pydantic import BaseModel, HttpUrl
 
-# --- Pydantic 스키마 (Request/Response Body용) ---
-from pydantic import BaseModel, HttpUrl # (수정) HttpUrl 임포트
+# --- (신규) 2순위 고도화: LCEL용 Message 객체 임포트 ---
+from langchain_core.messages import HumanMessage, AIMessage
 
 class EmbeddingRequest(BaseModel):
     document_id: str
-    s3_url: HttpUrl # (수정) Boto3 Key가 아닌 CloudFront URL을 받음
+    s3_url: HttpUrl 
 
 class ChatRequest(BaseModel):
     document_id: str
@@ -43,15 +43,15 @@ class ChatResponse(BaseModel):
 
 # --- 라우터 생성 ---
 router = APIRouter(
-    prefix="/rag", # /rag로 시작
-    tags=["RAG"]   # API 문서에서 "RAG" 그룹
+    prefix="/rag", 
+    tags=["RAG"]   
 )
 
 # --- 워크플로우 1: 임베딩 생성 API (TEACHER 권한 필요) ---
+# (이 API는 Celery를 적용하지 않았으므로, 이전과 동일하게 유지)
 @router.post("/embeddings/create", status_code=201)
-async def api_create_embedding( # (수정) 'async' 추가
+async def api_create_embedding( 
     request: EmbeddingRequest,
-    # (핵심) JWT 인증 및 사용자 정보 로드
     current_user: User = Depends(get_current_user) 
 ):
     """
@@ -59,59 +59,46 @@ async def api_create_embedding( # (수정) 'async' 추가
     **TEACHER** 역할 사용자만 이 API를 호출할 수 있습니다.
     """
     
-    # (핵심) 권한 검증
-    # User 모델에 'role'이 있고, 그 값이 'TEACHER'라고 가정합니다.
     if current_user.role != "TEACHER":
         raise HTTPException(status_code=403, detail="임베딩을 생성할 권한이 없습니다.")
 
     try:
         print(f"'{request.document_id}' 임베딩 생성 요청 (CloudFront URL: {request.s3_url})")
 
-        # 1. (수정) CloudFront에서 실제 JSON 다운로드 (service.py 호출)
-        # request.s3_url이 Spring이 서명한 CloudFront URL이라고 가정
         json_data = await download_json_from_cloudfront(str(request.s3_url))
-        
-        # 2. (수정) 실제 JSON 파서 호출 (service.py 호출)
         documents = extract_data_from_json(json_data)
-        
-        # 3. 임베딩 생성 및 ChromaDB 저장 (service.py 호출)
         create_and_store_embeddings(request.document_id, documents)
         
         return {"status": "success", "document_id": request.document_id}
     
     except HTTPException as e:
-        # (download_json_from_cloudfront에서 발생한 HTTPException)
         print(f"임베딩 생성 중 오류 발생: {e.detail}")
-        raise e # FastAPI가 처리하도록 그대로 전달
+        raise e 
     except Exception as e:
-        # (JSON 파싱 오류, 임베딩 API 오류 등)
         print(f"임베딩 생성 중 예상치 못한 오류 발생: {e}")
         raise HTTPException(status_code=500, detail=f"임베딩 생성 실패: {str(e)}")
 
 
 # --- 워크플로우 2: RAG 질의응답 API (인증 필요) ---
-# (이하 /chat API는 수정 없이 동일하게 유지)
+# (수정) LCEL 체인을 호출하도록 로직 변경
 @router.post("/chat", response_model=ChatResponse)
 async def api_chat_with_rag(
     request: ChatRequest,
-    # RAG(SQLite) DB 세션 주입
     rag_db: Session = Depends(get_rag_db), 
-    # (핵심) JWT 인증 및 사용자 정보 로드
     current_user: User = Depends(get_current_user) 
 ):
     """
     (클라이언트가 호출) RAG 질의응답 API. 
-    인증된 사용자만 호출 가능하며, 세션 관리를 포함합니다.
+    (수정) LCEL 체인을 사용하여 대화 기록을 명시적으로 전달합니다.
     """
     session_id = request.session_id
-    user_id = current_user.id # 인증된 사용자의 ID
+    user_id = current_user.id 
     document_id = request.document_id
 
     # 1. 세션 로드 또는 생성
-    chat_history = []
+    chat_history_tuples = [] # (수정) 변수 이름 변경
     if session_id:
         # (기존 세션) DB에서 메시지 조회
-        # (보안) 현재 사용자의 세션이 맞는지 확인 (user_id == current_user.id)
         session = rag_db.query(rag_models.ChatSession).filter(
             rag_models.ChatSession.id == session_id,
             rag_models.ChatSession.user_id == user_id 
@@ -125,19 +112,19 @@ async def api_chat_with_rag(
             rag_models.ChatMessage.session_id == session_id
         ).order_by(rag_models.ChatMessage.created_at).all()
         
-        chat_history = [(msg.role, msg.content) for msg in messages]
+        chat_history_tuples = [(msg.role, msg.content) for msg in messages]
 
     else:
         # (새 세션) DB에 세션 생성
         session = rag_models.ChatSession(
-            id=str(uuid.uuid4()), # 새 UUID 생성
+            id=str(uuid.uuid4()), 
             user_id=user_id,
             document_id=document_id
         )
         rag_db.add(session)
         rag_db.commit()
         rag_db.refresh(session)
-        session_id = session.id # 새로 생성된 세션 ID
+        session_id = session.id 
     
     # 2. 사용자 질문 DB에 저장
     user_message = rag_models.ChatMessage(
@@ -146,15 +133,30 @@ async def api_chat_with_rag(
         content=request.question
     )
     rag_db.add(user_message)
-    rag_db.commit() # (중요) 질문을 먼저 커밋
+    rag_db.commit() 
+
+    # --- (신규) 2순위 고도화: LCEL용 대화 기록 변환 ---
+    # [(role, content)] 튜플 리스트를 [HumanMessage, AIMessage] 객체 리스트로 변환
+    lcel_chat_history = []
+    for role, content in chat_history_tuples:
+        if role == "user":
+            lcel_chat_history.append(HumanMessage(content=content))
+        elif role == "ai":
+            lcel_chat_history.append(AIMessage(content=content))
+    # --------------------------------------------------
 
     # 3. RAG 체인 생성 및 실행 (service.py 호출)
     try:
-        # (service.py) 메모리 생성, Retriever 로드, 체인 생성
-        chain = get_rag_chain(document_id, chat_history) 
+        # (수정) service.py의 새 LCEL 체인을 가져옴 (메모리 내장 X)
+        chain = get_rag_chain(document_id) 
         
-        # 비동기 호출로 LLM 응답 대기
-        result = await chain.ainvoke({"question": request.question}) 
+        # (수정) LCEL 체인 호출: 'input'과 'chat_history'를 명시적으로 전달
+        result = await chain.ainvoke({
+            "input": request.question,
+            "chat_history": lcel_chat_history
+        }) 
+        
+        # (유지) LCEL 체인도 'answer' 키로 답변을 반환
         answer = result["answer"]
         
         # 4. AI 답변 DB에 저장
@@ -164,12 +166,11 @@ async def api_chat_with_rag(
             content=answer
         )
         rag_db.add(ai_message)
-        rag_db.commit() # (중요) 답변을 커밋
+        rag_db.commit() 
 
         # 5. 클라이언트에 응답
         return ChatResponse(answer=answer, session_id=session_id)
     
     except Exception as e:
-        # (ChromaDB에 document_id 컬렉션이 없는 경우, LLM API 오류 등)
         print(f"RAG 처리 중 오류 발생: {e}")
         raise HTTPException(status_code=500, detail=f"RAG 처리 중 오류 발생: {str(e)}")
