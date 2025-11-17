@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.status.errorLight, // 밝은 빨간색 배경
   },
   buttonText: {
-    fontSize: 20, // 가독성 향상
+    fontSize: 18, // 가독성 향상
     fontWeight: "bold",
     color: COLORS.text.primary, // 검은색 텍스트
   },
