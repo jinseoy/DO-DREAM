@@ -1,8 +1,11 @@
 package A704.DODREAM.file.controller;
 
 import A704.DODREAM.auth.dto.request.UserPrincipal;
+import A704.DODREAM.file.entity.UploadedFile;
 import A704.DODREAM.file.service.PdfService;
 import A704.DODREAM.file.service.TempPdfDataService;
+import A704.DODREAM.material.dto.PublishRequest;
+import A704.DODREAM.material.service.PublishService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,6 +37,9 @@ public class PdfController {
 
   @Autowired
   private TempPdfDataService tempPdfDataService;
+
+  @Autowired
+  private PublishService publishService;
 
   /**
    * PDF 업로드 + 파싱 통합 API (바이너리 직접 전송 - 권장)
@@ -188,12 +194,13 @@ public class PdfController {
   )
   @PostMapping("/{pdfId}/temp-save")
   public ResponseEntity<Map<String, Object>> saveTempData(
-      @PathVariable Long pdfId,
-      @RequestBody Map<String, Object> editedJson,
-      @AuthenticationPrincipal UserPrincipal userPrincipal
+          @PathVariable Long pdfId,
+          @RequestBody PublishRequest request,
+          @AuthenticationPrincipal UserPrincipal userPrincipal
   ) {
     Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
-    tempPdfDataService.save(pdfId, userId, editedJson);
+    tempPdfDataService.save(pdfId, userId, request);
+
     return ResponseEntity.ok(Map.of(
         "success", true,
         "message", "임시 저장이 완료되었습니다.",

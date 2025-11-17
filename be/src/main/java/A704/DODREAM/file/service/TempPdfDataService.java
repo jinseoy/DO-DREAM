@@ -1,5 +1,12 @@
 package A704.DODREAM.file.service;
 
+import A704.DODREAM.file.entity.UploadedFile;
+import A704.DODREAM.file.repository.UploadedFileRepository;
+import A704.DODREAM.global.exception.CustomException;
+import A704.DODREAM.global.exception.constant.ErrorCode;
+import A704.DODREAM.material.dto.PublishRequest;
+import A704.DODREAM.material.entity.Material;
+import A704.DODREAM.material.repository.MaterialRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
@@ -13,6 +20,9 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 @Slf4j
 public class TempPdfDataService {
+
+    private final UploadedFileRepository uploadedFileRepository;
+    private final MaterialRepository materialRepository;
 
   private final StringRedisTemplate redis;
   private final ObjectMapper objectMapper;
@@ -30,11 +40,20 @@ public class TempPdfDataService {
    * 임시 저장 데이터를 Redis에 저장
    * @param pdfId PDF ID
    * @param userId 사용자 ID
-   * @param editedJson 수정된 JSON 데이터
    */
-  public void save(Long pdfId, Long userId, Map<String, Object> editedJson) {
+  public void save(Long pdfId, Long userId, PublishRequest request) {
     try {
-      String jsonString = objectMapper.writeValueAsString(editedJson);
+        UploadedFile uploadedFile = uploadedFileRepository.findById(pdfId)
+                .orElseThrow(() -> new CustomException(ErrorCode.FILE_NOT_FOUND));
+
+        Material material = new Material().builder()
+                .uploadedFile(uploadedFile)
+                .title(request.getMaterialTitle())
+                .label(request.getLabelColor())
+                .build();
+
+        materialRepository.save(material);
+      String jsonString = objectMapper.writeValueAsString(request.getEditedJson());
       redis.opsForValue().set(key(pdfId, userId), jsonString, TTL);
       log.info("임시 저장 완료: pdfId={}, userId={}", pdfId, userId);
     } catch (JsonProcessingException e) {

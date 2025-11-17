@@ -5,8 +5,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import A704.DODREAM.file.entity.UploadedFile;
+import A704.DODREAM.file.enums.PostStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -23,7 +25,7 @@ import A704.DODREAM.user.entity.User;
 @EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Material {
@@ -58,6 +60,10 @@ public class Material {
 //	@Column(name = "processing_status", nullable = false, length = 20)
 //	@Builder.Default
 //	private ProcessingStatus processingStatus = ProcessingStatus.PENDING;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private PostStatus postStatus = PostStatus.DRAFT;
 
 	@Enumerated(EnumType.STRING)
 	@Column(length = 20)
