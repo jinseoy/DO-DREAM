@@ -42,6 +42,7 @@ import {
   fetchBookmarksByMaterial,
 } from "../../api/bookmarkApi";
 import { updateProgress } from "../../api/progressApi";
+import { COLORS } from "../../constants/colors";
 
 type PlayModeKey = "single" | "continuous" | "repeat";
 
@@ -878,7 +879,7 @@ export default function PlayerScreen() {
             accessibilityRole="button"
             accessibilityHint={isLastSection ? "챕터 학습을 완료합니다" : ""}
           >
-            <Text style={styles.controlButtonText}>
+            <Text style={isLastSection ? styles.controlButtonCompleteText : styles.controlButtonText}>
               {isLastSection ? "완료" : "다음 →"}
             </Text>
           </TouchableOpacity>
@@ -978,14 +979,14 @@ export default function PlayerScreen() {
 const CONTROL_BTN_MIN_HEIGHT = 80;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#ffffff" },
+  container: { flex: 1, backgroundColor: COLORS.background.default },
 
   header: {
     paddingHorizontal: 0,
     paddingTop: 12,
     paddingBottom: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: "#e0e0e0",
+    // borderBottomWidth: 3,
+    // borderBottomColor: COLORS.border.main,
   },
 
   scrollView: { flex: 1 },
@@ -995,22 +996,24 @@ const styles = StyleSheet.create({
   },
 
   contentBox: {
-    padding: 20,
+    padding: 24,
     borderRadius: 12,
     marginBottom: 20,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: COLORS.background.paper,
+    borderWidth: 2,
+    borderColor: COLORS.border.light,
   },
   contentText: {
-    fontSize: 28,
-    lineHeight: 44,
-    color: "#333",
-    fontWeight: "500",
+    fontSize: 30,
+    lineHeight: 48,
+    color: COLORS.text.primary,
+    fontWeight: "600",
   },
   counterText: {
-    fontSize: 20,
-    color: "#999",
+    fontSize: 22,
+    color: COLORS.text.tertiary,
     textAlign: "center",
-    fontWeight: "600",
+    fontWeight: "700",
     marginBottom: 16,
   },
 
@@ -1018,57 +1021,62 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    paddingVertical: 16,
+    paddingVertical: 18,
     paddingHorizontal: 16,
-    borderTopWidth: 2,
-    borderTopColor: "#e0e0e0",
-    backgroundColor: "#f8f9fa",
+    borderTopWidth: 3,
+    borderTopColor: COLORS.border.main,
+    backgroundColor: COLORS.background.elevated,
     gap: 12,
   },
 
   controlButtonPrevNext: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 22,
     borderRadius: 14,
-    backgroundColor: "#2196F3",
+    backgroundColor: COLORS.primary.main, // 남색
     minWidth: 100,
     minHeight: CONTROL_BTN_MIN_HEIGHT,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#1976D2",
+    borderWidth: 3,
+    borderColor: COLORS.primary.dark,
   },
-  controlButtonText: { fontSize: 20, fontWeight: "800", color: "#ffffff" },
+  controlButtonText: { fontSize: 22, fontWeight: "800", color: COLORS.text.inverse },
 
   controlButtonComplete: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 22,
     borderRadius: 14,
-    backgroundColor: "#FF9800",
+    backgroundColor: COLORS.secondary.main, // 노란색
     minWidth: 100,
     minHeight: CONTROL_BTN_MIN_HEIGHT,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#F57C00",
+    borderWidth: 3,
+    borderColor: COLORS.secondary.dark,
+  },
+  controlButtonCompleteText: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: COLORS.text.primary, // 검은색 (노란 배경)
   },
   controlButtonPlay: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: 18,
+    paddingHorizontal: 26,
     borderRadius: 14,
-    backgroundColor: "#4CAF50",
-    minWidth: 130,
+    backgroundColor: COLORS.status.success, // 초록색
+    minWidth: 140,
     minHeight: CONTROL_BTN_MIN_HEIGHT,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#388E3C",
+    borderWidth: 3,
+    borderColor: COLORS.status.success,
   },
-  playButtonText: { fontSize: 22, fontWeight: "900", color: "#ffffff" },
+  playButtonText: { fontSize: 24, fontWeight: "900", color: COLORS.text.inverse },
 
   disabledButton: {
-    backgroundColor: "#BDBDBD",
-    borderColor: "#9E9E3E",
+    backgroundColor: COLORS.gray[400],
+    borderColor: COLORS.gray[500],
     opacity: 0.6,
   },
 
@@ -1077,32 +1085,32 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
-    backgroundColor: "#f8f9fa",
-    borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
+    paddingTop: 10,
+    paddingBottom: 6,
+    backgroundColor: COLORS.background.elevated,
+    borderTopWidth: 2,
+    borderTopColor: COLORS.border.light,
     gap: 8,
   },
   chapterNavButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: "#EEEEEE",
+    backgroundColor: COLORS.primary.lightest,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#BDBDBD",
+    borderWidth: 3,
+    borderColor: COLORS.primary.main,
   },
   chapterNavButtonDisabled: {
-    backgroundColor: "#F5F5F5",
-    borderColor: "#E0E0E0",
+    backgroundColor: COLORS.gray[100],
+    borderColor: COLORS.border.light,
     opacity: 0.7,
   },
   chapterNavButtonText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
-    color: "#424242",
+    color: COLORS.text.secondary,
   },
 
   bottomActionWrap: {
@@ -1112,32 +1120,32 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   askButton: {
-    backgroundColor: "#FF9500",
+    backgroundColor: COLORS.secondary.main, // 노란색
+    borderRadius: 16,
+    padding: 22,
+    alignItems: "center",
+    minHeight: 76,
+    justifyContent: "center",
+    borderWidth: 4,
+    borderColor: COLORS.secondary.dark,
+  },
+  askButtonText: { fontSize: 26, fontWeight: "bold", color: COLORS.text.primary },
+
+  moreButton: {
+    backgroundColor: COLORS.primary.lightest,
     borderRadius: 16,
     padding: 20,
     alignItems: "center",
-    minHeight: 72,
+    minHeight: 68,
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: "#E68A00",
+    borderColor: COLORS.primary.main,
   },
-  askButtonText: { fontSize: 24, fontWeight: "bold", color: "#FFFFFF" },
-
-  moreButton: {
-    backgroundColor: "#E3F2FD",
-    borderRadius: 16,
-    padding: 18,
-    alignItems: "center",
-    minHeight: 64,
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#2196F3",
-  },
-  moreButtonText: { fontSize: 20, fontWeight: "bold", color: "#0D47A1" },
+  moreButtonText: { fontSize: 22, fontWeight: "bold", color: COLORS.primary.dark },
 
   errorText: {
-    fontSize: 20,
-    color: "#999",
+    fontSize: 22,
+    color: COLORS.text.tertiary,
     textAlign: "center",
     marginTop: 40,
   },

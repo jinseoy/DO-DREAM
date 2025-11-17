@@ -14,6 +14,7 @@ import { biometricUtil } from '../../utils/biometric';
 import { getDeviceId, getDeviceSecret } from '../../services/appStorage';
 import { useAuthStore } from '../../stores/authStore';
 import { AuthStartScreenNavigationProp } from '../../navigation/navigationTypes';
+import { COLORS } from '../../constants/colors';
 
 export default function AuthStartScreen() {
   const navigation = useNavigation<AuthStartScreenNavigationProp>();
@@ -164,8 +165,8 @@ export default function AuthStartScreen() {
             accessibilityRole="button"
             accessibilityHint="학번과 이름을 입력하여 회원가입합니다"
           >
-            <Text style={styles.buttonText}>회원가입</Text>
-            <Text style={styles.buttonSubtext}>처음 사용하시나요?</Text>
+            <Text style={[styles.buttonText, styles.signupButtonText]}>회원가입</Text>
+            <Text style={[styles.buttonSubtext, styles.signupButtonText]}>처음 사용하시나요?</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -176,7 +177,7 @@ export default function AuthStartScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: COLORS.background.default,
   },
   content: {
     flex: 1,
@@ -190,14 +191,14 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 64,
     fontWeight: 'bold',
-    color: '#192B55',
+    color: COLORS.primary.main, // #192B55 메인 남색
     marginBottom: 24,
   },
   subtitle: {
-    fontSize: 20,
-    color: '#666666',
+    fontSize: 22, // 가독성을 위해 약간 크게
+    color: COLORS.text.secondary, // 충분한 대비율
     textAlign: 'center',
-    lineHeight: 32,
+    lineHeight: 34,
   },
   buttonSection: {
     gap: 20,
@@ -209,29 +210,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: 140,
     justifyContent: 'center',
-    borderWidth: 3,
+    borderWidth: 4, // 경계선 두께 증가 (접근성)
   },
   loginButton: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#45a049',
+    backgroundColor: COLORS.primary.main, // 메인 남색
+    borderColor: COLORS.primary.dark, // 더 진한 남색
   },
   signupButton: {
-    backgroundColor: '#2196F3',
-    borderColor: '#1976D2',
+    backgroundColor: COLORS.secondary.main, // 서브 노란색
+    borderColor: COLORS.secondary.dark, // 진한 노란색
+  },
+  signupButtonText: {
+    color: COLORS.text.primary, // 검은색 (노란 배경에 높은 대비)
+    opacity: 1,
   },
   buttonText: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: COLORS.text.inverse, // 흰색 (남색 배경용)
     marginBottom: 8,
   },
   buttonSubtext: {
     fontSize: 18,
-    color: '#ffffff',
-    opacity: 0.9,
+    color: COLORS.text.inverse, // 흰색
+    opacity: 0.95,
   },
   buttonDisabled: {
-    backgroundColor: '#A5D6A7',
-    borderColor: '#9CCC65',
+    backgroundColor: COLORS.primary.light,
+    borderColor: COLORS.primary.lighter,
   },
 });

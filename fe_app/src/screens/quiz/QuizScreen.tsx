@@ -20,6 +20,7 @@ import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
 import BackButton from "../../components/BackButton";
 import { commonStyles } from "../../styles/commonStyles";
+import { COLORS } from "../../constants/colors";
 
 interface Answer {
   questionId: number;
@@ -587,7 +588,7 @@ export default function QuizScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: COLORS.background.default,
   },
   header: {
     flexDirection: "column",
@@ -601,14 +602,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   quizTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "bold",
-    color: "#333333",
+    color: COLORS.text.primary,
     flex: 1,
   },
   progressText: {
-    fontSize: 20,
-    color: "#666666",
+    fontSize: 22,
+    color: COLORS.text.secondary,
     fontWeight: "600",
   },
   contentArea: {
@@ -624,30 +625,30 @@ const styles = StyleSheet.create({
   },
   questionNumber: {
     fontSize: 18,
-    color: "#666666",
+    color: COLORS.text.secondary,
     marginBottom: 12,
   },
   questionText: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: "600",
-    color: "#333333",
-    lineHeight: 40,
+    color: COLORS.text.primary,
+    lineHeight: 42,
   },
   optionsSection: {
     gap: 16,
   },
   optionButton: {
-    backgroundColor: "#f8f9fa",
+    backgroundColor: COLORS.background.elevated,
     borderRadius: 12,
     padding: 20,
     borderWidth: 3,
-    borderColor: "#e0e0e0",
+    borderColor: COLORS.border.light,
     minHeight: 88,
     justifyContent: "center",
   },
   optionButtonSelected: {
-    backgroundColor: "#E3F2FD",
-    borderColor: "#2196F3",
+    backgroundColor: COLORS.primary.lightest,
+    borderColor: COLORS.primary.main,
   },
   optionContent: {
     flexDirection: "row",
@@ -658,27 +659,27 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#e0e0e0",
+    backgroundColor: COLORS.border.light,
     justifyContent: "center",
     alignItems: "center",
   },
   optionText: {
-    fontSize: 22,
-    color: "#333333",
+    fontSize: 24,
+    color: COLORS.text.primary,
     flex: 1,
-    lineHeight: 32,
+    lineHeight: 34,
   },
   optionTextSelected: {
     fontWeight: "600",
-    color: "#2196F3",
+    color: COLORS.primary.main,
   },
   bottomButtons: {
     paddingHorizontal: 24,
     paddingBottom: 24,
     paddingTop: 16,
-    borderTopWidth: 2,
-    borderTopColor: "#e0e0e0",
-    backgroundColor: "#f8f9fa",
+    borderTopWidth: 3,
+    borderTopColor: COLORS.border.light,
+    backgroundColor: COLORS.background.elevated,
   },
   navigationButtons: {
     flexDirection: "row",
@@ -694,21 +695,21 @@ const styles = StyleSheet.create({
     borderWidth: 3,
   },
   prevButton: {
-    backgroundColor: "#9E9E9E",
-    borderColor: "#757575",
+    backgroundColor: COLORS.text.tertiary,
+    borderColor: COLORS.text.secondary,
   },
   nextButton: {
-    backgroundColor: "#4CAF50",
-    borderColor: "#45a049",
+    backgroundColor: COLORS.status.success,
+    borderColor: COLORS.status.success,
   },
   nextButtonDisabled: {
-    backgroundColor: "#cccccc",
-    borderColor: "#999999",
+    backgroundColor: COLORS.border.main,
+    borderColor: COLORS.border.main,
     opacity: 0.5,
   },
   navButtonText: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
-    color: "#ffffff",
+    color: COLORS.text.inverse,
   },
 });

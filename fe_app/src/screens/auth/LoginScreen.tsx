@@ -13,6 +13,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { biometricUtil } from "../../utils/biometric";
 import { accessibilityUtil } from "../../utils/accessibility";
 import { getDeviceId, getDeviceSecret } from "../../services/appStorage";
+import { COLORS } from "../../constants/colors";
 
 export default function LoginScreen() {
   const navigation = useNavigation<LoginScreenNavigationProp>();
@@ -159,37 +160,41 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: COLORS.background.default,
     padding: 24,
     justifyContent: "center",
   },
   title: {
-    fontSize: 48,
+    fontSize: 52,
     fontWeight: "bold",
     textAlign: "center",
     marginBottom: 16,
+    color: COLORS.primary.main, // 메인 남색
   },
   subtitle: {
     fontSize: 24,
-    color: "#666",
+    color: COLORS.text.secondary,
     textAlign: "center",
     marginBottom: 64,
   },
   loginButton: {
-    backgroundColor: "#007AFF",
-    padding: 24,
+    backgroundColor: COLORS.primary.main, // 메인 남색
+    borderWidth: 4,
+    borderColor: COLORS.primary.dark,
+    padding: 28,
     borderRadius: 16,
     alignItems: "center",
-    minHeight: 120,
+    minHeight: 130,
     justifyContent: "center",
   },
   loginButtonText: {
-    color: "#FFF",
-    fontSize: 28,
+    color: COLORS.text.inverse,
+    fontSize: 30,
     fontWeight: "bold",
   },
   buttonDisabled: {
-    backgroundColor: "#CCC",
+    backgroundColor: COLORS.primary.light,
+    borderColor: COLORS.primary.lighter,
   },
   backButton: {
     marginTop: 24,
@@ -197,7 +202,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   backButtonText: {
-    color: "#666",
-    fontSize: 20,
+    color: COLORS.text.secondary,
+    fontSize: 22,
+    fontWeight: "600",
   },
 });

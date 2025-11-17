@@ -29,6 +29,7 @@ import { buildChaptersFromMaterialJson } from "../../utils/materialJsonMapper";
 import type { Chapter } from "../../types/chapter";
 import { fetchMaterialProgress } from "../../api/progressApi";
 import type { MaterialProgress } from "../../types/api/progressApiTypes";
+import { COLORS } from "../../constants/colors";
 
 export default function PlaybackChoiceScreen() {
   const navigation = useNavigation<PlaybackChoiceScreenNavigationProp>();
@@ -459,7 +460,7 @@ export default function PlaybackChoiceScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: COLORS.background.default,
   },
   header: {
     paddingHorizontal: 24,
@@ -477,17 +478,17 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   subjectText: {
-    fontSize: 36,
+    fontSize: 40,
     fontWeight: "bold",
-    color: "#333333",
+    color: COLORS.text.primary,
     marginBottom: 8,
   },
   chapterText: {
-    fontSize: 20,
-    color: "#666666",
+    fontSize: 22,
+    color: COLORS.text.secondary,
   },
   progressSection: {
-    backgroundColor: "#f5f5f5",
+    backgroundColor: COLORS.background.elevated,
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
@@ -496,9 +497,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   progressTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
-    color: "#333333",
+    color: COLORS.text.primary,
     marginBottom: 12,
   },
   progressBarContainer: {
@@ -510,31 +511,31 @@ const styles = StyleSheet.create({
   progressBarBackground: {
     flex: 1,
     height: 24,
-    backgroundColor: "#e0e0e0",
+    backgroundColor: COLORS.border.light,
     borderRadius: 12,
     overflow: "hidden",
   },
   progressBarFill: {
     height: "100%",
-    backgroundColor: "#4CAF50",
+    backgroundColor: COLORS.status.success,
     borderRadius: 12,
   },
   progressPercentage: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#333333",
+    color: COLORS.text.primary,
     minWidth: 55,
     textAlign: "right",
   },
   sectionCountText: {
-    fontSize: 14,
-    color: "#666666",
+    fontSize: 15,
+    color: COLORS.text.secondary,
     marginTop: 4,
   },
   chapterProgressContainer: {
     paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
+    borderTopWidth: 2,
+    borderTopColor: COLORS.border.light,
   },
   chapterNavigationContainer: {
     flexDirection: "row",
@@ -547,14 +548,14 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#ffffff",
+    backgroundColor: COLORS.background.default,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#cccccc",
+    borderWidth: 2,
+    borderColor: COLORS.border.main,
   },
   navButtonText: {
     fontSize: 18,
-    color: "#333333",
+    color: COLORS.text.primary,
   },
   chapterProgressInfo: {
     flex: 1,
@@ -562,17 +563,17 @@ const styles = StyleSheet.create({
   chapterTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333333",
+    color: COLORS.text.primary,
     marginBottom: 8,
   },
   chapterSectionText: {
-    fontSize: 14,
-    color: "#666666",
+    fontSize: 15,
+    color: COLORS.text.secondary,
     marginTop: 4,
   },
   chapterIndexText: {
     fontSize: 14,
-    color: "#999999",
+    color: COLORS.text.tertiary,
     textAlign: "center",
     marginTop: 8,
   },

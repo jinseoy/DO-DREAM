@@ -35,6 +35,7 @@ import {
   addMessageToQuestionHistory,
   QuestionMessage,
 } from "../../services/questionStorage";
+import { COLORS } from "../../constants/colors";
 
 type MsgType = "user" | "bot";
 interface Message {
@@ -779,8 +780,8 @@ export default function QuestionScreen() {
 const BTN_HEIGHT = 56; // 버튼/입력 최소 높이 기준
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#E8EAF6" },
-  title: { fontSize: 22, fontWeight: "600", color: "#424242", flex: 1, textAlign: "center" },
+  container: { flex: 1, backgroundColor: COLORS.primary.lighter },
+  title: { fontSize: 22, fontWeight: "600", color: COLORS.text.secondary, flex: 1, textAlign: "center" },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
@@ -788,13 +789,13 @@ const styles = StyleSheet.create({
   },
   clearTxt: {
     fontSize: 16,
-    color: "#F44336",
+    color: COLORS.status.error,
     fontWeight: "700",
     paddingRight: 8,
   },
 
   // 대화
-  chatArea: { flex: 1, backgroundColor: "#E8EAF6" },
+  chatArea: { flex: 1, backgroundColor: COLORS.primary.lighter },
   chatContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
@@ -813,22 +814,22 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
   },
-  userBubble: { backgroundColor: "#3F51B5", alignSelf: "flex-end" },
-  botBubble: { backgroundColor: "#FFF9C4", alignSelf: "flex-start" },
+  userBubble: { backgroundColor: COLORS.primary.main, alignSelf: "flex-end" },
+  botBubble: { backgroundColor: COLORS.secondary.main, alignSelf: "flex-start" },
 
-  draftBubble: { opacity: 0.85, borderWidth: 2, borderColor: "#C5CAE9" },
+  draftBubble: { opacity: 0.85, borderWidth: 2, borderColor: COLORS.primary.light },
 
-  msgText: { fontSize: 18, lineHeight: 28, marginBottom: 6 },
-  userText: { color: "#ffffff" },
-  botText: { color: "#424242" },
+  msgText: { fontSize: 20, lineHeight: 30, marginBottom: 6 },
+  userText: { color: COLORS.text.inverse },
+  botText: { color: COLORS.text.primary },
 
   timeText: { fontSize: 13, marginTop: 4 },
-  userTime: { color: "#E8EAF6" },
-  botTime: { color: "#757575" },
+  userTime: { color: COLORS.primary.lighter },
+  botTime: { color: COLORS.text.tertiary },
 
   // 웰컴 버블
   welcomeBubble: {
-    backgroundColor: "#FFF9C4",
+    backgroundColor: COLORS.secondary.main,
     borderRadius: 12,
     padding: 20,
     marginBottom: 12,
@@ -836,15 +837,15 @@ const styles = StyleSheet.create({
     maxWidth: "95%",
   },
   welcomeTxt: {
-    fontSize: 18,
-    lineHeight: 28,
-    color: "#424242",
+    fontSize: 20,
+    lineHeight: 30,
+    color: COLORS.text.primary,
     marginBottom: 8,
   },
 
   // 웨이브
   waveBar: {
-    backgroundColor: "#3F51B5",
+    backgroundColor: COLORS.primary.main,
     paddingVertical: 22,
     alignItems: "center",
     justifyContent: "center",
@@ -859,7 +860,7 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: "#FFF9C4",
+    backgroundColor: COLORS.secondary.main,
   },
 
   // 입력 + 버튼
@@ -868,35 +869,37 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "#ffffff",
-    borderTopWidth: 1,
-    borderTopColor: "#BDBDBD",
+    backgroundColor: COLORS.background.default,
+    borderTopWidth: 2,
+    borderTopColor: COLORS.border.main,
     gap: 10,
   },
   input: {
     flex: 1,
     minHeight: BTN_HEIGHT,
     maxHeight: 220,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: COLORS.background.elevated,
     borderRadius: 24,
     paddingHorizontal: 20,
     paddingVertical: 12,
     fontSize: 18,
-    color: "#424242",
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
+    color: COLORS.text.secondary,
+    borderWidth: 2,
+    borderColor: COLORS.border.light,
   },
 
   sendBtn: {
     height: BTN_HEIGHT,
-    backgroundColor: "#3F51B5",
+    backgroundColor: COLORS.primary.main,
     borderRadius: 24,
     paddingHorizontal: 20,
     paddingVertical: 12,
     minWidth: 88,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: COLORS.primary.dark,
   },
-  sendDisabled: { backgroundColor: "#BDBDBD" },
-  sendTxt: { color: "#ffffff", fontSize: 16, fontWeight: "700" },
+  sendDisabled: { backgroundColor: COLORS.border.main },
+  sendTxt: { color: COLORS.text.primary, fontSize: 16, fontWeight: "700" },
 });

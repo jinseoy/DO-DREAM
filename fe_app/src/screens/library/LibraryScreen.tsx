@@ -22,13 +22,12 @@ import { useAuthStore } from "../../stores/authStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
-import {
-  fetchSharedMaterials,
-  fetchMaterialJson,
-} from "../../api/materialApi";
+import { fetchSharedMaterials, fetchMaterialJson } from "../../api/materialApi";
 import { SharedMaterialSummary } from "../../types/api/materialApiTypes";
 import { fetchAllProgress } from "../../api/progressApi";
 import type { MaterialProgress } from "../../types/api/progressApiTypes";
+import { COLORS } from "../../constants/colors";
+import { commonStyles } from "../../styles/commonStyles";
 
 export default function LibraryScreen() {
   const navigation = useNavigation<LibraryScreenNavigationProp>();
@@ -48,12 +47,12 @@ export default function LibraryScreen() {
   const [error, setError] = useState<string | null>(null);
 
   // 모든 교재의 진행률 데이터 (materialId를 키로 하는 Map)
-  const [progressDataMap, setProgressDataMap] = useState<Map<number, MaterialProgress>>(new Map());
+  const [progressDataMap, setProgressDataMap] = useState<
+    Map<number, MaterialProgress>
+  >(new Map());
 
   // 공유 목록 → Material 도메인으로 매핑
-  const mapSharedToMaterial = (
-    shared: SharedMaterialSummary
-  ): Material => {
+  const mapSharedToMaterial = (shared: SharedMaterialSummary): Material => {
     return {
       id: shared.materialId,
       teacherId: String(shared.teacherId),
@@ -98,15 +97,28 @@ export default function LibraryScreen() {
               progressMap.set(progress.materialId, progress);
             });
             setProgressDataMap(progressMap);
-            console.log("[LibraryScreen] 진행률 조회 성공:", progressResponse.data.length, "개");
+            console.log(
+              "[LibraryScreen] 진행률 조회 성공:",
+              progressResponse.data.length,
+              "개"
+            );
           } else {
-            console.warn("[LibraryScreen] 진행률 데이터가 배열이 아닙니다:", progressResponse.data);
+            console.warn(
+              "[LibraryScreen] 진행률 데이터가 배열이 아닙니다:",
+              progressResponse.data
+            );
           }
         } catch (progressError: any) {
           console.error("[LibraryScreen] 진행률 조회 실패:", progressError);
           if (progressError.response) {
-            console.error("[LibraryScreen] 에러 응답 상태:", progressError.response.status);
-            console.error("[LibraryScreen] 에러 응답 데이터:", progressError.response.data);
+            console.error(
+              "[LibraryScreen] 에러 응답 상태:",
+              progressError.response.status
+            );
+            console.error(
+              "[LibraryScreen] 에러 응답 데이터:",
+              progressError.response.data
+            );
           }
           // 진행률 조회 실패해도 교재 목록은 표시
         }
@@ -336,8 +348,10 @@ export default function LibraryScreen() {
 
       // 백엔드에서 조회한 진행률 데이터를 사용하여 hasProgress 업데이트
       const progressData = progressDataMap.get(material.id);
-      const hasActualProgress = progressData != null &&
-        (progressData.completedSections > 0 || progressData.overallProgressPercentage > 0);
+      const hasActualProgress =
+        progressData != null &&
+        (progressData.completedSections > 0 ||
+          progressData.overallProgressPercentage > 0);
 
       const enrichedMaterial: Material = {
         ...material,
@@ -345,7 +359,10 @@ export default function LibraryScreen() {
         hasProgress: hasActualProgress, // 실제 진행률 데이터 기반으로 설정
       };
 
-      console.log(`[LibraryScreen] Material ${material.id} hasProgress:`, hasActualProgress);
+      console.log(
+        `[LibraryScreen] Material ${material.id} hasProgress:`,
+        hasActualProgress
+      );
 
       AccessibilityInfo.announceForAccessibility(
         `${material.title} 교재 내용을 불러왔습니다. 재생 방법을 선택하는 화면으로 이동합니다.`
@@ -391,7 +408,9 @@ export default function LibraryScreen() {
 
     // 진행률 데이터가 있으면 우선적으로 사용
     const chapterDescription = progressData
-      ? `진행률 ${progressData.overallProgressPercentage.toFixed(1)}%, ${progressData.completedSections}/${progressData.totalSections} 섹션 완료. `
+      ? `진행률 ${progressData.overallProgressPercentage.toFixed(1)}%, ${
+          progressData.completedSections
+        }/${progressData.totalSections} 섹션 완료. `
       : hasChapterInfo
       ? `현재 ${item.currentChapter}챕터, 전체 ${item.totalChapters}챕터 중. `
       : item.hasProgress
@@ -442,7 +461,8 @@ export default function LibraryScreen() {
 
             {progressData && (
               <Text style={styles.sectionProgressText}>
-                {progressData.completedSections} / {progressData.totalSections} 섹션
+                {progressData.completedSections} / {progressData.totalSections}{" "}
+                섹션
               </Text>
             )}
           </View>
@@ -497,7 +517,7 @@ export default function LibraryScreen() {
 
   return (
     <SafeAreaView
-      style={[styles.container, HC && styles.containerHC]}
+      style={[commonStyles.headerContainer && styles.container, HC && styles.containerHC]}
       edges={["top", "bottom"]}
     >
       <View style={[styles.header, HC && styles.headerHC]}>
@@ -516,8 +536,6 @@ export default function LibraryScreen() {
 
         {/* 오른쪽: 음성 명령 + 설정 버튼 */}
         <View style={styles.headerRight}>
-          <VoiceCommandButton accessibilityHint="두 번 탭한 후 교재 이름을 말씀하세요. 예: 영어 1, 문학, 생물 1, 화법과 작문" />
-
           <TouchableOpacity
             style={styles.settingsButton}
             onPress={handleSettingsPress}
@@ -529,6 +547,8 @@ export default function LibraryScreen() {
           >
             <Text style={styles.settingsIcon}>⚙️ 설정</Text>
           </TouchableOpacity>
+
+          <VoiceCommandButton accessibilityHint="두 번 탭한 후 교재 이름을 말씀하세요. 예: 문학, 사회문화, 생물 1, 영어 1" />
         </View>
       </View>
 
@@ -558,10 +578,10 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: COLORS.background.default,
   },
   containerHC: {
-    backgroundColor: "#000000",
+    backgroundColor: COLORS.common.black,
   },
   header: {
     flexDirection: "row",
@@ -570,19 +590,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 24,
-    borderBottomWidth: 2,
-    borderBottomColor: "#e0e0e0",
+    borderBottomWidth: 3,
+    borderBottomColor: COLORS.border.light,
   },
   headerHC: {
-    borderBottomColor: "#ffffff",
+    borderBottomColor: COLORS.text.inverse,
   },
   studentName: {
-    fontSize: 36,
+    fontSize: 40,
     fontWeight: "bold",
-    color: "#333333",
+    color: COLORS.text.primary,
   },
   textHC: {
-    color: "#ffffff",
+    color: COLORS.text.inverse,
   },
   // 오른쪽: 음성 명령 + 설정
   headerRight: {
@@ -590,20 +610,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   settingsButton: {
-    padding: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     minWidth: 44,
     minHeight: 44,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "skyblue",
-    borderColor: "blue",
+    backgroundColor: COLORS.primary.lightest,
+    borderColor: COLORS.primary.main,
     borderRadius: 12,
     borderWidth: 2,
-    marginLeft: 8,
+    marginHorizontal: 8,
   },
   settingsIcon: {
-    fontSize: 16,
-    color: "blue",
+    fontSize: 20,
+    color: COLORS.primary.main,
+    fontWeight: "bold",
   },
   listContent: {
     paddingHorizontal: 24,
@@ -611,12 +633,12 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   materialButton: {
-    backgroundColor: "#f8f9fa",
+    backgroundColor: COLORS.background.elevated,
     borderRadius: 12,
     marginBottom: 16,
     padding: 20,
-    borderWidth: 2,
-    borderColor: "#e0e0e0",
+    borderWidth: 3,
+    borderColor: COLORS.border.light,
     minHeight: 88,
   },
   materialButtonLoading: {
@@ -631,23 +653,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   subjectText: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "600",
-    color: "#333333",
+    color: COLORS.text.primary,
     marginBottom: 4,
   },
   chapterText: {
-    fontSize: 18,
-    color: "#666666",
+    fontSize: 20,
+    color: COLORS.text.secondary,
     marginBottom: 2,
   },
   sectionProgressText: {
-    fontSize: 14,
-    color: "#888888",
+    fontSize: 15,
+    color: COLORS.text.tertiary,
     marginTop: 2,
   },
   progressIndicator: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: COLORS.status.success,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -655,20 +677,20 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 14,
-    color: "#ffffff",
+    color: COLORS.text.inverse,
     fontWeight: "600",
   },
   loadingText: {
     marginTop: 8,
-    fontSize: 14,
-    color: "#888888",
+    fontSize: 15,
+    color: COLORS.text.tertiary,
   },
   emptyContainer: {
     paddingTop: 40,
     alignItems: "center",
   },
   emptyText: {
-    fontSize: 18,
-    color: "#666666",
+    fontSize: 20,
+    color: COLORS.text.secondary,
   },
 });

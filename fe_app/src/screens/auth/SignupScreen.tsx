@@ -21,6 +21,7 @@ import { biometricUtil } from "../../utils/biometric";
 import { accessibilityUtil } from "../../utils/accessibility";
 import BackButton from "../../components/BackButton";
 import { asrService } from "../../services/asrService";
+import { COLORS } from "../../constants/colors";
 
 type Step = "input" | "verify" | "biometric" | "complete";
 type VoiceField = "studentNumber" | "name" | null;
@@ -485,7 +486,7 @@ export default function SignupScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: COLORS.background.default,
   },
   backButton: {
     paddingHorizontal: 16,
@@ -509,14 +510,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   title: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: "bold",
     marginBottom: 36,
     textAlign: "center",
+    color: COLORS.primary.main, // 메인 남색
   },
   subtitle: {
-    fontSize: 18,
-    color: "#666",
+    fontSize: 20,
+    color: COLORS.text.secondary,
     marginBottom: 48,
     textAlign: "center",
   },
@@ -524,9 +526,10 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   label: {
-    fontSize: 20,
-    fontWeight: "600",
+    fontSize: 22,
+    fontWeight: "700",
     marginBottom: 12,
+    color: COLORS.text.primary,
   },
   inputWrapper: {
     flexDirection: "row",
@@ -534,80 +537,89 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    fontSize: 24,
-    padding: 16,
-    borderWidth: 2,
-    borderColor: "#DDD",
+    fontSize: 26,
+    padding: 18,
+    borderWidth: 3,
+    borderColor: COLORS.border.main,
     borderRadius: 12,
-    backgroundColor: "#FFF",
+    backgroundColor: COLORS.background.default,
+    color: COLORS.text.primary,
   },
   voiceButton: {
-    width: 56,
-    height: 56,
+    width: 60,
+    height: 60,
     marginLeft: 12,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#007AFF",
+    borderWidth: 3,
+    borderColor: COLORS.secondary.dark, // 진한 노란색
     borderRadius: 12,
-    backgroundColor: "#F0F8FF",
+    backgroundColor: COLORS.secondary.lightest, // 밝은 노란색 배경
   },
   voiceButtonText: {
-    fontSize: 28,
+    fontSize: 30,
   },
   primaryButton: {
-    backgroundColor: "#007AFF",
-    padding: 20,
+    backgroundColor: COLORS.primary.main, // 메인 남색
+    borderWidth: 4,
+    borderColor: COLORS.primary.dark,
+    padding: 24,
     borderRadius: 12,
     alignItems: "center",
     marginTop: 16,
-    minHeight: 88,
+    minHeight: 96,
     justifyContent: "center",
   },
   primaryButtonText: {
-    color: "#FFF",
-    fontSize: 24,
+    color: COLORS.text.inverse,
+    fontSize: 26,
     fontWeight: "bold",
   },
   secondaryButton: {
-    backgroundColor: "#F0F0F0",
-    padding: 20,
+    backgroundColor: COLORS.background.elevated,
+    borderWidth: 3,
+    borderColor: COLORS.border.main,
+    padding: 24,
     borderRadius: 12,
     alignItems: "center",
     marginTop: 12,
-    minHeight: 88,
+    minHeight: 96,
     justifyContent: "center",
   },
   secondaryButtonText: {
-    color: "#333",
-    fontSize: 24,
+    color: COLORS.text.primary,
+    fontSize: 26,
     fontWeight: "bold",
   },
   buttonDisabled: {
-    backgroundColor: "#CCC",
+    backgroundColor: COLORS.primary.light,
+    borderColor: COLORS.primary.lighter,
   },
   infoBox: {
     marginBottom: 24,
-    padding: 20,
-    backgroundColor: "#F9F9F9",
+    padding: 24,
+    backgroundColor: COLORS.primary.lightest, // 밝은 남색 배경
     borderRadius: 12,
+    borderWidth: 2,
+    borderColor: COLORS.primary.main,
   },
   infoLabel: {
-    fontSize: 16,
-    color: "#666",
+    fontSize: 18,
+    color: COLORS.text.secondary,
     marginBottom: 8,
   },
   infoValue: {
-    fontSize: 28,
-    fontWeight: "600",
+    fontSize: 30,
+    fontWeight: "700",
+    color: COLORS.text.primary,
   },
   loadingContainer: {
     alignItems: "center",
     marginTop: 48,
   },
   loadingText: {
-    fontSize: 20,
-    color: "#666",
+    fontSize: 22,
+    color: COLORS.text.secondary,
     marginTop: 16,
   },
 });

@@ -27,6 +27,7 @@ import {
   requestPermission,
   AuthorizationStatus,
 } from "@react-native-firebase/messaging";
+import { COLORS } from "../../constants/colors";
 
 // 개발용 Mock 로그인 (테스트 완료 후 false로 변경)
 const ENABLE_MOCK_LOGIN = false;
@@ -332,13 +333,17 @@ const styles = StyleSheet.create({
     top: 20,
     right: 24,
     zIndex: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: COLORS.secondary.main, // #FEC73D 노란색
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: COLORS.secondary.dark,
   },
   skipText: {
-    fontSize: 18,
-    color: "#ffffff",
-    fontWeight: "600",
+    fontSize: 20,
+    color: COLORS.text.primary, // 검은색 텍스트 (노란 배경에 높은 대비)
+    fontWeight: "700",
   },
   content: {
     flex: 1,
@@ -363,7 +368,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   mockBadgeText: {
-    color: "#ffffff",
+    color: COLORS.common.white,
     fontSize: 16,
     fontWeight: "bold",
   },

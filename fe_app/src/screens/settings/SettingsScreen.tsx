@@ -20,6 +20,7 @@ import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
 import BackButton from "../../components/BackButton";
 import { commonStyles } from "../../styles/commonStyles";
+import { COLORS } from "../../constants/colors";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
@@ -369,8 +370,8 @@ export default function SettingsScreen() {
         <Switch
           onValueChange={onChange}
           value={value}
-          trackColor={{ false: "#9E9E9E", true: "#4CAF50" }}
-          thumbColor={value ? "#FFFFFF" : "#F5F5F5"}
+          trackColor={{ false: COLORS.gray[500], true: COLORS.status.success }}
+          thumbColor={value ? COLORS.common.white : COLORS.gray[100]}
           style={{ transform: [{ scaleX: 1.5 }, { scaleY: 1.5 }] }}
           accessible={true}
           accessibilityLabel={label}
@@ -887,7 +888,7 @@ export default function SettingsScreen() {
           style={commonStyles.headerBackButton}
           textStyle={[
             // BackButton의 기본 텍스트 스타일을 가져와서 확장
-            { fontSize: 20, color: "#2196F3", fontWeight: "600" },
+            { fontSize: 20, color: COLORS.primary.main, fontWeight: "600" },
             { fontSize: (baseSize + 4) * scale },
             HC && styles.textHC,
           ]}
@@ -1039,8 +1040,8 @@ export default function SettingsScreen() {
           {renderAction(
             isTestingTts ? "재생 중..." : "테스트",
             handleTestTTS,
-            isTestingTts ? "#4CAF50" : "#FFC107", // 재생 중일 때 녹색, 평상시 노란색
-            isTestingTts ? "#388E3C" : "#FFA000"
+            isTestingTts ? COLORS.status.success : COLORS.secondary.main, // 재생 중일 때 녹색, 평상시 노란색
+            isTestingTts ? COLORS.status.success : COLORS.secondary.dark
           )}
         </View>
 
@@ -1120,8 +1121,8 @@ export default function SettingsScreen() {
           {renderAction(
             "기본값으로 되돌리기",
             handleResetSettings,
-            "#F44336",
-            "#D32F2F"
+            COLORS.status.error,
+            COLORS.status.error
           )}
         </View>
       </ScrollView>
@@ -1130,17 +1131,17 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
-  containerHC: { backgroundColor: "#000000" },
+  container: { flex: 1, backgroundColor: COLORS.background.default },
+  containerHC: { backgroundColor: COLORS.common.black },
 
-  header: { borderBottomWidth: 3 },
-  headerHC: { borderBottomColor: "#FFFFFF" },
+  header: { borderBottomWidth: 3, borderBottomColor: COLORS.border.light },
+  headerHC: { borderBottomColor: COLORS.text.inverse },
   headerTitle: {
     flex: 1,
     textAlign: "center",
     fontSize: 32,
     fontWeight: "bold",
-    color: "#000000",
+    color: COLORS.text.primary,
   },
 
   scroll: { flex: 1 },
@@ -1149,65 +1150,65 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 32,
     padding: 20,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: COLORS.background.elevated,
     borderRadius: 16,
-    borderWidth: 2,
-    borderColor: "#E0E0E0",
+    borderWidth: 3,
+    borderColor: COLORS.border.light,
   },
-  sectionHC: { backgroundColor: "#1A1A1A", borderColor: "#FFFFFF" },
+  sectionHC: { backgroundColor: COLORS.gray[900], borderColor: COLORS.text.inverse },
   sectionTitle: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: "bold",
-    color: "#000000",
+    color: COLORS.text.primary,
     marginBottom: 24,
     paddingBottom: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: "#BDBDBD",
+    borderBottomWidth: 3,
+    borderBottomColor: COLORS.border.main,
   },
 
   controlGroup: { marginBottom: 28 },
   controlLabel: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "700",
-    color: "#000000",
+    color: COLORS.text.primary,
     marginBottom: 16,
   },
   btnRow: { flexDirection: "row", alignItems: "center", gap: 12 },
 
   valueBox: {
     flex: 1,
-    backgroundColor: "#E3F2FD",
+    backgroundColor: COLORS.primary.lightest,
     borderRadius: 12,
     paddingVertical: 20,
     paddingHorizontal: 16,
     borderWidth: 3,
-    borderColor: "#2196F3",
+    borderColor: COLORS.primary.main,
     flexDirection: "row",
     alignItems: "baseline",
     justifyContent: "center",
     minHeight: 80,
     gap: 6,
   },
-  valueBoxHC: { backgroundColor: "#000000", borderColor: "#FFEB3B" },
-  valueNum: { fontSize: 28, fontWeight: "bold", color: "#1565C0" },
-  valueNumHC: { color: "#FFEB3B" },
-  valueUnit: { fontSize: 20, fontWeight: "600", color: "#1565C0" },
+  valueBoxHC: { backgroundColor: COLORS.common.black, borderColor: COLORS.secondary.main },
+  valueNum: { fontSize: 30, fontWeight: "bold", color: COLORS.primary.dark },
+  valueNumHC: { color: COLORS.secondary.main },
+  valueUnit: { fontSize: 22, fontWeight: "600", color: COLORS.primary.dark },
 
   ctrlBtn: {
     width: 80,
     height: 80,
-    backgroundColor: "#2196F3",
+    backgroundColor: COLORS.primary.main,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: "#1565C0",
+    borderColor: COLORS.primary.dark,
   },
-  ctrlBtnHC: { backgroundColor: "#FFEB3B", borderColor: "#FBC02D" },
-  ctrlBtnDisabled: { backgroundColor: "#BDBDBD", borderColor: "#9E9E9E" },
-  ctrlBtnTxt: { fontSize: 40, fontWeight: "bold", color: "#FFFFFF" },
-  ctrlBtnTxtHC: { color: "#000000" },
-  ctrlBtnTxtDisabled: { color: "#E0E0E0" },
+  ctrlBtnHC: { backgroundColor: COLORS.secondary.main, borderColor: COLORS.secondary.dark },
+  ctrlBtnDisabled: { backgroundColor: COLORS.border.main, borderColor: COLORS.text.tertiary },
+  ctrlBtnTxt: { fontSize: 44, fontWeight: "bold", color: COLORS.text.inverse },
+  ctrlBtnTxtHC: { color: COLORS.text.primary },
+  ctrlBtnTxtDisabled: { color: COLORS.border.light },
 
   switchRow: {
     flexDirection: "row",
@@ -1219,26 +1220,26 @@ const styles = StyleSheet.create({
   voiceSection: { marginBottom: 20 },
   voiceList: {},
   voiceBtn: {
-    backgroundColor: "#E3F2FD",
+    backgroundColor: COLORS.primary.lightest,
     borderRadius: 12,
     paddingVertical: 18,
     paddingHorizontal: 20,
     marginTop: 12,
     borderWidth: 3,
-    borderColor: "#90CAF9",
+    borderColor: COLORS.primary.light,
     minHeight: 70,
     justifyContent: "center",
   },
-  voiceBtnSel: { backgroundColor: "#2196F3", borderColor: "#1565C0" },
-  voiceBtnSelHC: { backgroundColor: "#FFEB3B", borderColor: "#FBC02D" },
+  voiceBtnSel: { backgroundColor: COLORS.primary.main, borderColor: COLORS.primary.dark },
+  voiceBtnSelHC: { backgroundColor: COLORS.secondary.main, borderColor: COLORS.secondary.dark },
   voiceTxt: {
-    fontSize: 22,
-    color: "#1565C0",
+    fontSize: 24,
+    color: COLORS.primary.dark,
     fontWeight: "600",
     textAlign: "center",
   },
-  voiceTxtSel: { color: "#FFFFFF", fontWeight: "bold" },
-  voiceTxtSelHC: { color: "#000000" },
+  voiceTxtSel: { color: COLORS.text.inverse, fontWeight: "bold" },
+  voiceTxtSelHC: { color: COLORS.text.primary },
 
   actionBtn: {
     paddingVertical: 20,
@@ -1250,17 +1251,17 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     minHeight: 70,
   },
-  actionBtnHC: { backgroundColor: "#FFEB3B", borderColor: "#FBC02D" },
-  actionTxt: { fontSize: 24, fontWeight: "bold", color: "#000000" },
-  actionTxtHC: { color: "#000000" },
+  actionBtnHC: { backgroundColor: COLORS.secondary.main, borderColor: COLORS.secondary.dark },
+  actionTxt: { fontSize: 26, fontWeight: "bold", color: COLORS.text.primary },
+  actionTxtHC: { color: COLORS.text.primary },
 
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  infoLabel: { fontSize: 22, color: "#666666", fontWeight: "600" },
-  infoValue: { fontSize: 22, color: "#333333", fontWeight: "600" },
+  infoLabel: { fontSize: 24, color: COLORS.text.secondary, fontWeight: "600" },
+  infoValue: { fontSize: 24, color: COLORS.text.primary, fontWeight: "600" },
 
-  textHC: { color: "#FFFFFF" },
+  textHC: { color: COLORS.text.inverse },
 });

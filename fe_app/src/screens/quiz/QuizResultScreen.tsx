@@ -16,6 +16,7 @@ import {
 import * as Haptics from "expo-haptics";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
+import { COLORS } from "../../constants/colors";
 
 export default function QuizResultScreen() {
   const navigation = useNavigation<QuizResultScreenNavigationProp>();
@@ -479,7 +480,7 @@ export default function QuizResultScreen() {
           accessibilityLabel="서재로 돌아가기"
           accessibilityRole="button"
         >
-          <Text style={styles.actionButtonText}>서재로</Text>
+          <Text style={styles.libraryButtonText}>서재로</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -489,7 +490,7 @@ export default function QuizResultScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: COLORS.background.default,
   },
   // 상단 음성 명령 버튼 영역
   header: {
@@ -509,18 +510,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 32,
     paddingBottom: 32,
-    borderBottomWidth: 2,
-    borderBottomColor: "#e0e0e0",
+    borderBottomWidth: 3,
+    borderBottomColor: COLORS.border.light,
   },
   summaryTitle: {
-    fontSize: 36,
+    fontSize: 40,
     fontWeight: "bold",
-    color: "#333333",
+    color: COLORS.text.primary,
     marginBottom: 8,
   },
   quizTitle: {
-    fontSize: 20,
-    color: "#666666",
+    fontSize: 22,
+    color: COLORS.text.secondary,
     textAlign: "center",
     marginBottom: 24,
   },
@@ -528,9 +529,9 @@ const styles = StyleSheet.create({
     width: 180,
     height: 180,
     borderRadius: 90,
-    backgroundColor: "#E3F2FD",
+    backgroundColor: COLORS.primary.lightest,
     borderWidth: 8,
-    borderColor: "#2196F3",
+    borderColor: COLORS.primary.main,
     justifyContent: "center",
     alignItems: "center",
     flexDirection: "row",
@@ -539,84 +540,84 @@ const styles = StyleSheet.create({
   scoreText: {
     fontSize: 56,
     fontWeight: "bold",
-    color: "#2196F3",
+    color: COLORS.primary.main,
   },
   scoreDivider: {
     fontSize: 40,
-    color: "#2196F3",
+    color: COLORS.primary.main,
     marginHorizontal: 4,
   },
   totalText: {
     fontSize: 40,
     fontWeight: "600",
-    color: "#2196F3",
+    color: COLORS.primary.main,
   },
   percentageText: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: "600",
-    color: "#333333",
+    color: COLORS.text.primary,
   },
   wrongSection: {
     marginBottom: 32,
   },
   wrongSectionHeader: {
-    backgroundColor: "#FFEBEE",
+    backgroundColor: COLORS.status.errorLight,
     padding: 20,
     borderRadius: 12,
     borderWidth: 3,
-    borderColor: "#F44336",
+    borderColor: COLORS.status.error,
     marginBottom: 20,
     alignItems: "center",
   },
   sectionTitle: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: "bold",
-    color: "#C62828",
+    color: COLORS.status.error,
     marginBottom: 8,
     textAlign: "center",
   },
   sectionSubtitle: {
-    fontSize: 18,
-    color: "#D32F2F",
+    fontSize: 20,
+    color: COLORS.status.error,
     textAlign: "center",
   },
   perfectSection: {
-    backgroundColor: "#E8F5E9",
+    backgroundColor: COLORS.status.successLight,
     padding: 24,
     borderRadius: 12,
     borderWidth: 3,
-    borderColor: "#4CAF50",
+    borderColor: COLORS.status.success,
     marginBottom: 32,
     alignItems: "center",
   },
   perfectTitle: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: "bold",
-    color: "#2E7D32",
+    color: COLORS.status.success,
     marginBottom: 8,
     textAlign: "center",
   },
   perfectSubtitle: {
-    fontSize: 20,
-    color: "#388E3C",
+    fontSize: 22,
+    color: COLORS.status.success,
     textAlign: "center",
   },
   correctSection: {
     marginBottom: 32,
   },
   toggleButton: {
-    backgroundColor: "#E8F5E9",
+    backgroundColor: COLORS.status.successLight,
     padding: 20,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: "#4CAF50",
+    borderColor: COLORS.status.success,
     marginBottom: 16,
     alignItems: "center",
   },
   toggleButtonText: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "600",
-    color: "#2E7D32",
+    color: COLORS.status.success,
   },
   cardsContainer: {
     gap: 20,
@@ -627,12 +628,12 @@ const styles = StyleSheet.create({
     borderWidth: 3,
   },
   correctCard: {
-    backgroundColor: "#F1F8E9",
-    borderColor: "#8BC34A",
+    backgroundColor: COLORS.status.successLight,
+    borderColor: COLORS.status.success,
   },
   wrongCard: {
-    backgroundColor: "#FFEBEE",
-    borderColor: "#F44336",
+    backgroundColor: COLORS.status.errorLight,
+    borderColor: COLORS.status.error,
   },
   emphasizedCard: {
     borderWidth: 4,
@@ -647,14 +648,14 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#2196F3",
+    backgroundColor: COLORS.primary.main,
     justifyContent: "center",
     alignItems: "center",
   },
   questionNumberText: {
     fontSize: 22,
     fontWeight: "bold",
-    color: "#ffffff",
+    color: COLORS.text.inverse,
   },
   resultBadge: {
     paddingHorizontal: 16,
@@ -662,29 +663,29 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   correctBadge: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: COLORS.status.success,
   },
   wrongBadge: {
-    backgroundColor: "#F44336",
+    backgroundColor: COLORS.status.error,
   },
   resultBadgeText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#ffffff",
+    color: COLORS.text.inverse,
   },
   cardContent: {
     marginBottom: 16,
   },
   cardQuestionLabel: {
-    fontSize: 16,
-    color: "#666666",
+    fontSize: 17,
+    color: COLORS.text.secondary,
     fontWeight: "600",
     marginBottom: 8,
   },
   cardQuestionText: {
-    fontSize: 24,
-    color: "#333333",
-    lineHeight: 36,
+    fontSize: 26,
+    color: COLORS.text.primary,
+    lineHeight: 38,
     fontWeight: "500",
   },
   cardAnswers: {
@@ -694,8 +695,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   answerLabel: {
-    fontSize: 16,
-    color: "#666666",
+    fontSize: 17,
+    color: COLORS.text.secondary,
     fontWeight: "600",
     marginBottom: 4,
   },
@@ -705,37 +706,37 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   answerBoxCorrect: {
-    backgroundColor: "#E8F5E9",
-    borderColor: "#4CAF50",
+    backgroundColor: COLORS.status.successLight,
+    borderColor: COLORS.status.success,
   },
   answerBoxWrong: {
-    backgroundColor: "#FFCDD2",
-    borderColor: "#F44336",
+    backgroundColor: COLORS.status.errorLight,
+    borderColor: COLORS.status.error,
   },
   answerBoxText: {
-    fontSize: 20,
-    lineHeight: 30,
+    fontSize: 22,
+    lineHeight: 32,
     fontWeight: "600",
   },
   answerBoxTextCorrect: {
-    color: "#2E7D32",
+    color: COLORS.status.success,
   },
   answerBoxTextWrong: {
-    color: "#C62828",
+    color: COLORS.status.error,
   },
   encouragementSection: {
     padding: 24,
-    backgroundColor: "#E3F2FD",
+    backgroundColor: COLORS.primary.lightest,
     borderRadius: 16,
     borderWidth: 3,
-    borderColor: "#2196F3",
+    borderColor: COLORS.primary.main,
     alignItems: "center",
   },
   encouragementText: {
-    fontSize: 22,
-    color: "#1565C0",
+    fontSize: 24,
+    color: COLORS.primary.main,
     textAlign: "center",
-    lineHeight: 32,
+    lineHeight: 34,
     fontWeight: "600",
   },
   bottomButtons: {
@@ -743,9 +744,9 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     paddingTop: 16,
     gap: 12,
-    borderTopWidth: 2,
-    borderTopColor: "#e0e0e0",
-    backgroundColor: "#f8f9fa",
+    borderTopWidth: 3,
+    borderTopColor: COLORS.border.light,
+    backgroundColor: COLORS.background.elevated,
   },
   actionButton: {
     borderRadius: 16,
@@ -753,19 +754,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     minHeight: 88,
     justifyContent: "center",
-    borderWidth: 3,
+    borderWidth: 4,
   },
   retryButton: {
-    backgroundColor: "#FF9800",
-    borderColor: "#F57C00",
+    backgroundColor: COLORS.secondary.main,
+    borderColor: COLORS.secondary.dark,
   },
   libraryButton: {
-    backgroundColor: "#2196F3",
-    borderColor: "#1976D2",
+    backgroundColor: COLORS.primary.main,
+    borderColor: COLORS.primary.dark,
   },
   actionButtonText: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "bold",
-    color: "#ffffff",
+    color: COLORS.text.primary, // 노란 배경(retryButton)에는 검은색, 남색 배경(libraryButton)에는 검은색
+  },
+  libraryButtonText: {
+    fontSize: 26,
+    fontWeight: "bold",
+    color: COLORS.text.inverse, // 남색 배경에는 흰색
   },
 });

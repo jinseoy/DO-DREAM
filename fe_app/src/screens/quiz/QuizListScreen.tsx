@@ -18,6 +18,7 @@ import { getChapterById } from "../../data/dummyChapters";
 import { Quiz } from "../../types/quiz";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
+import { COLORS } from "../../constants/colors";
 
 export default function QuizListScreen() {
   const navigation = useNavigation<QuizListScreenNavigationProp>();
@@ -279,14 +280,14 @@ export default function QuizListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: COLORS.background.default,
   },
   header: {
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: "#e0e0e0",
+    borderBottomWidth: 3,
+    borderBottomColor: COLORS.border.light,
   },
   headerTopRow: {
     flexDirection: "row",
@@ -300,21 +301,21 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 20,
-    color: "#2196F3",
+    color: COLORS.primary.main,
     fontWeight: "600",
   },
   headerInfo: {
     marginTop: 16,
   },
   subjectText: {
-    fontSize: 20,
-    color: "#666666",
+    fontSize: 22,
+    color: COLORS.text.secondary,
     marginBottom: 4,
   },
   chapterTitle: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: "bold",
-    color: "#333333",
+    color: COLORS.text.primary,
   },
   listContent: {
     paddingHorizontal: 24,
@@ -322,12 +323,12 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   quizButton: {
-    backgroundColor: "#f8f9fa",
+    backgroundColor: COLORS.background.elevated,
     borderRadius: 12,
     marginBottom: 16,
     padding: 20,
-    borderWidth: 2,
-    borderColor: "#e0e0e0",
+    borderWidth: 3,
+    borderColor: COLORS.border.light,
     minHeight: 100,
   },
   quizContent: {
@@ -340,9 +341,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   quizTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "600",
-    color: "#333333",
+    color: COLORS.text.primary,
     flex: 1,
   },
   typeBadge: {
@@ -351,19 +352,19 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   aiBadge: {
-    backgroundColor: "#9C27B0",
+    backgroundColor: COLORS.status.info, // AI 생성은 정보 색상(파란색)으로
   },
   teacherBadge: {
-    backgroundColor: "#FF9800",
+    backgroundColor: COLORS.secondary.main,
   },
   typeBadgeText: {
     fontSize: 14,
-    color: "#ffffff",
+    color: COLORS.text.inverse,
     fontWeight: "600",
   },
   questionCount: {
-    fontSize: 18,
-    color: "#666666",
+    fontSize: 20,
+    color: COLORS.text.secondary,
   },
   emptyContainer: {
     flex: 1,
@@ -372,8 +373,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   emptyText: {
-    fontSize: 24,
-    color: "#999999",
+    fontSize: 26,
+    color: COLORS.text.tertiary,
     textAlign: "center",
   },
 });
