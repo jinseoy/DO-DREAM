@@ -881,53 +881,6 @@ export default function PlayerScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* 🔀 챕터 이동 버튼 */}
-        <View style={styles.chapterNavRow}>
-          <TouchableOpacity
-            style={[
-              styles.chapterNavButton,
-              !hasPrevChapter && styles.chapterNavButtonDisabled,
-            ]}
-            onPress={handlePrevChapter}
-            disabled={!hasPrevChapter}
-            accessible
-            accessibilityLabel={
-              hasPrevChapter ? "이전 챕터로 이동" : "이전 챕터 없음"
-            }
-            accessibilityHint={
-              hasPrevChapter
-                ? "이전 챕터의 처음부터 학습을 시작합니다"
-                : undefined
-            }
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !hasPrevChapter }}
-          >
-            <Text style={styles.chapterNavButtonText}>← 이전 챕터</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.chapterNavButton,
-              !hasNextChapter && styles.chapterNavButtonDisabled,
-            ]}
-            onPress={handleNextChapter}
-            disabled={!hasNextChapter}
-            accessible
-            accessibilityLabel={
-              hasNextChapter ? "다음 챕터로 이동" : "다음 챕터 없음"
-            }
-            accessibilityHint={
-              hasNextChapter
-                ? "다음 챕터의 처음부터 학습을 시작합니다"
-                : undefined
-            }
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !hasNextChapter }}
-          >
-            <Text style={styles.chapterNavButtonText}>다음 챕터 →</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* 하단 액션 버튼들 */}
         <View style={styles.bottomButtons}>
           <TouchableOpacity
@@ -939,17 +892,6 @@ export default function PlayerScreen() {
             accessibilityHint="음성으로 질문할 수 있는 화면으로 이동합니다"
           >
             <Text style={styles.askButtonText}>질문하기</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.moreButton}
-            onPress={handleOpenSettings}
-            accessible
-            accessibilityLabel="설정 변경"
-            accessibilityHint="재생 모드, 속도 설정을 변경할 수 있습니다"
-            accessibilityRole="button"
-          >
-            <Text style={styles.moreButtonText}>설정 변경</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -1080,47 +1022,12 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
 
-  chapterNavRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 12,
-  },
-  chapterNavButton: {
-    flex: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 14,
-    backgroundColor: COLORS.background.elevated,
-    borderWidth: 3,
-    borderColor: COLORS.primary.main,
-    alignItems: "center",
-    minHeight: 64,
-    justifyContent: "center",
-  },
-  chapterNavButtonDisabled: {
-    backgroundColor: COLORS.gray[300],
-    borderColor: COLORS.gray[400],
-    opacity: 0.7,
-    color: COLORS.text.inverse,
-  },
-  chapterNavButtonText: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: COLORS.text.primary,
-  },
-
   bottomButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingBottom: 20,
-    paddingTop: 4,
-    gap: 16,
+    paddingTop: 16,
   },
   askButton: {
-    flex: 1,
     backgroundColor: COLORS.secondary.main, // 노란색
     borderRadius: 16,
     paddingVertical: 18,
@@ -1135,24 +1042,6 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: "bold",
     color: COLORS.text.primary,
-  },
-
-  moreButton: {
-    flex: 1,
-    backgroundColor: COLORS.primary.lightest,
-    borderRadius: 16,
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    alignItems: "center",
-    minHeight: 68,
-    justifyContent: "center",
-    borderWidth: 3,
-    borderColor: COLORS.primary.main,
-  },
-  moreButtonText: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: COLORS.primary.dark,
   },
 
   errorText: {
