@@ -127,9 +127,9 @@ export default function QuestionScreen() {
     }, 400);
 
     return () => {
+      mounted = false;
       // @ts-ignore
       sub?.remove?.();
-      mounted = false;
     };
   }, [currentQuestionId]);
 
