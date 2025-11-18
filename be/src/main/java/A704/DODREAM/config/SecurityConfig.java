@@ -48,6 +48,7 @@ public class SecurityConfig {
 			.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                            .requestMatchers("/api/actuator/**").permitAll()
 				.requestMatchers("/actuator/**").permitAll()
 				// 인가 규칙(화이트리스트)은 여기에서만 관리
         .requestMatchers("/api/pdf/**").permitAll().requestMatchers("/api/files/**").permitAll()
