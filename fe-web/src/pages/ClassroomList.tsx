@@ -1003,8 +1003,8 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
     }
   };
 
-  const handleDeleteMaterial = (materialId: string) => {
-    Swal.fire({
+  const handleDeleteMaterial = async (materialId: string) => {
+    const result = await Swal.fire({
       title: '자료를 삭제하시겠습니까?',
       text: '이 작업은 되돌릴 수 없습니다',
       icon: 'warning',
@@ -1014,16 +1014,57 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       reverseButtons: true,
       confirmButtonText: '삭제',
       cancelButtonText: '취소',
-    }).then((result) => {
-      if (result.isConfirmed) {
-        setMaterials((prev) => prev.filter((mat) => mat.id !== materialId));
-        Swal.fire({
-          icon: 'success',
-          title: '자료가 삭제되었습니다',
-          confirmButtonColor: '#192b55',
-        });
-      }
     });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      void Swal.fire({
+        title: '자료를 삭제하는 중입니다',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading(),
+      });
+
+      const accessToken = localStorage.getItem('accessToken');
+      const headers: HeadersInit = {
+        accept: '*/*',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      };
+
+      const res = await fetch(`${API_BASE}/api/documents/${materialId}`, {
+        method: 'DELETE',
+        headers,
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(
+          text || `자료 삭제에 실패했습니다. (status: ${res.status})`,
+        );
+      }
+
+      await Swal.close();
+
+      // 로컬 state 업데이트
+      setMaterials((prev) => prev.filter((mat) => mat.id !== materialId));
+
+      await Swal.fire({
+        icon: 'success',
+        title: '자료가 삭제되었습니다',
+        confirmButtonColor: '#192b55',
+      });
+    } catch (err: any) {
+      console.error('자료 삭제 실패', err);
+      await Swal.close();
+      await Swal.fire({
+        icon: 'error',
+        title: '자료 삭제에 실패했습니다',
+        text: err?.message ?? '잠시 후 다시 시도해 주세요.',
+        confirmButtonColor: '#192b55',
+      });
+    }
   };
 
   const handleLogout = async () => {
