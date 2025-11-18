@@ -51,6 +51,7 @@ public class SecurityConfig {
 				// 인가 규칙(화이트리스트)은 여기에서만 관리
         .requestMatchers("/api/pdf/**").permitAll().requestMatchers("/api/files/**").permitAll()
         .requestMatchers("/document/parse-pdf-from-cloudfront").permitAll()
+        .requestMatchers("/api/documents/**").permitAll()
 				.requestMatchers("/error", "/error/**").permitAll()
 				.requestMatchers(
 					"/api/swagger-ui/**", "/api/v3/api-docs/**","/api/files/**",

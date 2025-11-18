@@ -97,6 +97,50 @@ public class PublishService {
 				RequestBody.fromString(jsonString, StandardCharsets.UTF_8)
 			);
 
+			// --- (신규) type: "quiz"인 데이터만 필터링하여 별도 S3에 저장 ---
+			try {
+				List<Map<String, Object>> quizChapters = filterQuizChapters(publishRequest.getEditedJson());
+
+				if (!quizChapters.isEmpty()) {
+					// Quiz 데이터를 새로운 JSON 구조로 생성
+					Map<String, Object> quizJson = Map.of("chapters", quizChapters);
+					String quizJsonString = objectMapper.writerWithDefaultPrettyPrinter()
+						.writeValueAsString(quizJson);
+
+					// S3 키 생성: quiz-json/{userId}/{pdfId}_quiz.json
+					String quizJsonS3Key = String.format("quiz-json/%s/%s_quiz.json", userId, pdfId);
+
+					// S3에 Quiz JSON 저장
+					PutObjectRequest quizPutRequest = PutObjectRequest.builder()
+						.bucket(bucketName)
+						.key(quizJsonS3Key)
+						.contentType("application/json")
+						.metadata(Map.of(
+							"original-pdf", uploadedFile.getS3Key(),
+							"published-at", LocalDateTime.now().toString(),
+							"owner", userId.toString(),
+							"type", "quiz-only"
+						))
+						.build();
+
+					s3Client.putObject(
+						quizPutRequest,
+						RequestBody.fromString(quizJsonString, StandardCharsets.UTF_8)
+					);
+
+					// DB에 Quiz JSON S3 키 저장
+					uploadedFile.setQuestionJsonS3Key(quizJsonS3Key);
+
+					log.info("✅ Quiz 데이터 S3 저장 완료 [S3 Key: {}]", quizJsonS3Key);
+				} else {
+					log.info("⚠️ Quiz 데이터가 없어서 별도 저장하지 않습니다.");
+				}
+			} catch (Exception quizError) {
+				// Quiz 저장 실패는 발행 자체를 롤백하지 않음
+				log.error("❗️ Quiz 데이터 저장 실패: {}", quizError.getMessage(), quizError);
+			}
+			// --- (신규) Quiz 필터링 및 저장 종료 ---
+
 			Optional<Material> materialOpt = materialRepository.findByUploadedFileIdAndDeletedAtIsNull(uploadedFile.getId());
 
 			// Material material; // (수정) 밖으로 이동
@@ -287,4 +331,37 @@ public class PublishService {
         material.softDelete();
         materialRepository.save(material);
     }
+
+	/**
+	 * editedJson에서 type이 "quiz"인 chapters만 필터링하는 메서드
+	 *
+	 * @param editedJson 발행 요청에서 받은 전체 JSON 데이터
+	 * @return type: "quiz"인 chapter 목록
+	 */
+	private List<Map<String, Object>> filterQuizChapters(Map<String, Object> editedJson) {
+		List<Map<String, Object>> quizChapters = new ArrayList<>();
+
+		// editedJson에서 chapters 배열 가져오기
+		Object chaptersObj = editedJson.get("chapters");
+
+		if (chaptersObj == null || !(chaptersObj instanceof List)) {
+			log.warn("⚠️ editedJson에 'chapters' 배열이 없습니다.");
+			return quizChapters;
+		}
+
+		List<Map<String, Object>> chapters = (List<Map<String, Object>>) chaptersObj;
+
+		// type이 "quiz"인 항목만 필터링
+		for (Map<String, Object> chapter : chapters) {
+			Object typeObj = chapter.get("type");
+
+			if (typeObj != null && "quiz".equals(typeObj.toString())) {
+				quizChapters.add(chapter);
+			}
+		}
+
+		log.info("🔍 전체 chapters: {}개, quiz type: {}개", chapters.size(), quizChapters.size());
+
+		return quizChapters;
+	}
 }
