@@ -204,9 +204,8 @@ export default function PlaybackChoiceScreen() {
     AccessibilityInfo.announceForAccessibility("설정 화면으로 이동합니다");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    // TODO: 설정 화면이 구현되면 네비게이션 연결
-    AccessibilityInfo.announceForAccessibility("설정 기능이 아직 준비 중입니다.");
-  }, []);
+    navigation.navigate("Settings");
+  }, [navigation]);
 
   const handleGoBack = useCallback(() => {
     navigation.goBack();
@@ -338,17 +337,6 @@ export default function PlaybackChoiceScreen() {
         return;
       }
 
-      // 설정
-      if (
-        t.includes("설정") ||
-        t.includes("재생 설정") ||
-        t.includes("속도 설정") ||
-        t.includes("음성 설정")
-      ) {
-        handleSettingsPress();
-        return;
-      }
-
       // 퀴즈 풀기
       if (
         t.includes("퀴즈 풀") ||
@@ -384,7 +372,6 @@ export default function PlaybackChoiceScreen() {
       handleGoToSelectedChapter,
       handleNextChapter,
       handlePrevChapter,
-      handleSettingsPress,
       handleQuizPress,
       showQuizButton,
     ]
@@ -396,6 +383,7 @@ export default function PlaybackChoiceScreen() {
 
     registerVoiceHandlers("PlaybackChoice", {
       goBack: handleGoBack,
+      openSettings: handleSettingsPress,
       openQuiz: showQuizButton ? handleQuizPress : undefined,
       rawText: handlePlaybackVoiceRaw,
     });
@@ -407,6 +395,7 @@ export default function PlaybackChoiceScreen() {
     setCurrentScreenId,
     registerVoiceHandlers,
     handleGoBack,
+    handleSettingsPress,
     handleQuizPress,
     handlePlaybackVoiceRaw,
     showQuizButton,

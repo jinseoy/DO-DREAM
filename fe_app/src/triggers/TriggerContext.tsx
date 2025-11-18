@@ -20,6 +20,7 @@ type VoiceCommandHandlers = {
   openQuestion?: () => void;
   goBack?: () => void;
   openQuiz?: () => void;
+  openSettings?: () => void;
 
   /**
    * 인식된 원문 텍스트를 그대로 받아 처리하는 핸들러
@@ -82,7 +83,8 @@ type VoiceCommandKey =
   | "prev"
   | "openQuestion"
   | "goBack"
-  | "openQuiz";
+  | "openQuiz"
+  | "openSettings";
 
 // 간단한 한국어 → 명령 키 매핑
 function parseVoiceCommand(raw: string): VoiceCommandKey | null {
@@ -91,6 +93,9 @@ function parseVoiceCommand(raw: string): VoiceCommandKey | null {
 
   if (t.includes("뒤로") || t.includes("이전 화면") || t.includes("돌아가"))
     return "goBack";
+
+  if (t === "설정" || t.includes("설정 열기") || t.includes("설정 화면"))
+    return "openSettings";
 
   if (
     t === "질문" ||
