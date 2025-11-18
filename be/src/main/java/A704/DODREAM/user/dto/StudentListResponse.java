@@ -32,12 +32,14 @@ public class StudentListResponse {
 		private Long studentId;
 		private String studentName;
 		private String studentNumber;
+        private String gender;
 
 		public static StudentInfo from(StudentProfile student) {
 			return StudentInfo.builder()
 				.studentId(student.getUser().getId())
 				.studentName(student.getUser().getName())
 				.studentNumber(student.getStudentNumber())
+                .gender(student.getGender())
 				.build();
 		}
 	}
