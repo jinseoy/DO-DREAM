@@ -2,6 +2,7 @@ package A704.DODREAM.report.controller;
 
 import A704.DODREAM.auth.dto.request.UserPrincipal;
 import A704.DODREAM.global.response.ApiResponse;
+import A704.DODREAM.report.dto.AverageProgressResponse;
 import A704.DODREAM.report.dto.ProgressReportResponse;
 import A704.DODREAM.report.dto.UpdateProgressRequest;
 import A704.DODREAM.report.dto.UpdateProgressResponse;
@@ -142,6 +143,53 @@ public class ProgressReportController {
         
         return ResponseEntity.ok(
                 ApiResponse.success(response.getMessage(), HttpStatus.OK, response)
+        );
+    }
+
+    @Operation(
+            summary = "학생의 평균 진행률 조회 (학생/앱)",
+            description = "학생이 공유받은 모든 교재의 평균 진행률을 조회합니다.\n" +
+                    "- 전체 교재 수\n" +
+                    "- 평균 진행률\n" +
+                    "- 완료한 교재 수\n" +
+                    "- 학습 중인 교재 수\n" +
+                    "- 시작하지 않은 교재 수"
+    )
+    @GetMapping("/average")
+    public ResponseEntity<ApiResponse<AverageProgressResponse>> getAverageProgress(
+            @AuthenticationPrincipal UserPrincipal userPrincipal
+    ) {
+        Long studentId = userPrincipal.userId();
+        log.info("평균 진행률 조회 요청: studentId={}", studentId);
+
+        AverageProgressResponse response = progressReportService.getAverageProgress(studentId);
+        
+        return ResponseEntity.ok(
+                ApiResponse.success("평균 진행률 조회 성공", HttpStatus.OK, response)
+        );
+    }
+
+    @Operation(
+            summary = "특정 학생의 평균 진행률 조회 (선생님/웹)",
+            description = "선생님이 특정 학생의 모든 교재에 대한 평균 진행률을 조회합니다.\n" +
+                    "- 전체 교재 수\n" +
+                    "- 평균 진행률\n" +
+                    "- 완료한 교재 수\n" +
+                    "- 학습 중인 교재 수\n" +
+                    "- 시작하지 않은 교재 수"
+    )
+    @GetMapping("/students/{studentId}/average")
+    public ResponseEntity<ApiResponse<AverageProgressResponse>> getStudentAverageProgress(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long studentId
+    ) {
+        Long teacherId = userPrincipal.userId();
+        log.info("학생 평균 진행률 조회 요청: teacherId={}, studentId={}", teacherId, studentId);
+
+        AverageProgressResponse response = progressReportService.getAverageProgress(studentId);
+        
+        return ResponseEntity.ok(
+                ApiResponse.success("학생 평균 진행률 조회 성공", HttpStatus.OK, response)
         );
     }
 }

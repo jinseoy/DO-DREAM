@@ -4,6 +4,8 @@ from app.celery_config import celery_app
 from app.rag.service import (
     extract_data_from_json,
     create_and_store_embeddings,
+    extract_initial_data_from_json,  # ✅ 추가
+    create_initial_embeddings,
     _get_collection_name,  # (service.py의 헬퍼 함수 임포트)
 )
 from fastapi import HTTPException
@@ -39,6 +41,43 @@ def download_json_sync(url: str) -> dict:
     except Exception as e:
         log.error(f"JSON 다운로드 중 오류 (URL: {url}): {str(e)}")
         raise
+
+
+@celery_app.task(name="create_initial_embedding_task", bind=True, max_retries=3)
+def create_initial_embedding_task(self, pdf_id: str, s3_url: str):
+    """
+    텍스트 추출 직후 초기 임베딩을 생성하는 Celery 백그라운드 작업
+
+    Args:
+        pdf_id: PDF ID (문자열)
+        s3_url: S3/CloudFront JSON URL
+    """
+    try:
+        log.info(f"[Initial Embedding Task Start] PDF ID: {pdf_id}")
+
+        # 1. JSON 다운로드
+        log.info(f"Downloading initial JSON: {s3_url}")
+        json_data = download_json_sync(s3_url)
+        log.info(f"Download Complete. PDF ID: {pdf_id}")
+
+        # 2. 초기 파싱 (parsedData 구조)
+        documents = extract_initial_data_from_json(json_data)
+        log.info(f"Initial Parsing Complete. {len(documents)}개 Document 생성.")
+
+        # 3. 초기 임베딩 및 저장
+        create_initial_embeddings(pdf_id, documents)
+        log.info(f"[Initial Embedding Task Success] PDF ID: {pdf_id}")
+
+        return {
+            "status": "success",
+            "pdf_id": pdf_id,
+            "collection_name": f"pdf_{pdf_id}",
+            "document_count": len(documents),
+        }
+
+    except Exception as e:
+        log.error(f"[Initial Embedding Task Failed] PDF ID: {pdf_id}. Error: {e}")
+        raise self.retry(exc=e, countdown=60)
 
 
 @celery_app.task(name="create_embedding_task", bind=True, max_retries=3)

@@ -48,9 +48,12 @@ public class SecurityConfig {
 			.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                            .requestMatchers("/api/actuator/**").permitAll()
+				.requestMatchers("/actuator/**").permitAll()
 				// 인가 규칙(화이트리스트)은 여기에서만 관리
         .requestMatchers("/api/pdf/**").permitAll().requestMatchers("/api/files/**").permitAll()
         .requestMatchers("/document/parse-pdf-from-cloudfront").permitAll()
+        .requestMatchers("/api/documents/**").permitAll()
 				.requestMatchers("/error", "/error/**").permitAll()
 				.requestMatchers(
 					"/api/swagger-ui/**", "/api/v3/api-docs/**","/api/files/**",
@@ -61,6 +64,7 @@ public class SecurityConfig {
         .requestMatchers(HttpMethod.POST, "/api/files/presigned-url").permitAll()
 				// 교사 전용
 				.requestMatchers("/api/teacher/**").hasRole("TEACHER")
+							.requestMatchers("/api/students/**").authenticated()
 				// 나머지는 인증 필요
 				.anyRequest().authenticated()
 			)

@@ -64,7 +64,7 @@ public class MaterialShareService {
         User teacher = userRepository.getReferenceById(teacherId);
 
 		// 자료 조회
-		Material material = materialRepository.findByIdAndTeacherId(request.getMaterialId(), teacherId)
+		Material material = materialRepository.findByIdAndTeacherIdAndDeletedAtIsNull(request.getMaterialId(), teacherId)
 			.orElseThrow(() -> new CustomException(ErrorCode.MATERIAL_NOT_FOUND));
 
 

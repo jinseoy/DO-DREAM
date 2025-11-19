@@ -4,8 +4,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import A704.DODREAM.bookmark.entity.Bookmark;
+import A704.DODREAM.conversation.Conversation;
 import A704.DODREAM.file.entity.UploadedFile;
 import A704.DODREAM.file.enums.PostStatus;
+import A704.DODREAM.report.entity.LearningReport;
 import jakarta.persistence.*;
 import lombok.*;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -51,18 +54,9 @@ public class Material {
 	@Column(name = "grade_level", length = 20)
 	private String gradeLevel;
 
-//	@Enumerated(EnumType.STRING)
-//	@Column(name = "content_type", length = 20)
-//	@Builder.Default
-//	private ContentType contentType = ContentType.TEXT;
-//
-//	@Enumerated(EnumType.STRING)
-//	@Column(name = "processing_status", nullable = false, length = 20)
-//	@Builder.Default
-//	private ProcessingStatus processingStatus = ProcessingStatus.PENDING;
-
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
+    @Builder.Default
     private PostStatus postStatus = PostStatus.DRAFT;
 
 	@Enumerated(EnumType.STRING)
@@ -77,11 +71,14 @@ public class Material {
 	@Column(name = "updated_at")
 	private LocalDateTime updatedAt;
 
-//	@OneToMany(mappedBy = "material", cascade = CascadeType.ALL, orphanRemoval = true)
-//	@Builder.Default
-//	private List<MaterialContent> contents = new ArrayList<>();
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
-	@OneToMany(mappedBy = "material", cascade = CascadeType.ALL, orphanRemoval = true)
-	@Builder.Default
-	private List<MaterialSummary> summaries = new ArrayList<>();
+    public void softDelete(){
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
+    }
 }

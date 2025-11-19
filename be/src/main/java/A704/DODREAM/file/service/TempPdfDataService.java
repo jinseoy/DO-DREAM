@@ -56,7 +56,7 @@ public class TempPdfDataService {
         UploadedFile uploadedFile = uploadedFileRepository.findById(pdfId)
                 .orElseThrow(() -> new CustomException(ErrorCode.FILE_NOT_FOUND));
 
-        Optional<Material> materialOpt = materialRepository.findByUploadedFileId(uploadedFile.getId());
+        Optional<Material> materialOpt = materialRepository.findByUploadedFileIdAndDeletedAtIsNull(uploadedFile.getId());
 
          Material material;
         if(materialOpt.isPresent()){

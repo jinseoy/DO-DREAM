@@ -7,6 +7,7 @@ import A704.DODREAM.material.entity.MaterialShare;
 import A704.DODREAM.material.repository.MaterialRepository;
 import A704.DODREAM.material.repository.MaterialShareRepository;
 import A704.DODREAM.progress.entity.StudentMaterialProgress;
+import A704.DODREAM.report.dto.AverageProgressResponse;
 import A704.DODREAM.report.dto.ChapterProgressDto;
 import A704.DODREAM.report.dto.ProgressReportResponse;
 import A704.DODREAM.report.dto.UpdateProgressResponse;
@@ -72,34 +73,8 @@ public class ProgressReportService {
         log.info("=== JSON 구조 상세 분석 시작 ===");
         log.info("최상위 keys: {}", jsonData.keySet());
         
-        // parsedData 구조 확인 및 chapters 추출
-        List<Map<String, Object>> chapters = null;
-        
-        // 패턴 1: parsedData.data 구조
-        Map<String, Object> parsedData = (Map<String, Object>) jsonData.get("parsedData");
-        if (parsedData != null) {
-            log.info("parsedData 존재 - keys: {}", parsedData.keySet());
-            chapters = (List<Map<String, Object>>) parsedData.get("data");
-            if (chapters != null) {
-                log.info("parsedData.data에서 챕터 발견 - 개수: {}", chapters.size());
-            }
-        }
-        
-        // 패턴 2: 직접 data 구조 (fallback)
-        if (chapters == null) {
-            log.warn("parsedData.data를 찾을 수 없어서 직접 data를 확인합니다.");
-            chapters = (List<Map<String, Object>>) jsonData.get("data");
-            if (chapters != null) {
-                log.info("직접 data에서 챕터 발견 - 개수: {}", chapters.size());
-            }
-        }
-
-        if (chapters == null || chapters.isEmpty()) {
-            log.error("chapters를 찾을 수 없습니다. JSON keys: {}, parsedData keys: {}", 
-                    jsonData.keySet(), 
-                    parsedData != null ? parsedData.keySet() : "null");
-            throw new CustomException(ErrorCode.INVALID_JSON_STRUCTURE);
-        }
+        // extractChapters 메서드로 3가지 패턴 모두 지원 (parsedData.data / data / chapters)
+        List<Map<String, Object>> chapters = extractChapters(jsonData);
         
         log.info("총 챕터 수: {}", chapters.size());
         
@@ -107,17 +82,28 @@ public class ProgressReportService {
         if (!chapters.isEmpty()) {
             Map<String, Object> firstChapter = chapters.get(0);
             log.info("첫 번째 챕터 keys: {}", firstChapter.keySet());
-            log.info("첫 번째 챕터 - index: {}, index_title: {}", 
-                    firstChapter.get("index"), 
-                    firstChapter.get("index_title"));
             
-            // titles 구조 확인
-            List<Map<String, Object>> titles = (List<Map<String, Object>>) firstChapter.get("titles");
-            if (titles != null && !titles.isEmpty()) {
-                log.info("titles 개수: {}", titles.size());
-                Map<String, Object> firstTitle = titles.get(0);
-                log.info("첫 번째 title keys: {}", firstTitle.keySet());
-                log.info("첫 번째 title - title: {}", firstTitle.get("title"));
+            // 두 가지 구조 모두 로깅
+            if (firstChapter.containsKey("index")) {
+                // 이전 구조
+                log.info("첫 번째 챕터 (이전 구조) - index: {}, index_title: {}", 
+                        firstChapter.get("index"), 
+                        firstChapter.get("index_title"));
+                
+                // titles 구조 확인
+                List<Map<String, Object>> titles = (List<Map<String, Object>>) firstChapter.get("titles");
+                if (titles != null && !titles.isEmpty()) {
+                    log.info("titles 개수: {}", titles.size());
+                    Map<String, Object> firstTitle = titles.get(0);
+                    log.info("첫 번째 title keys: {}", firstTitle.keySet());
+                    log.info("첫 번째 title - title: {}", firstTitle.get("title"));
+                }
+            } else {
+                // 새로운 구조
+                log.info("첫 번째 챕터 (새로운 구조) - id: {}, title: {}, type: {}", 
+                        firstChapter.get("id"), 
+                        firstChapter.get("title"),
+                        firstChapter.get("type"));
             }
         }
         log.info("=== JSON 구조 분석 완료 ===");
@@ -546,6 +532,57 @@ public class ProgressReportService {
         }
         
         return null;
+    }
+
+    /**
+     * 특정 학생의 모든 교재에 대한 평균 진행률 조회
+     */
+    public AverageProgressResponse getAverageProgress(Long studentId) {
+        // 1. 학생 조회
+        User student = userRepository.findById(studentId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        // 2. 모든 진행률 리포트 조회
+        List<ProgressReportResponse> reports = getAllProgressReports(studentId);
+
+        // 3. 통계 계산
+        int totalMaterials = reports.size();
+        int completedMaterials = 0;
+        int inProgressMaterials = 0;
+        int notStartedMaterials = 0;
+        double totalProgress = 0.0;
+
+        for (ProgressReportResponse report : reports) {
+            double progress = report.getOverallProgressPercentage();
+            totalProgress += progress;
+
+            if (report.getCompletedAt() != null || progress >= 100.0) {
+                // 완료한 교재
+                completedMaterials++;
+            } else if (progress > 0.0) {
+                // 학습 중인 교재
+                inProgressMaterials++;
+            } else {
+                // 시작하지 않은 교재
+                notStartedMaterials++;
+            }
+        }
+
+        // 4. 평균 진행률 계산
+        double averageProgress = totalMaterials > 0 
+                ? totalProgress / totalMaterials 
+                : 0.0;
+
+        // 5. 응답 생성
+        return AverageProgressResponse.builder()
+                .studentId(student.getId())
+                .studentName(student.getName())
+                .totalMaterials(totalMaterials)
+                .averageProgressPercentage(Math.round(averageProgress * 100.0) / 100.0)
+                .completedMaterials(completedMaterials)
+                .inProgressMaterials(inProgressMaterials)
+                .notStartedMaterials(notStartedMaterials)
+                .build();
     }
 }
 

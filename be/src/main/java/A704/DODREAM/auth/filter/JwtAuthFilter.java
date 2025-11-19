@@ -27,6 +27,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
 		// 프리플라이트만 스킵(선택). 그 외 경로 화이트리스트는 SecurityConfig에서 permitAll로만 관리
+		if(request.getRequestURI().startsWith("/api/actuator")
+				|| request.getRequestURI().startsWith("/actuator")) {
+			return true;
+		}
 		return "OPTIONS".equalsIgnoreCase(request.getMethod());
 	}
 

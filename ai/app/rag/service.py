@@ -39,7 +39,7 @@ try:
     print("✅ 임베딩 모델 초기화 성공")
 
     llm = ChatOpenAI(
-        temperature=0.7, model_name="gpt-5", api_key=GMS_KEY, base_url=GMS_BASE_URL
+        temperature=0.7, model_name="gpt-5-mini", api_key=GMS_KEY, base_url=GMS_BASE_URL
     )
     print("✅ LLM 모델 초기화 성공")
 
@@ -54,7 +54,7 @@ try:
                 model_kwargs={
                     'device': 'cpu',
                     'trust_remote_code': True,
-                    'token': HUGGINGFACE_TOKEN  # ✅ 수정: use_auth_token -> token
+                    'token': HUGGINGFACE_TOKEN
                 }
             )
             print("✅ Reranker 모델 초기화 성공 (Dongjin-kr/ko-reranker)")
@@ -95,15 +95,24 @@ except Exception as e:
 def _get_collection_name(document_id: str) -> str:
     """
     document_id를 Chroma 컬렉션명으로 변환
-    예: '123abc' -> 'material_123abc'
+    
+    [수정된 규칙]
+    항상 'material_' 접두사를 붙여서 ChromaDB의 Naming Rule(3자 이상)을 만족시키고,
+    입력된 document_id에 따라 분기됩니다.
+    
+    - 입력 "14" -> "material_14" (최종본)
+    - 입력 "pdf_14" -> "material_pdf_14" (초기본)
     """
     if not document_id:
         raise ValueError("Document ID가 비어있습니다.")
 
-    # Chroma 컬렉션명 규칙: 알파벳, 숫자, 언더스코어만 허용, 3-63자
+    # 특수문자를 언더스코어로 변환
     sanitized_id = re.sub(r"[^a-zA-Z0-9_]", "_", document_id)
+
+    # 🔧 수정: 조건문 제거하고 항상 material_ 접두사 사용
     collection_name = f"material_{sanitized_id}"
 
+    # Chroma 컬렉션명 길이 제한 (63자)
     if len(collection_name) > 63:
         collection_name = collection_name[:63]
 
@@ -112,23 +121,16 @@ def _get_collection_name(document_id: str) -> str:
 
 # --- 워크플로우 1: 임베딩 생성 (Service Logic) ---
 
-
 async def download_json_from_cloudfront(url: str) -> dict:
-    """
-    CloudFront/S3 URL에서 JSON 파일을 다운로드합니다.
-    """
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(url, follow_redirects=True)
-
             if response.status_code != 200:
                 raise HTTPException(
                     status_code=response.status_code,
                     detail=f"CloudFront/S3 JSON 다운로드 실패 (URL: {url}): HTTP {response.status_code}",
                 )
-
             return response.json()
-
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="JSON 다운로드 시간 초과")
     except json.JSONDecodeError:
@@ -140,38 +142,27 @@ async def download_json_from_cloudfront(url: str) -> dict:
 
 
 def _clean_html_content(html_text: str) -> str:
-    """
-    HTML 태그를 제거하고 순수 텍스트만 추출합니다.
-    """
     if not html_text:
         return ""
-
-    # <br> 태그를 개행 문자로 변환
     text = re.sub(r"<br\s*/?>", "\n", html_text, flags=re.IGNORECASE)
-
-    # 모든 HTML 태그 제거
     text = re.sub(r"<[^>]+>", " ", text)
-
-    # HTML 엔티티 디코딩 (&nbsp; -> 공백 등)
     text = html.unescape(text)
-
-    # 연속된 공백을 하나로 압축
     text = " ".join(text.split())
-
     return text
 
 
+# --- 메인 데이터 추출 함수 (chapters 스키마) ---
 def extract_data_from_json(json_data: dict) -> List[Document]:
     """
-    JSON 데이터에서 Document 객체 리스트를 추출합니다.
+    JSON 데이터('chapters' 스키마)에서 Document 객체 리스트를 추출합니다.
     """
     documents = []
     chapters = json_data.get("chapters", [])
 
     if not chapters:
-        raise ValueError(
-            "JSON에서 'chapters' 키를 찾을 수 없거나 리스트가 비어있습니다."
-        )
+        return []
+
+    print(f"📖 'chapters' 스키마 감지: 총 {len(chapters)}개 챕터 처리 시작")
 
     for chapter in chapters:
         chapter_id = chapter.get("id")
@@ -180,17 +171,14 @@ def extract_data_from_json(json_data: dict) -> List[Document]:
         chapter_type = chapter.get("type")
 
         base_metadata = {
-            "chapter_id": str(chapter_id),  # 🔧 수정: 문자열로 변환
-            "title": title or "제목 없음",  # 🔧 수정: None 방지
+            "chapter_id": str(chapter_id),
+            "title": title or "제목 없음",
             "type": chapter_type,
         }
 
-        # 빈 챕터 스킵
         if "새 챕터의 내용을 입력하세요" in content_html:
-            print(f"빈 챕터 건너뜀: {title}")
             continue
 
-        # 타입별 처리
         if chapter_type == "content":
             plain_text = _clean_html_content(content_html)
             if plain_text.strip():
@@ -200,24 +188,93 @@ def extract_data_from_json(json_data: dict) -> List[Document]:
 
         elif chapter_type == "quiz":
             qa_list = chapter.get("qa", [])
-            for idx, qa_pair in enumerate(qa_list):  # 🔧 수정: 인덱스 추가
+            for idx, qa_pair in enumerate(qa_list):
                 q = qa_pair.get("question", "")
                 a = qa_pair.get("answer", "")
-
-                if not q or not a:  # 🔧 수정: 빈 Q&A 스킵
+                if not q or not a:
                     continue
-
                 qa_content = f"질문: {q}\n정답: {a}"
-
-                # 🔧 수정: Q&A 메타데이터에 인덱스 추가
                 qa_metadata = base_metadata.copy()
                 qa_metadata["qa_index"] = idx
-
                 documents.append(
                     Document(page_content=qa_content, metadata=qa_metadata)
                 )
 
-    print(f"JSON 파싱 완료. 총 {len(documents)}개의 Document 생성.")
+    print(f"✅ JSON 파싱 완료. 총 {len(documents)}개의 Document 생성.")
+    return documents
+
+
+# --- 초기 데이터 추출 함수 (하이브리드 지원) ---
+def extract_initial_data_from_json(json_data: dict) -> List[Document]:
+    """
+    텍스트 추출 직후 JSON에서 Document 객체 리스트를 추출합니다.
+    'chapters' 스키마와 'parsedData' 스키마(Flat 및 Nested)를 모두 지원합니다.
+    """
+    
+    # 1. 'chapters' 키 확인 (우선 순위: 신규 스키마)
+    if "chapters" in json_data:
+        print("ℹ️ [초기 임베딩] 'chapters' 스키마가 감지되었습니다.")
+        return extract_data_from_json(json_data)
+
+    # 2. 'parsedData' 처리 (구형 스키마)
+    data_list = []
+    
+    # Case A: parsedData 래퍼가 있는 경우
+    if "parsedData" in json_data:
+        print("ℹ️ [초기 임베딩] 'parsedData' Wrapper 감지")
+        data_list = json_data["parsedData"].get("data", [])
+    # Case B: parsedData 없이 바로 data가 있는 경우 (S3 저장 방식)
+    elif "data" in json_data:
+        print("ℹ️ [초기 임베딩] Flat 'data' 구조 감지")
+        data_list = json_data.get("data", [])
+    
+    if not data_list:
+        keys = list(json_data.keys())
+        raise ValueError(f"JSON에서 유효한 데이터('chapters', 'parsedData', 'data')를 찾을 수 없습니다. (Keys: {keys})")
+    
+    print(f"ℹ️ 데이터 리스트 확인됨 ({len(data_list)}개 인덱스)")
+    
+    documents = []
+    
+    for data_item in data_list:
+        index = data_item.get("index", "unknown")
+        index_title = data_item.get("index_title", "제목 없음")
+        titles = data_item.get("titles", [])
+        
+        for title_item in titles:
+            title = title_item.get("title", "")
+            if "개념" in title and ("check" in title.lower() or "Check" in title):
+                continue
+            
+            s_titles = title_item.get("s_titles", [])
+            for s_title_item in s_titles:
+                s_title = s_title_item.get("s_title", "")
+                contents = s_title_item.get("contents")
+                
+                base_metadata = {
+                    "index": index,
+                    "index_title": index_title,
+                    "title": title,
+                    "s_title": s_title,
+                    "type": "content"
+                }
+                
+                if contents and contents.strip():
+                    full_text = f"{title}\n{s_title}\n{contents}"
+                    documents.append(Document(page_content=full_text, metadata=base_metadata))
+                
+                ss_titles = s_title_item.get("ss_titles", [])
+                for ss_title_item in ss_titles:
+                    ss_title = ss_title_item.get("ss_title", "")
+                    ss_contents = ss_title_item.get("contents")
+                    
+                    if ss_contents and ss_contents.strip():
+                        ss_metadata = base_metadata.copy()
+                        ss_metadata["ss_title"] = ss_title
+                        full_text = f"{title}\n{s_title}\n{ss_title}\n{ss_contents}"
+                        documents.append(Document(page_content=full_text, metadata=ss_metadata))
+    
+    print(f"✅ 초기 파싱 완료. 총 {len(documents)}개의 Document 생성.")
     return documents
 
 
@@ -231,16 +288,14 @@ def create_and_store_embeddings(document_id: str, documents: List[Document]):
     if not embedding_model:
         raise ValueError("임베딩 모델이 초기화되지 않았습니다.")
 
-    # 🔧 수정: 타입별 청크 크기 최적화
+    # 타입별 청크 크기 최적화
     content_chunks = []
     quiz_chunks = []
 
     for doc in documents:
         if doc.metadata.get("type") == "quiz":
-            # 퀴즈는 분할하지 않고 그대로 유지
             quiz_chunks.append(doc)
         else:
-            # 일반 콘텐츠만 분할
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=1000, chunk_overlap=100
             )
@@ -259,18 +314,17 @@ def create_and_store_embeddings(document_id: str, documents: List[Document]):
         f"컬렉션: {collection_name}"
     )
 
-    # 🔧 수정: 기존 컬렉션이 있으면 삭제 후 재생성 (선택적)
+    # 기존 컬렉션이 있으면 삭제 후 재생성
     try:
         existing_vectorstore = Chroma(
             persist_directory=CHROMA_PERSIST_DIRECTORY,
             embedding_function=embedding_model,
             collection_name=collection_name,
         )
-        # 기존 컬렉션 삭제
         existing_vectorstore.delete_collection()
-        print(f"기존 컬렉션 '{collection_name}' 삭제됨")
+        print(f"🗑️ 기존 컬렉션 '{collection_name}' 삭제됨 (재생성)")
     except Exception:
-        pass  # 컬렉션이 없으면 무시
+        pass 
 
     # Chroma DB에 저장
     vector_store = Chroma.from_documents(
@@ -283,69 +337,59 @@ def create_and_store_embeddings(document_id: str, documents: List[Document]):
     print(f"✅ '{document_id}' (컬렉션: {collection_name}) 임베딩 및 저장 완료.")
 
 
-# --- 워크플로우 2: RAG 질의응답 (Re-ranking 적용) ---
+# --- 초기 임베딩 전용 함수 (단순 래퍼) ---
+def create_initial_embeddings(pdf_id: str, documents: List[Document]):
+    """
+    초기 임베딩 생성
+    document_id 앞에 'pdf_' 접두사를 붙여서 저장합니다.
+    """
+    # 🔧 수정: pdf_id 앞에 'pdf_'를 붙여서 컬렉션명 구분
+    # 예: 입력 '14' -> 'pdf_14' -> _get_collection_name -> 'material_pdf_14'
+    prefixed_id = f"pdf_{pdf_id}"
+    create_and_store_embeddings(prefixed_id, documents)
 
+
+# --- 워크플로우 2: RAG 질의응답 (Re-ranking 적용) ---
+# (get_rag_chain 함수는 기존과 동일하게 유지)
 
 def get_rag_chain(document_id: str):
-    """
-    Re-ranking이 적용된 LCEL 체인을 생성합니다.
-
-    동작 흐름:
-    1. Base Retriever로 10개 문서 검색 (MMR 방식)
-    2. Reranker로 상위 3개 재정렬
-    3. History-Aware Retriever로 질문 재구성
-    4. 최종 답변 생성
-    """
-    # 모델 초기화 체크
     if not embedding_model or not llm:
         raise ValueError("LLM 또는 임베딩 모델이 초기화되지 않았습니다.")
 
     collection_name = _get_collection_name(document_id)
+    print(f"🔗 RAG Chain 연결: {collection_name}")
 
-    # 🔧 수정: 컬렉션 존재 여부 확인
     try:
         vectorstore = Chroma(
             persist_directory=CHROMA_PERSIST_DIRECTORY,
             embedding_function=embedding_model,
             collection_name=collection_name,
         )
-        # 테스트 쿼리로 컬렉션 존재 확인
+        # 컬렉션 존재 여부 확인용 쿼리
         vectorstore.similarity_search("test", k=1)
     except Exception as e:
-        raise ValueError(f"'{document_id}' 컬렉션을 찾을 수 없습니다: {e}")
+        raise ValueError(f"'{collection_name}' 컬렉션을 찾을 수 없습니다. (ID: {document_id}): {e}")
 
-    # 1단계: Base Retriever (넓은 검색)
     base_retriever = vectorstore.as_retriever(
-        search_type="mmr",  # Maximum Marginal Relevance (다양성 보장)
-        search_kwargs={
-            "k": 10,  # 초기 검색: 10개
-            "fetch_k": 20,  # 🔧 수정: MMR 후보 풀 확대
-        },
+        search_type="mmr",
+        search_kwargs={"k": 10, "fetch_k": 20},
     )
 
-    # 2단계: Reranker 적용 (선택적)
     if reranker_model:
         print(f"✅ Reranker 적용: 10개 → 상위 3개 재정렬")
-
         compressor = CrossEncoderReranker(
-            model=reranker_model, top_n=3  # 최종 3개만 선택
+            model=reranker_model, top_n=3
         )
-
         final_retriever = ContextualCompressionRetriever(
             base_compressor=compressor, base_retriever=base_retriever
         )
     else:
         print(f"⚠️ Reranker 미적용: Base Retriever만 사용 (k=5로 조정)")
-        # Reranker 없을 경우 검색 수 조정
         final_retriever = vectorstore.as_retriever(
             search_type="mmr",
-            search_kwargs={
-                "k": 5,  # Reranker 없으면 5개만 검색
-                "fetch_k": 15,  # 🔧 수정: fetch_k 추가
-            },
+            search_kwargs={"k": 5, "fetch_k": 15},
         )
 
-    # 3단계: 질문 재구성 프롬프트 (대화 맥락 반영)
     rephrase_prompt = ChatPromptTemplate.from_messages(
         [
             MessagesPlaceholder(variable_name="chat_history"),
@@ -353,17 +397,15 @@ def get_rag_chain(document_id: str):
             (
                 "user",
                 "이전 대화 내용을 참고하여, 위 질문을 검색하기 좋은 독립적인 질문으로 다시 작성해주세요. "
-                "질문만 작성하고 다른 설명은 하지 마세요.",  # 🔧 수정: 명확한 지시
+                "질문만 작성하고 다른 설명은 하지 마세요.",
             ),
         ]
     )
 
-    # 4단계: History-Aware Retriever
     history_aware_retriever = create_history_aware_retriever(
         llm=llm, retriever=final_retriever, prompt=rephrase_prompt
     )
 
-    # 5단계: 답변 생성 프롬프트 (TTS 최적화)
     answer_prompt = ChatPromptTemplate.from_messages(
         [
             (
@@ -387,10 +429,8 @@ def get_rag_chain(document_id: str):
         ]
     )
 
-    # 6단계: Document Chain
     document_chain = create_stuff_documents_chain(llm, answer_prompt)
 
-    # 7단계: 최종 Retrieval Chain
     conversational_retrieval_chain = create_retrieval_chain(
         history_aware_retriever, document_chain
     )
