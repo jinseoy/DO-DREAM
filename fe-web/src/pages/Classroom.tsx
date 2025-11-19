@@ -118,9 +118,40 @@ type SharedStudentMaterialsDto = {
   materials: SharedMaterialItemDto[];
 };
 
+type MaterialProgressItem = {
+  studentId: number;
+  studentName: string;
+  materialId: number;
+  materialTitle: string;
+  totalChapters: number;
+  completedChapters: number;
+  totalSections: number;
+  completedSections: number;
+  overallProgressPercentage: number;
+  currentChapterNumber: number;
+  currentChapterTitle: string;
+  lastAccessedAt: string | null;
+  completedAt: string | null;
+  chapterProgress: {
+    chapterId: string;
+    chapterTitle: string;
+    chapterType: string;
+    totalSections: number;
+    completedSections: number;
+    progressPercentage: number;
+  }[];
+};
+
+type StudentProgressResponse = {
+  success: boolean;
+  code: string;
+  message: string;
+  data: MaterialProgressItem[];
+};
+
 const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
 
-// ✅ 빈 카드 채우기 함수
+// 빈 카드 채우기 함수
 const getFilledStudents = (students: Student[]) => {
   const minCards = 6; // 최소 6개 카드 표시
   if (students.length >= minCards) return students;
@@ -187,22 +218,26 @@ export default function Classroom() {
         let sharedByStudent: SharedStudentMaterialsDto[] = [];
 
         if (sharedRes.ok) {
-          const sharedData = await sharedRes.json();
-          console.log('📚 API 응답:', sharedData);
+          const raw = await sharedRes.json();
 
-          if (sharedData && typeof sharedData === 'object') {
-            if (Array.isArray(sharedData)) {
-              sharedByStudent = sharedData;
-            } else if (
-              sharedData.materials &&
-              Array.isArray(sharedData.materials)
-            ) {
-              sharedByStudent = [sharedData];
-            }
+          // Swagger 스타일 응답: { success, code, message, data: [...] } 처리
+          const payload =
+            raw && typeof raw === 'object' && 'data' in raw
+              ? (raw as any).data
+              : raw;
+
+          if (Array.isArray(payload)) {
+            // data가 배열인 케이스
+            sharedByStudent = payload as SharedStudentMaterialsDto[];
+          } else if (
+            payload &&
+            typeof payload === 'object' &&
+            Array.isArray((payload as any).materials)
+          ) {
+            // data가 단일 객체 + 그 안에 materials 배열인 케이스
+            sharedByStudent = [payload as SharedStudentMaterialsDto];
           }
         }
-
-        console.log('📚 파싱된 데이터:', sharedByStudent);
 
         // 자료 목록 생성
         type MatAgg = { mat: Material; date: Date };
@@ -243,7 +278,7 @@ export default function Classroom() {
           .sort((a, b) => b.date.getTime() - a.date.getTime())
           .map((v) => v.mat);
 
-        // ✅ 라벨 색상 순서대로 정렬 (ClassroomList와 동일한 로직)
+        // 라벨 색상 순서대로 정렬 (ClassroomList와 동일한 로직)
         const labelOrder = LABEL_OPTIONS.map((opt) => opt.id);
 
         newMaterials.sort((a, b) => {
@@ -282,16 +317,86 @@ export default function Classroom() {
           sharedMap.set(s.studentId, s);
         }
 
+        const sharedMaterialIds = new Set<number>(
+          newMaterials.map((m) => Number(m.id)),
+        );
+
+        const progressMap = new Map<number, number>();
+
+        await Promise.all(
+          baseStudents.map(async (stu) => {
+            try {
+              const progressRes = await fetch(
+                `${API_BASE}/api/progress/students/${stu.studentId}/all`,
+                { method: 'GET', headers, credentials: 'include' },
+              );
+
+              if (!progressRes.ok) {
+                console.warn(
+                  `진행률 조회 실패 (studentId=${stu.studentId}, status=${progressRes.status})`,
+                );
+                progressMap.set(stu.studentId, 0);
+                return;
+              }
+
+              const progressJson =
+                (await progressRes.json()) as StudentProgressResponse;
+
+              const items = Array.isArray(progressJson.data)
+                ? progressJson.data
+                : [];
+
+              // 이 반에서 공유된 자료만 필터링 (없으면 전체 사용)
+              let related = items;
+              if (sharedMaterialIds.size) {
+                related = items.filter((p) =>
+                  sharedMaterialIds.has(p.materialId),
+                );
+              }
+
+              if (!related.length) {
+                progressMap.set(stu.studentId, 0);
+                return;
+              }
+
+              // 평균 비율(0~1 or 0~100) → 퍼센트(0~100)
+              const avgRaw =
+                related.reduce(
+                  (sum, p) => sum + (p.overallProgressPercentage ?? 0),
+                  0,
+                ) / related.length;
+
+              const avgPercent = avgRaw <= 1 ? avgRaw * 100 : avgRaw;
+
+              console.log('student', stu.studentName, 'avgPercent', avgPercent);
+
+              progressMap.set(stu.studentId, Math.round(avgPercent));
+            } catch (e) {
+              console.error('진행률 API 오류', e);
+              progressMap.set(stu.studentId, 0);
+            }
+          }),
+        );
+
+        // 최종 학생 리스트 (평균 진행률 사용)
         const finalStudents: Student[] = baseStudents.map((s, idx) => {
           const shareInfo = sharedMap.get(s.studentId);
-          let progress = 0;
 
-          if (shareInfo) {
+          // 1순위: 진행률 API에서 계산한 평균 값
+          let progress =
+            progressMap.get(s.studentId) !== undefined
+              ? progressMap.get(s.studentId)!
+              : 0;
+
+          // 혹시 진행률 API가 비어있다면, 기존 accessed 비율로 fallback
+          if (progress === 0 && shareInfo) {
             const total =
               shareInfo.totalCount || shareInfo.materials?.length || 0;
             const accessed =
               shareInfo.materials?.filter((m) => m.accessed).length || 0;
-            progress = total > 0 ? Math.round((accessed / total) * 100) : 0;
+            if (total > 0) {
+              progress = Math.round((accessed / total) * 100);
+            }
           }
 
           return {
