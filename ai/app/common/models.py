@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Enum
+from sqlalchemy import Column, Integer, String, Enum, BigInteger
 from app.common.db_session import Base # Base 클래스 임포트
 import enum
 
@@ -27,3 +27,11 @@ class User(Base):
     # Spring의 BaseTimeEntity (created_at, updated_at)는
     # 필요하다면 여기에 Column(DateTime, ...) 등으로 추가할 수 있습니다.
 
+class Material(Base):
+    __tablename__ = "materials"  # MySQL 테이블 이름
+
+    # Java의 Long id -> BigInteger 또는 Integer
+    id = Column(BigInteger, primary_key=True, index=True)
+    
+    # Java의 String title
+    title = Column(String(200), nullable=False)

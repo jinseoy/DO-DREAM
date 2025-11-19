@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from pydantic import Field
@@ -30,6 +30,10 @@ from langchain_core.messages import HumanMessage, AIMessage
 
 # --- (신규) 퀴즈 서비스 임포트 ---
 from app.rag.quiz_service import generate_quiz_with_rag, grade_quiz_answers
+
+from app.rag.models import ChatSessionDetailDto, ChatSessionDto
+from app.common.models import Material
+from app.common.db_session import get_db
 
 
 # 🆕 초기 임베딩 요청 스키마 (S3 URL 받음)
@@ -423,3 +427,129 @@ async def api_grade_quiz_batch(
     except Exception as e:
         print(f"❌ 채점 API 오류: {e}")
         raise HTTPException(status_code=500, detail=f"채점 실패: {str(e)}")
+
+# -------------------------------------------------------
+# 🏫 선생님용 학생 채팅 기록 조회 API (수정됨)
+# -------------------------------------------------------
+
+@router.get("/chat/sessions", response_model=List[ChatSessionDto])
+async def get_student_chat_sessions(
+    student_id: int = Query(..., description="조회할 학생의 ID"),
+    current_user: User = Depends(get_current_user),
+    rag_db: Session = Depends(get_rag_db),
+    common_db: Session = Depends(get_db)  # ✅ db_session.py의 get_db 주입
+):
+    # 1. 권한 체크
+    if current_user.role != "TEACHER":
+        raise HTTPException(status_code=403, detail="권한이 없습니다.")
+
+    # 2. RAG 세션 조회
+    sessions = (
+        rag_db.query(rag_models.ChatSession)
+        .filter(rag_models.ChatSession.user_id == student_id)
+        .order_by(rag_models.ChatSession.created_at.desc())
+        .all()
+    )
+
+    if not sessions:
+        return []
+
+    # 3. Material 제목 조회 (Batch Query)
+    doc_ids = set()
+    for s in sessions:
+        # document_id가 숫자인지 확인 (혹시 모를 에러 방지)
+        if s.document_id and s.document_id.isdigit():
+            doc_ids.add(int(s.document_id))
+    
+    material_map = {}
+    if doc_ids:
+        materials = (
+            common_db.query(Material.id, Material.title)
+            .filter(Material.id.in_(doc_ids))
+            .all()
+        )
+        material_map = {str(m.id): m.title for m in materials}
+
+    # 4. 매핑 및 응답 반환
+    result = []
+    for session in sessions:
+        last_msg = (
+            rag_db.query(rag_models.ChatMessage)
+            .filter(rag_models.ChatMessage.session_id == session.id)
+            .order_by(rag_models.ChatMessage.created_at.desc())
+            .first()
+        )
+        
+        title = material_map.get(str(session.document_id), "삭제된 자료")
+
+        result.append(ChatSessionDto(
+            id=session.id,
+            document_id=session.document_id,
+            material_title=title,
+            session_title=session.session_title,
+            created_at=session.created_at,
+            last_message_preview=last_msg.content[:50] + "..." if last_msg else "대화 없음"
+        ))
+
+    return result
+
+
+@router.get("/chat/sessions/{session_id}/messages", response_model=ChatSessionDetailDto) # ✅ 반환 타입 변경
+async def get_student_chat_session_history(
+    session_id: str,
+    student_id: int = Query(..., description="해당 세션을 소유한 학생의 ID (검증용)"),
+    current_user: User = Depends(get_current_user),
+    rag_db: Session = Depends(get_rag_db),
+    common_db: Session = Depends(get_db)   # ✅ MySQL DB 주입
+):
+    """
+    [선생님용] 특정 학생의 특정 세션 상세 대화 내용을 조회합니다. (자료 제목 포함)
+    """
+    # 1. 교사 권한 검증
+    if current_user.role != "TEACHER":
+        raise HTTPException(
+            status_code=403, 
+            detail="학생의 상세 대화 내용을 조회할 권한이 없습니다."
+        )
+
+    # 2. 세션 조회 및 소유권 확인
+    session = (
+        rag_db.query(rag_models.ChatSession)
+        .filter(
+            rag_models.ChatSession.id == session_id,
+            rag_models.ChatSession.user_id == student_id
+        )
+        .first()
+    )
+
+    if not session:
+        raise HTTPException(
+            status_code=404, 
+            detail="해당 학생의 채팅 세션을 찾을 수 없습니다."
+        )
+
+    # 3. 자료 제목 조회 (MySQL) ✅ 추가된 로직
+    material_title = "삭제된 자료" # 기본값
+    if session.document_id and session.document_id.isdigit():
+        material = (
+            common_db.query(Material)
+            .filter(Material.id == int(session.document_id))
+            .first()
+        )
+        if material:
+            material_title = material.title
+
+    # 4. 메시지 조회
+    messages = (
+        rag_db.query(rag_models.ChatMessage)
+        .filter(rag_models.ChatMessage.session_id == session_id)
+        .order_by(rag_models.ChatMessage.created_at.asc())
+        .all()
+    )
+
+    # 5. 결과 반환 (Wrapper 객체 사용)
+    return ChatSessionDetailDto(
+        session_id=session.id,
+        material_title=material_title,  # 조회한 제목
+        messages=messages               # 메시지 리스트
+    )
