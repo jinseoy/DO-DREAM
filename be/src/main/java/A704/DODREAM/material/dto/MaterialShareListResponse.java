@@ -33,6 +33,7 @@ public class MaterialShareListResponse {
 
 		private Long teacherId;
 		private String teacherName;
+        private Long pdfId;
         private LabelColor labelColor;
 
 		private LocalDateTime sharedAt;
@@ -42,6 +43,7 @@ public class MaterialShareListResponse {
 		public static SharedMaterialInfo from(MaterialShare share) {
 			return SharedMaterialInfo.builder()
 				.shareId(share.getId())
+                .pdfId(share.getMaterial().getUploadedFile().getId())
 				.materialId(share.getMaterial().getId())
 				.materialTitle(share.getMaterial().getTitle())
 				.teacherId(share.getTeacher().getId())
