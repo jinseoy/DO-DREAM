@@ -19,6 +19,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "http://localhost:5173",
         "http://localhost:8080",  # Spring Boot 서버
         "http://127.0.0.1:8080",
         # 필요시 프론트엔드 origin도 추가
