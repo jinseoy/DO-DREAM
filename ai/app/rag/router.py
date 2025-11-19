@@ -28,6 +28,9 @@ from pydantic import BaseModel, HttpUrl
 # --- LCEL용 Message 객체 임포트 ---
 from langchain_core.messages import HumanMessage, AIMessage
 
+# --- (신규) 퀴즈 서비스 임포트 ---
+from app.rag.quiz_service import generate_quiz_with_rag, grade_quiz_answers
+
 
 # 🆕 초기 임베딩 요청 스키마 (S3 URL 받음)
 class InitialEmbeddingRequest(BaseModel):
@@ -73,6 +76,35 @@ class QuizQuestionResponse(BaseModel):
 class GenerateQuizResponse(BaseModel):
     questions: List[QuizQuestionResponse]
     generated_at: datetime
+
+
+# --- (신규) 채점 요청/응답 스키마 (Spring 연동용) ---
+
+
+class GradeQuestionItem(BaseModel):
+    id: int
+    content: str
+    correct_answer: str
+
+
+class GradeStudentAnswerItem(BaseModel):
+    question_id: int
+    student_answer: str
+
+
+class BatchGradingRequest(BaseModel):
+    questions: List[GradeQuestionItem]
+    student_answers: List[GradeStudentAnswerItem]
+
+
+class GradingResultResponse(BaseModel):
+    question_id: int
+    student_answer: str
+    is_correct: bool
+    ai_feedback: str
+
+
+# ---------------------------------
 
 
 # --- 라우터 생성 ---
@@ -367,3 +399,27 @@ async def api_generate_quiz(
 
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"퀴즈 생성 중 오류 발생: {str(e)}")
+
+    # --- (신규) 워크플로우 4: 퀴즈 일괄 채점 API ---
+
+
+@router.post("/quiz/grade-batch", response_model=List[GradingResultResponse])
+async def api_grade_quiz_batch(
+    request: BatchGradingRequest, current_user: User = Depends(get_current_user)
+):
+    """
+    Spring Server에서 전달받은 문제 정보와 학생 답안을 일괄 채점합니다.
+    (학생/교사 모두 호출 가능 - Spring에서 권한 제어)
+    """
+    try:
+        # Pydantic 모델을 dict 리스트로 변환하여 서비스 함수로 전달
+        questions_dict = [q.dict() for q in request.questions]
+        answers_dict = [a.dict() for a in request.student_answers]
+
+        results = await grade_quiz_answers(questions_dict, answers_dict)
+
+        return [GradingResultResponse(**res) for res in results]
+
+    except Exception as e:
+        print(f"❌ 채점 API 오류: {e}")
+        raise HTTPException(status_code=500, detail=f"채점 실패: {str(e)}")
