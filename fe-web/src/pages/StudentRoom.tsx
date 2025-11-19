@@ -47,6 +47,51 @@ type StudentQuestion = {
   topic: string;
 };
 
+type SharedMaterialItemDto = {
+  shareId: number;
+  materialId: number;
+  materialTitle: string;
+  teacherId: number;
+  teacherName: string;
+  labelColor:
+    | 'RED'
+    | 'ORANGE'
+    | 'YELLOW'
+    | 'GREEN'
+    | 'BLUE'
+    | 'PURPLE'
+    | 'GRAY'
+    | null;
+  sharedAt: string;
+  accessedAt: string | null;
+  accessed: boolean;
+};
+
+type StudentSharedMaterialsDto = {
+  studentId: number;
+  studentName: string;
+  totalCount: number;
+  materials: SharedMaterialItemDto[];
+};
+
+const formatYmdFromIso = (iso: string | null | undefined) => {
+  if (!iso) return '';
+
+  // ISO 형태가 아닌 경우: "2025-11-19T04:40:39.3595648"라면 T 앞부분만 잘라서 사용
+  const [datePart] = iso.split('T');
+  if (!datePart) return iso;
+
+  // 혹시 타임존 보정까지 하고 싶으면 아래처럼 Date로 한 번 감싸도 됨
+  // const d = new Date(iso);
+  // if (Number.isNaN(d.getTime())) return datePart;
+  // const yyyy = d.getFullYear();
+  // const mm = String(d.getMonth() + 1).padStart(2, '0');
+  // const dd = String(d.getDate()).padStart(2, '0');
+  // return `${yyyy}-${mm}-${dd}`;
+
+  return datePart; // "2025-11-19"
+};
+
 const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
 
 export default function StudentRoom() {
@@ -71,34 +116,128 @@ export default function StudentRoom() {
   const [isLoading, setIsLoading] = useState(false);
 
   // ✅ API로 받아올 데이터들 (현재는 빈 배열)
-  const [receivedMaterials, setReceivedMaterials] = useState<ReceivedMaterial[]>([]);
+  const [receivedMaterials, setReceivedMaterials] = useState<
+    ReceivedMaterial[]
+  >([]);
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
-  const [studentQuestions, setStudentQuestions] = useState<StudentQuestion[]>([]);
+  const [studentQuestions, setStudentQuestions] = useState<StudentQuestion[]>(
+    [],
+  );
 
-  // ✅ TODO: API 호출로 실제 데이터 가져오기
+  // ✅ 특정 학생에게 공유된 학습자료 / 진행률 불러오기
   useEffect(() => {
     if (!student || !API_BASE) return;
 
     const fetchStudentData = async () => {
       try {
         setIsLoading(true);
+
         const accessToken = localStorage.getItem('accessToken');
         const headers: HeadersInit = {
           accept: '*/*',
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         };
 
-        // TODO: 실제 API 엔드포인트로 교체
-        // const materialsRes = await fetch(`${API_BASE}/api/students/${student.id}/materials`, { headers, credentials: 'include' });
-        // const quizRes = await fetch(`${API_BASE}/api/students/${student.id}/quizzes`, { headers, credentials: 'include' });
-        // const questionsRes = await fetch(`${API_BASE}/api/students/${student.id}/questions`, { headers, credentials: 'include' });
+        // 1) 이 학생에게 공유된 학습 자료 조회
+        const sharedRes = await fetch(
+          `${API_BASE}/api/materials/shared/student/${student.id}`,
+          { method: 'GET', headers, credentials: 'include' },
+        );
 
-        // 임시: 빈 배열로 초기화
-        setReceivedMaterials([]);
+        let shared: StudentSharedMaterialsDto | undefined;
+
+        if (sharedRes.ok) {
+          const raw = await sharedRes.json();
+          console.log('📚 학생별 공유 자료 raw:', raw);
+
+          // Swagger 스타일 { success, code, message, data } 래핑 처리
+          const payload =
+            raw && typeof raw === 'object' && 'data' in raw
+              ? (raw as any).data
+              : raw;
+
+          if (
+            payload &&
+            typeof payload === 'object' &&
+            Array.isArray((payload as any).materials)
+          ) {
+            shared = payload as StudentSharedMaterialsDto;
+          }
+        } else {
+          console.warn(
+            `학생별 공유 자료 조회 실패 (status: ${sharedRes.status})`,
+          );
+        }
+
+        // 2) 이 학생의 자료별 진행률 조회
+        const progressMap = new Map<
+          number,
+          { progressPercent: number; completedAt: string | null }
+        >();
+
+        const progressRes = await fetch(
+          `${API_BASE}/api/progress/students/${student.id}/all`,
+          { method: 'GET', headers, credentials: 'include' },
+        );
+
+        if (progressRes.ok) {
+          const raw = await progressRes.json();
+          console.log('📈 진행률 raw:', raw);
+
+          const payload =
+            raw && typeof raw === 'object' && 'data' in raw
+              ? (raw as any).data
+              : raw;
+
+          const items = Array.isArray(payload) ? payload : [];
+
+          items.forEach((item: any) => {
+            const rawValue = item.overallProgressPercentage ?? 0;
+            const percent = rawValue <= 1 ? rawValue * 100 : rawValue; // 0~1 or 0~100 대응
+            progressMap.set(item.materialId, {
+              progressPercent: percent,
+              completedAt: item.completedAt ?? null,
+            });
+          });
+        } else {
+          console.warn(`학생 진행률 조회 실패 (status: ${progressRes.status})`);
+        }
+
+        // 3) UI에서 사용할 형태로 변환
+        if (shared) {
+          const materials: ReceivedMaterial[] = (shared.materials ?? []).map(
+            (m) => {
+              const prog = progressMap.get(m.materialId);
+              const percent = Math.round(prog?.progressPercent ?? 0);
+
+              let status: ReceivedMaterial['status'] = 'not-started';
+              if (percent >= 99) status = 'completed';
+              else if (percent > 0 || m.accessed) status = 'in-progress';
+
+              return {
+                id: String(m.materialId),
+                title: m.materialTitle,
+                teacher: m.teacherName,
+                receivedDate: m.sharedAt, // 정렬은 ISO 문자열 그대로 사용
+                status,
+                progressRate: percent,
+              };
+            },
+          );
+
+          setReceivedMaterials(materials);
+        } else {
+          setReceivedMaterials([]);
+        }
+
+        // 퀴즈 / 질문은 아직 API 스펙이 없으니 일단 비워둠
         setQuizResults([]);
         setStudentQuestions([]);
       } catch (err) {
         console.error('학생 데이터 로딩 실패', err);
+        setReceivedMaterials([]);
+        setQuizResults([]);
+        setStudentQuestions([]);
       } finally {
         setIsLoading(false);
       }
@@ -114,8 +253,10 @@ export default function StudentRoom() {
     );
     list.sort((a, b) =>
       matSort === 'new'
-        ? new Date(b.receivedDate).getTime() - new Date(a.receivedDate).getTime()
-        : new Date(a.receivedDate).getTime() - new Date(b.receivedDate).getTime(),
+        ? new Date(b.receivedDate).getTime() -
+          new Date(a.receivedDate).getTime()
+        : new Date(a.receivedDate).getTime() -
+          new Date(b.receivedDate).getTime(),
     );
     return list;
   }, [receivedMaterials, matQuery, matSort]);
@@ -131,7 +272,6 @@ export default function StudentRoom() {
     return receivedMaterials.filter((m) => m.status === 'completed').length;
   }, [receivedMaterials]);
 
-  // ✅ TODO: API로 받아올 데이터 (현재는 빈 배열)
   const weakInsights = [];
 
   const getStatusBadge = (status: string) =>
@@ -211,7 +351,9 @@ export default function StudentRoom() {
           <div className="sr-sidebar-stats">
             <div className="sr-sidebar-stat-item">
               <div className="sr-sidebar-stat-label">전체 학습 진도</div>
-              <div className="sr-sidebar-stat-value">{student.progressRate}%</div>
+              <div className="sr-sidebar-stat-value">
+                {student.progressRate}%
+              </div>
               <div className="sr-sidebar-progress-bar">
                 <div
                   className="sr-sidebar-progress-fill"
@@ -234,7 +376,9 @@ export default function StudentRoom() {
 
             <div className="sr-sidebar-stat-item">
               <div className="sr-sidebar-stat-label">질문 & 답변</div>
-              <div className="sr-sidebar-stat-value">{studentQuestions.length}</div>
+              <div className="sr-sidebar-stat-value">
+                {studentQuestions.length}
+              </div>
             </div>
           </div>
         </div>
@@ -261,9 +405,15 @@ export default function StudentRoom() {
                 </div>
                 <button
                   className="cl-sort-btn cl-control"
-                  onClick={() => setMatSort((s) => (s === 'new' ? 'old' : 'new'))}
+                  onClick={() =>
+                    setMatSort((s) => (s === 'new' ? 'old' : 'new'))
+                  }
                 >
-                  {matSort === 'new' ? <SortDesc size={16} /> : <SortAsc size={16} />}
+                  {matSort === 'new' ? (
+                    <SortDesc size={16} />
+                  ) : (
+                    <SortAsc size={16} />
+                  )}
                   <span>{matSort === 'new' ? '최신 순' : '오래된 순'}</span>
                 </button>
               </div>
@@ -277,7 +427,9 @@ export default function StudentRoom() {
                   <div className="cl-empty-materials">
                     <FileText size={48} />
                     <p>받은 자료가 없습니다</p>
-                    <p className="cl-empty-hint">선생님이 자료를 공유하면 이곳에 표시됩니다.</p>
+                    <p className="cl-empty-hint">
+                      선생님이 자료를 공유하면 이곳에 표시됩니다.
+                    </p>
                   </div>
                 ) : (
                   filteredMaterials.map((m) => (
@@ -288,9 +440,11 @@ export default function StudentRoom() {
                       <div className="cl-material-info">
                         <h3 className="cl-material-title">{m.title}</h3>
                         <div className="cl-material-meta">
-                          <span className="cl-material-date">{m.receivedDate}</span>
+                          <span className="cl-material-date">
+                            {formatYmdFromIso(m.receivedDate)}
+                          </span>
                           <span> · </span>
-                          <span>{m.teacher}</span>
+                          <span>{m.teacher} 발행</span>
                         </div>
                       </div>
                       <div className="sr-material-progress">
@@ -339,7 +493,9 @@ export default function StudentRoom() {
                         <div className="sr-weak-bar">
                           <div
                             className="sr-weak-fill"
-                            style={{ width: `${Math.round(10 + w.weight * 90)}%` }}
+                            style={{
+                              width: `${Math.round(10 + w.weight * 90)}%`,
+                            }}
                           />
                         </div>
                       </div>
@@ -373,7 +529,9 @@ export default function StudentRoom() {
                           <span className="sr-score-main">
                             {q.score}/{q.maxScore}
                           </span>
-                          <span className="sr-accuracy-badge">{q.accuracy}%</span>
+                          <span className="sr-accuracy-badge">
+                            {q.accuracy}%
+                          </span>
                         </div>
                       </div>
                     ))}

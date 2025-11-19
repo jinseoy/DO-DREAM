@@ -26,10 +26,6 @@
   transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
 }
 
-.student-room-page .cl-header:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-}
-
 /* ===== Sidebar - Classroom과 동일 ===== */
 .student-room-page .cl-sidebar {
   position: fixed;
@@ -129,7 +125,7 @@
   backdrop-filter: blur(10px);
   border-radius: 14px;
   border: 2px solid rgba(226, 232, 240, 1);
-  box-shadow: 
+  box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.04),
     0 1px 2px rgba(0, 0, 0, 0.02);
 }
@@ -187,14 +183,14 @@
   gap: 24px;
 }
 
-/* ===== 카드 스타일 - Classroom과 동일 ===== */
+/* ===== 카드 스타일 - Classroom과 비슷하게 ===== */
 .student-room-page .cl-card {
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 20px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  padding: 16px 16px 12px;
+  padding: 20px 24px 18px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -205,7 +201,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 6px 8px 10px;
+  padding: 0 4px 10px;
 }
 
 .student-room-page .cl-card-head h3 {
@@ -307,21 +303,14 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 12px 14px;
+  gap: 16px;
+  padding: 14px 16px;
   background: rgba(248, 250, 252, 0.8);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(226, 232, 240, 0.4);
   border-radius: 12px;
   transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-}
-
-.student-room-page .cl-material-item:hover {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(226, 232, 240, 0.6);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
 }
 
 .student-room-page .cl-material-icon {
@@ -337,11 +326,6 @@
   flex-shrink: 0;
   border: 1px solid rgba(226, 232, 240, 0.3);
   transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
-}
-
-.student-room-page .cl-material-item:hover .cl-material-icon {
-  background: rgba(232, 238, 243, 0.9);
-  box-shadow: 0 2px 8px rgba(25, 43, 85, 0.08);
 }
 
 .student-room-page .cl-material-info {
@@ -362,13 +346,13 @@
 .student-room-page .cl-material-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   font-size: 12px;
   color: #94a3b8;
 }
 
 .student-room-page .cl-material-date {
-  font-size: 12px;
+  font-size: 14px;
   color: #94a3b8;
   font-weight: 500;
 }
@@ -425,11 +409,6 @@
   transition: all 0.25s cubic-bezier(0.2, 0, 0.38, 0.9);
 }
 
-.student-room-page .cl-empty-materials:hover svg {
-  opacity: 0.7;
-  transform: scale(1.05);
-}
-
 .student-room-page .cl-empty-materials p {
   font-size: 14px;
   margin: 0;
@@ -458,11 +437,6 @@
   border-radius: 10px;
   border: 1px solid rgba(226, 232, 240, 0.3);
   transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
-}
-
-.sr-weak-item:hover {
-  background: rgba(255, 255, 255, 0.8);
-  border-color: rgba(226, 232, 240, 0.5);
 }
 
 .sr-weak-header {
@@ -520,12 +494,6 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 
-.sr-quiz-item:hover {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(226, 232, 240, 0.6);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
-}
 
 .sr-quiz-info {
   flex: 1;
@@ -589,12 +557,6 @@
   border-left: 4px solid #192b55;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
-}
-
-.sr-qa-item:hover {
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 8px 24px rgba(25, 43, 85, 0.1);
-  transform: translateY(-2px);
 }
 
 .sr-qa-header {
@@ -667,11 +629,6 @@
   background: rgba(25, 43, 85, 0.2);
   border-radius: 4px;
   transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
-}
-
-.sr-content-wrapper::-webkit-scrollbar-thumb:hover,
-.student-room-page .cl-section-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(25, 43, 85, 0.4);
 }
 
 /* ===== 반응형 ===== */
