@@ -510,7 +510,7 @@ export default function LibraryScreen() {
 
   // 화면 진입 안내 (음성 명령 안내 포함)
   useEffect(() => {
-    const msg = `${displayName} 학생의 서재 화면입니다. 상단의 말하기 버튼을 두 번 탭한 후, 영어 1, 문학, 생물 1, 화법과 작문처럼 교재 이름을 말하면 해당 교재로 이동합니다.`;
+    const msg = `${displayName} 학생의 서재 화면입니다. 상단의 말하기 버튼을 두 번 탭한 후, 영어 1, 사회문화 처럼 교재 이름을 말하면 해당 교재로 이동합니다.`;
     const timer = setTimeout(() => {
       AccessibilityInfo.announceForAccessibility(msg);
     }, 500);
