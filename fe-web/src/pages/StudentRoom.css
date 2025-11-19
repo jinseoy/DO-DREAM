@@ -156,7 +156,7 @@
 
 .sr-sidebar-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #3b82f6 0%, #192b55 100%);
+  background: #FEC73D;
   border-radius: 999px;
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -375,12 +375,13 @@
 
 .sr-progress-fill-small {
   height: 100%;
-  background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+  background: #10b981;
   border-radius: 999px;
   transition: width 0.3s ease;
 }
 
 .sr-status-badge {
+  min-width: 60px;
   padding: 4px 12px;
   border-radius: 999px;
   color: #fff;
@@ -388,6 +389,7 @@
   font-weight: 600;
   white-space: nowrap;
   letter-spacing: 0.3px;
+  text-align: center;
 }
 
 /* ===== 빈 상태 ===== */
