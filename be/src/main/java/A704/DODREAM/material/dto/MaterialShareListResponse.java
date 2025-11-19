@@ -1,14 +1,14 @@
 package A704.DODREAM.material.dto;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 import A704.DODREAM.material.entity.MaterialShare;
+import A704.DODREAM.material.enums.LabelColor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.checkerframework.checker.units.qual.N;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Getter
 @Builder
@@ -16,56 +16,43 @@ import java.util.List;
 @AllArgsConstructor
 public class MaterialShareListResponse {
 
-    private Long studentId;
-    private String studentName;
-    private Long teacherId;
-    private String teacherName;
-    private int totalCount;
-    private List<SharedMaterialInfo> materials;
+	private Long studentId;
+	private String studentName;
 
-    @Getter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class SharedMaterialInfo {
-        private Long shareId;
-        private Long materialId;
-        private String materialTitle;
-        private String originalFileName;
-        private String fileUrl;
-        private Long fileSize;
-        private String subject;
-        private String gradeLevel;
-        private String contentType;
-        private String processingStatus;
+	private int totalCount;
+	private List<SharedMaterialInfo> materials;
 
-        private Long teacherId;
-        private String teacherName;
+	@Getter
+	@Builder
+	@NoArgsConstructor
+	@AllArgsConstructor
+	public static class SharedMaterialInfo {
+		private Long shareId;
+		private Long materialId;
+		private String materialTitle;
 
-        private String shareMessage;
-        private LocalDateTime sharedAt;
-        private LocalDateTime accessedAt;
-        private boolean isAccessed;
+		private Long teacherId;
+		private String teacherName;
+        private Long pdfId;
+        private LabelColor labelColor;
 
-        public static SharedMaterialInfo from(MaterialShare share){
-            return SharedMaterialInfo.builder()
-                    .shareId(share.getId())
-                    .materialId(share.getMaterial().getId())
-                    .materialTitle(share.getMaterial().getTitle())
-                    .originalFileName(share.getMaterial().getOriginalFileName())
-                    .fileUrl(share.getMaterial().getFileUrl())
-                    .fileSize(share.getMaterial().getFileSize())
-                    .subject(share.getMaterial().getSubject())
-                    .gradeLevel(share.getMaterial().getGradeLevel())
-                    .contentType(share.getMaterial().getContentType().name())
-                    .processingStatus(share.getMaterial().getProcessingStatus().name())
-                    .teacherId(share.getTeacher().getId())
-                    .teacherName(share.getTeacher().getName())
-                    .shareMessage(share.getShareMessage())
-                    .sharedAt(share.getSharedAt())
-                    .accessedAt(share.getAccessedAt())
-                    .isAccessed(share.getAccessedAt() != null)
-                    .build();
-        }
-    }
+		private LocalDateTime sharedAt;
+		private LocalDateTime accessedAt;
+		private boolean isAccessed;
+
+		public static SharedMaterialInfo from(MaterialShare share) {
+			return SharedMaterialInfo.builder()
+				.shareId(share.getId())
+                .pdfId(share.getMaterial().getUploadedFile().getId())
+				.materialId(share.getMaterial().getId())
+				.materialTitle(share.getMaterial().getTitle())
+				.teacherId(share.getTeacher().getId())
+				.teacherName(share.getTeacher().getName())
+                .labelColor(share.getMaterial().getLabel())
+				.sharedAt(share.getSharedAt())
+				.accessedAt(share.getAccessedAt())
+				.isAccessed(share.getAccessedAt() != null)
+				.build();
+		}
+	}
 }

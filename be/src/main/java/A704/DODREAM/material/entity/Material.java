@@ -1,92 +1,84 @@
 package A704.DODREAM.material.entity;
 
-import A704.DODREAM.material.enums.ContentType;
-import A704.DODREAM.material.enums.ProcessingStatus;
-import A704.DODREAM.user.entity.User;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import A704.DODREAM.bookmark.entity.Bookmark;
+import A704.DODREAM.conversation.Conversation;
+import A704.DODREAM.file.entity.UploadedFile;
+import A704.DODREAM.file.enums.PostStatus;
+import A704.DODREAM.report.entity.LearningReport;
+import jakarta.persistence.*;
+import lombok.*;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import A704.DODREAM.material.enums.ContentType;
+import A704.DODREAM.material.enums.LabelColor;
+import A704.DODREAM.material.enums.ProcessingStatus;
+import A704.DODREAM.user.entity.User;
+
 @Entity
 @Table(name = "materials", indexes = {
-    @Index(name = "idx_teacher", columnList = "teacher_id"),
-    @Index(name = "idx_status", columnList = "processing_status")
+	@Index(name = "idx_teacher", columnList = "teacher_id")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Setter
+@NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Material {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "teacher_id", nullable = true)  // 테스트를 위해 nullable 허용
-  private User teacher;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "teacher_id", nullable = false)
+	private User teacher;
 
-  @Column(nullable = false, length = 200)
-  private String title;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "uploaded_file_id", nullable = false)
+    private UploadedFile uploadedFile;
 
-  @Column(name = "original_file_name", nullable = false, length = 255)
-  private String originalFileName;
+	@Column(nullable = false, length = 200)
+	private String title;
 
-  @Column(name = "file_url", nullable = false, length = 500)
-  private String fileUrl;
+	@Column(length = 50)
+	private String subject;
 
-  @Column(name = "file_size")
-  private Long fileSize;
+	@Column(name = "grade_level", length = 20)
+	private String gradeLevel;
 
-  @Column(length = 50)
-  private String subject;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    @Builder.Default
+    private PostStatus postStatus = PostStatus.DRAFT;
 
-  @Column(name = "grade_level", length = 20)
-  private String gradeLevel;
+	@Enumerated(EnumType.STRING)
+	@Column(length = 20)
+	private LabelColor label;
 
-  @Enumerated(EnumType.STRING)
-  @Column(name = "content_type", length = 20)
-  @Builder.Default
-  private ContentType contentType = ContentType.TEXT;
+	@CreatedDate
+	@Column(name = "created_at", updatable = false)
+	private LocalDateTime createdAt;
 
-  @Enumerated(EnumType.STRING)
-  @Column(name = "processing_status", nullable = false, length = 20)
-  @Builder.Default
-  private ProcessingStatus processingStatus = ProcessingStatus.PENDING;
+	@LastModifiedDate
+	@Column(name = "updated_at")
+	private LocalDateTime updatedAt;
 
-  @CreatedDate
-  @Column(name = "created_at", updatable = false)
-  private LocalDateTime createdAt;
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
-  @LastModifiedDate
-  @Column(name = "updated_at")
-  private LocalDateTime updatedAt;
+    public void softDelete(){
+        this.deletedAt = LocalDateTime.now();
+    }
 
-  @OneToMany(mappedBy = "material", cascade = CascadeType.ALL, orphanRemoval = true)
-  @Builder.Default
-  private List<MaterialContent> contents = new ArrayList<>();
-
-  @OneToMany(mappedBy = "material", cascade = CascadeType.ALL, orphanRemoval = true)
-  @Builder.Default
-  private List<MaterialSummary> summaries = new ArrayList<>();
+    public boolean isDeleted() {
+        return this.deletedAt != null;
+    }
 }

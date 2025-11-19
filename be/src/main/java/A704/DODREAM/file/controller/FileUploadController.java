@@ -1,30 +1,44 @@
 package A704.DODREAM.file.controller;
 
+import A704.DODREAM.auth.dto.request.UserPrincipal;
 import A704.DODREAM.file.dto.DownloadUrlResponse;
 import A704.DODREAM.file.dto.PresignedUrlRequest;
 import A704.DODREAM.file.dto.PresignedUrlResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
 import A704.DODREAM.file.dto.DocumentSectionResponse;
 import A704.DODREAM.file.dto.DocumentStructureResponse;
+import A704.DODREAM.file.dto.FileUploadResponse;
+import A704.DODREAM.file.dto.OcrResultResponse;
 import A704.DODREAM.file.entity.DocumentSection;
 import A704.DODREAM.file.entity.OcrStatus;
 import A704.DODREAM.file.entity.UploadedFile;
 import A704.DODREAM.file.repository.DocumentSectionRepository;
 import A704.DODREAM.file.repository.UploadedFileRepository;
-import A704.DODREAM.file.dto.FileUploadResponse;
-import A704.DODREAM.file.dto.OcrResultResponse;
 import A704.DODREAM.file.service.CloudFrontService;
 import A704.DODREAM.file.service.FileStorageService;
 import A704.DODREAM.file.service.OcrProcessService;
 import A704.DODREAM.file.service.S3Service;
-import java.util.List;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
+@Tag(name = "File API ", description = "File 업로드 API")
 @Slf4j
 @RestController
 @RequestMapping("/api/files")
@@ -46,6 +60,12 @@ public class FileUploadController {
      * 2. 클라이언트가 받은 URL로 S3에 직접 업로드
      * 3. 업로드 완료 후 /files/{fileId}/process 호출하여 OCR 시작
      */
+    @Operation(
+        summary = "S3 Presigned URL 생성",
+        description = "PDF 파일을 S3에 직접 업로드하기 위한 Presigned URL을 생성합니다. " +
+                "클라이언트는 반환된 uploadUrl을 사용하여 PUT 메서드로 S3에 파일을 직접 업로드할 수 있습니다. " +
+                "PDF 파일만 허용됩니다." + "생성된 URL에 PUT 메서드로 첨부된 pdf와함께 S3에 올릴수 있습니다."
+    )
     @PostMapping("/presigned-url")
     public ResponseEntity<?> generatePresignedUrl(@RequestBody PresignedUrlRequest request) {
         try {
@@ -106,10 +126,13 @@ public class FileUploadController {
         }
     }
 
+    // ===== OCR 사용 안함: 주석처리 =====
+    /*
     /**
      * S3 업로드 완료 후 OCR 처리 시작 (새 플로우)
      * 클라이언트가 presigned URL로 S3에 업로드 완료 후 이 API를 호출
      */
+    /*
     @PostMapping("/{fileId}/process")
     public ResponseEntity<?> startOcrProcess(@PathVariable Long fileId) {
         try {
@@ -140,16 +163,21 @@ public class FileUploadController {
                     .body("Failed to start OCR process: " + e.getMessage());
         }
     }
+    */
 
+    /*
     /**
      * PDF 파일 업로드 및 OCR 처리 시작 (기존 플로우)
      */
+    /*
     @PostMapping("/upload")
     public ResponseEntity<?> uploadFile(
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("uploaderId") Long uploaderId) {
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @RequestParam("file") MultipartFile file) {
 
         try {
+            Long uploaderId = userPrincipal.userId();
+
             // 1. 파일 검증
             if (file.isEmpty()) {
                 return ResponseEntity.badRequest()
@@ -210,6 +238,7 @@ public class FileUploadController {
     /**
      * OCR 결과 조회
      */
+    /*
     @GetMapping("/{fileId}/ocr-result")
     public ResponseEntity<?> getOcrResult(@PathVariable Long fileId) {
         try {
@@ -226,13 +255,16 @@ public class FileUploadController {
                     .body("Failed to get OCR result: " + e.getMessage());
         }
     }
+    */
 
     /**
      * 업로더의 파일 목록 조회
      */
-    @GetMapping("/uploader/{uploaderId}")
-    public ResponseEntity<?> getFilesByUploader(@PathVariable Long uploaderId) {
+    @GetMapping
+    public ResponseEntity<?> getFilesByUploader(
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
         try {
+            Long uploaderId = userPrincipal.userId();
             List<UploadedFile> files = uploadedFileRepository.findByUploaderId(uploaderId);
 
             List<FileUploadResponse> responses = files.stream()
@@ -254,9 +286,11 @@ public class FileUploadController {
         }
     }
 
+    /*
     /**
      * OCR 상태만 조회
      */
+    /*
     @GetMapping("/{fileId}/status")
     public ResponseEntity<?> getOcrStatus(@PathVariable Long fileId) {
         try {
@@ -282,6 +316,7 @@ public class FileUploadController {
     /**
      * 파일의 전체 텍스트만 조회 (좌표 정보 제외)
      */
+    /*
     @GetMapping("/{fileId}/text")
     public ResponseEntity<?> getFullText(@PathVariable Long fileId) {
         try {
@@ -313,6 +348,7 @@ public class FileUploadController {
     /**
      * 문서 구조 조회 (감지된 제목/섹션 목록)
      */
+    /*
     @GetMapping("/{fileId}/structure")
     public ResponseEntity<?> getDocumentStructure(@PathVariable Long fileId) {
         try {
@@ -363,6 +399,7 @@ public class FileUploadController {
     /**
      * 특정 레벨의 섹션만 조회 (레벨 1 = 대단원, 2 = 중단원, 3 = 소단원)
      */
+    /*
     @GetMapping("/{fileId}/sections")
     public ResponseEntity<?> getSectionsByLevel(
             @PathVariable Long fileId,
@@ -407,6 +444,7 @@ public class FileUploadController {
     /**
      * 상태별 메시지 반환
      */
+    /*
     private String getStatusMessage(OcrStatus status) {
         return switch (status) {
             case PENDING -> "OCR processing is waiting to start";
@@ -419,6 +457,7 @@ public class FileUploadController {
     /**
      * UploadedFile을 OcrResultResponse로 변환
      */
+    /*
     private OcrResultResponse convertToOcrResultResponse(UploadedFile uploadedFile) {
         List<OcrResultResponse.PageResponse> pages = uploadedFile.getOcrPages().stream()
                 .map(page -> {
@@ -457,4 +496,5 @@ public class FileUploadController {
                 .pages(pages)
                 .build();
     }
+    */
 }

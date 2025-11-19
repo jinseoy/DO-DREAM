@@ -10,11 +10,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DocumentSectionResponse {
-    private Long sectionId;
-    private String title;
-    private Integer level;
-    private Integer startPage;
-    private Integer endPage;
-    private Integer fontSize;
-    private String summaryText;
+	private Long sectionId;
+	private String title;
+	private Integer level;
+	private Integer startPage;
+	private Integer endPage;
+	private Integer fontSize;
+	private String summaryText;
 }

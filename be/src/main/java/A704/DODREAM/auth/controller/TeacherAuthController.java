@@ -1,5 +1,15 @@
 package A704.DODREAM.auth.controller;
 
+import java.time.Duration;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+
 import A704.DODREAM.auth.dto.request.TeacherLoginRequest;
 import A704.DODREAM.auth.dto.request.TeacherSignupRequest;
 import A704.DODREAM.auth.dto.request.TeacherVerifyRequest;
@@ -17,12 +27,6 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.time.Duration;
 
 @Tag(name = "Teacher Auth API", description = "교사 로그인/회원가입 API")
 @RestController
@@ -134,7 +138,8 @@ public class TeacherAuthController {
 				var claims = jwt.parse(rt).getBody();
 				Long userId = Long.valueOf(claims.getSubject());
 				refreshTokenService.revoke(userId);
-			} catch (Exception ignored) {}
+			} catch (Exception ignored) {
+			}
 		}
 		CookieUtil.deleteRefreshCookie(res);
 		return ResponseEntity.ok().build();
@@ -142,9 +147,11 @@ public class TeacherAuthController {
 
 	private String extractRefreshFromCookie(HttpServletRequest req) {
 		Cookie[] cookies = req.getCookies();
-		if (cookies == null) return null;
+		if (cookies == null)
+			return null;
 		for (Cookie c : cookies) {
-			if (CookieUtil.REFRESH_COOKIE.equals(c.getName())) return c.getValue();
+			if (CookieUtil.REFRESH_COOKIE.equals(c.getName()))
+				return c.getValue();
 		}
 		return null;
 	}

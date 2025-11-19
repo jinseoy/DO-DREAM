@@ -1,5 +1,12 @@
 package A704.DODREAM.quiz.entity;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import A704.DODREAM.material.entity.Material;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -16,16 +23,15 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "quizs", indexes = {
-    @Index(name = "idx_material", columnList = "material_id")
+	@Index(name = "idx_material", columnList = "material_id")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -34,29 +40,29 @@ import java.util.List;
 @Builder
 public class Quiz {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "material_id", nullable = false)
-  private Material material;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "material_id", nullable = false)
+	private Material material;
 
-  @Column(nullable = false, length = 200)
-  private String title;
+	@Column(nullable = false, length = 200)
+	private String title;
 
-  @Enumerated(EnumType.STRING)
-  @Column(name = "quiz_type", length = 20)
-  @Builder.Default
-  private QuizType quizType = QuizType.AI_GENERATED;
+	@Enumerated(EnumType.STRING)
+	@Column(name = "quiz_type", length = 20)
+	@Builder.Default
+	private QuizType quizType = QuizType.AI_GENERATED;
 
-  @CreatedDate
-  @Column(name = "created_at", updatable = false)
-  private LocalDateTime createdAt;
+	@CreatedDate
+	@Column(name = "created_at", updatable = false)
+	private LocalDateTime createdAt;
 
-  // 양방향 관계
-  @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
-  @Builder.Default
-  private List<QuizQuestion> questions = new ArrayList<>();
+	// 양방향 관계
+	@OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
+	@Builder.Default
+	private List<QuizQuestion> questions = new ArrayList<>();
 
 }
