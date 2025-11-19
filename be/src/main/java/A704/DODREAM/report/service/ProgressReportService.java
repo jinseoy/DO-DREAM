@@ -385,26 +385,39 @@ public class ProgressReportService {
 
         // 2. concept_checks 배열 처리 (퀴즈는 진행률에서 제외)
         List<Map<String, Object>> conceptChecks = (List<Map<String, Object>>) chapter.get("concept_checks");
-        if (conceptChecks != null && !conceptChecks.isEmpty()) {
+        boolean hasConceptChecks = conceptChecks != null && !conceptChecks.isEmpty();
+        if (hasConceptChecks) {
             log.debug("챕터 [{}] concept_checks 개수: {} (진행률 계산에서 제외)", chapterId, conceptChecks.size());
             // 퀴즈는 진행률 계산에서 제외하므로 카운팅하지 않음
             // sectionCount += conceptChecks.size();
         }
 
+        // 퀴즈만 있고 콘텐츠가 없는 챕터는 0 섹션 반환
+        if (sectionCount == 0 && hasConceptChecks) {
+            log.info("챕터 [{}] {} - 0 섹션 (퀴즈 전용 챕터, 진행률 제외)", chapterId, chapterTitle);
+            return 0;
+        }
+        
         log.info("챕터 [{}] {} - 총 {} 섹션 (이전 구조)", chapterId, chapterTitle, sectionCount);
         
-        // 최소 1개 섹션 보장
+        // 콘텐츠가 있는 경우 최소 1개 섹션 보장
         return Math.max(1, sectionCount);
     }
     
     /**
      * 새로운 JSON 구조에서 섹션 수 계산
-     * 각 chapter가 1개의 섹션
+     * 각 chapter가 1개의 섹션 (퀴즈는 제외)
      */
     private int calculateSectionsFromNewStructure(Map<String, Object> chapter) {
         String chapterId = (String) chapter.get("id");
         String chapterTitle = (String) chapter.get("title");
         String chapterType = (String) chapter.get("type");
+        
+        // 퀴즈 챕터는 진행률 계산에서 제외
+        if ("quiz".equals(chapterType)) {
+            log.info("챕터 [{}] {} (type: quiz) - 0 섹션 (퀴즈 제외)", chapterId, chapterTitle);
+            return 0;
+        }
         
         log.info("챕터 [{}] {} (type: {}) - 1 섹션 (새로운 구조)", chapterId, chapterTitle, chapterType);
         
@@ -526,13 +539,15 @@ public class ProgressReportService {
     }
 
     /**
-     * 총 섹션 수 계산
+     * 총 섹션 수 계산 (퀴즈 제외)
      */
     private int calculateTotalSections(List<Map<String, Object>> chapters) {
         int total = 0;
         for (Map<String, Object> chapter : chapters) {
+            // calculateSectionsFromChapter가 퀴즈일 경우 0을 반환하도록 되어 있음
             total += calculateSectionsFromChapter(chapter);
         }
+        log.info("전체 섹션 수 계산 완료: {} 섹션 (퀴즈 제외)", total);
         return total;
     }
 
