@@ -16,6 +16,8 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -36,7 +38,11 @@ import {
 } from "../../constants/dimensions";
 import { useTheme } from "../../contexts/ThemeContext";
 import { submitQuizAnswers } from "../../api/quizApi";
-import { QuizAnswerRequest } from "../../types/api/quizApiTypes";
+import {
+  QuizAnswerRequest,
+  QuizGradingResultItem,
+  RawQuizGradingResult,
+} from "../../types/api/quizApiTypes";
 import { asrService } from "../../services/asrService";
 
 export default function QuizScreen() {
@@ -52,6 +58,7 @@ export default function QuizScreen() {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDictating, setIsDictating] = useState(false);
+  const [showGradingModal, setShowGradingModal] = useState(false);
 
   const userInput = userAnswers.get(questions[currentQuestionIndex]?.id) || "";
   const [isTalkBackEnabled, setIsTalkBackEnabled] = useState<boolean>(false);
@@ -248,8 +255,10 @@ export default function QuizScreen() {
     }
 
     setIsSubmitting(true);
+    setShowGradingModal(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const announcement = "모든 문제를 완료했습니다. 채점을 시작합니다.";
+
+    const announcement = "모든 문제를 완료했습니다. AI가 답안을 채점하고 있습니다. 잠시만 기다려주세요.";
     if (isTalkBackEnabled) {
       AccessibilityInfo.announceForAccessibility(announcement);
     } else {
@@ -262,32 +271,68 @@ export default function QuizScreen() {
     }));
 
     try {
-      const results = await submitQuizAnswers(material.id, {
+      // submitQuizAnswers가 camelCase로 변환된 결과를 반환한다고 가정하고 타입을 수정합니다.
+      const results: QuizGradingResultItem[] = await submitQuizAnswers(material.id, {
         answers: answersPayload,
       });
       console.log("[QuizScreen] 채점 결과:", results);
 
+      // 백엔드 결과와 프론트엔드 질문 데이터를 병합합니다.
+      const mergedGradingResults: QuizGradingResultItem[] = questions.map((question, index) => {
+        // 'results'가 이미 QuizGradingResultItem[] 타입이므로, id로 직접 비교합니다.
+        const result = results.find(r => r.id === question.id);
+        return {
+          ...question, // id, title, content, correct_answer 등 QuizQuestion의 모든 속성 포함
+          ...(result || {}), // isCorrect, userAnswer, feedback 등 채점 결과 덮어쓰기
+          question_number: index + 1, // 질문 번호 추가
+          userAnswer: result?.userAnswer || userAnswers.get(question.id) || "",
+          isCorrect: result?.isCorrect ?? false, // isCorrect가 undefined일 경우 false를 기본값으로 설정
+        };
+      });
+
+      setShowGradingModal(false);
+
+      const successAnnouncement = "채점이 완료되었습니다. 결과를 확인하세요.";
+      if (isTalkBackEnabled) {
+        AccessibilityInfo.announceForAccessibility(successAnnouncement);
+      } else {
+        Speech.speak(successAnnouncement, { language: "ko-KR", rate: 1.2 });
+      }
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
       navigation.navigate("QuizResult", {
         material: material,
-        gradingResults: results,
-        userAnswers: answersPayload,
+        gradingResults: mergedGradingResults,
+        userAnswers: answersPayload, // 이 prop은 더 이상 필요 없을 수 있지만 호환성을 위해 유지합니다.
       });
-      // AccessibilityInfo.announceForAccessibility(
-      //   "채점이 완료되었습니다. 결과 화면으로 이동하는 기능은 현재 개발 중입니다. 서재로 돌아가려면 뒤로가기라고 말해주세요."
-      // );
     } catch (error) {
       console.error("[QuizScreen] 채점 실패:", error);
-      AccessibilityInfo.announceForAccessibility(
-        "채점에 실패했습니다. 네트워크 연결을 확인하고 다시 시도해주세요."
-      );
+      setShowGradingModal(false);
+
+      const errorAnnouncement = "채점에 실패했습니다. 네트워크 연결을 확인하고 다시 시도해주세요.";
+      if (isTalkBackEnabled) {
+        AccessibilityInfo.announceForAccessibility(errorAnnouncement);
+      } else {
+        Speech.speak(errorAnnouncement, { language: "ko-KR", rate: 1.2 });
+      }
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // 음성 받아쓰기 중지
+  const stopDictation = useCallback(async () => {
+    console.log("stopDictation called");
+    await asrService.stop();
+  }, []);
+
   // 음성 받아쓰기 시작
   const startDictation = useCallback(async () => {
     if (isDictating) return;
+    console.log("startDictation called");
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     if (asrOffRef.current) asrOffRef.current(); // 기존 리스너 정리
@@ -298,28 +343,18 @@ export default function QuizScreen() {
         AccessibilityInfo.announceForAccessibility(
           `'${raw}' 라고 입력되었습니다.`
         );
+        // isFinal 이면 asrService가 자동으로 멈추고 onEnd가 호출됨
       }
     });
 
-    await asrService.start({
+    asrService.start({
       lang: "ko-KR",
       interimResults: false,
       continuous: false,
     });
     setIsDictating(true);
     AccessibilityInfo.announceForAccessibility("답변을 말씀하세요.");
-  }, [isDictating, handleUserInput]);
-
-  // 음성 받아쓰기 중지
-  const stopDictation = useCallback(async () => {
-    if (!isDictating) return;
-    await asrService.stop();
-    if (asrOffRef.current) {
-      asrOffRef.current();
-      asrOffRef.current = null;
-    }
-    setIsDictating(false);
-  }, [isDictating]);
+  }, [isDictating, handleUserInput, stopDictation]);
 
   // 음성 받아쓰기 버튼 핸들러
   const handleDictateAnswer = useCallback(() => {
@@ -371,8 +406,7 @@ export default function QuizScreen() {
       noSpace.includes("다음문제로") ||
       noSpace.includes("다음") ||
       noSpace.includes("넘어가") ||
-      noSpace.includes("넘어가줘") ||
-      noSpace.includes("넘겨")
+      noSpace.includes("넘어가줘")
     ) {
       isLastQuestion ? handleSubmit() : handleNext();
       return true;
@@ -445,7 +479,7 @@ export default function QuizScreen() {
 
       const handleVolumeDown = (count: number) => {
         if (count === 2) {
-          // 2번 누르면 기존 음성 명령 중지
+          // 2번 누르면 음성 명령 중지
           stopVoiceCommandListening();
         } else if (count === 3) {
           // 3번 누르면 답변 받아쓰기 중지
@@ -472,6 +506,21 @@ export default function QuizScreen() {
     startVoiceCommandListening,
     stopVoiceCommandListening,
   ]);
+
+  // ASR 서비스의 시작/종료 이벤트에 맞춰 isDictating 상태 동기화
+  useEffect(() => {
+    const offStart = asrService.onStart(() => {
+      setIsDictating(true);
+    });
+    const offEnd = asrService.onEnd(() => {
+      setIsDictating(false);
+    });
+
+    return () => {
+      offStart();
+      offEnd();
+    };
+  }, []);
 
   // 언마운트 시 ASR 정리
   useEffect(() => {
@@ -569,7 +618,7 @@ export default function QuizScreen() {
               }
               accessibilityRole="button"
             >
-              <Text style={styles.dictationButtonText}>
+              <Text style={[styles.dictationButtonText, isDictating && styles.dictationButtonTextActive]}>
                 {isDictating ? "입력 중지..." : "음성으로 답하기"}
               </Text>
             </TouchableOpacity>
@@ -586,12 +635,12 @@ export default function QuizScreen() {
               accessibilityLabel={isLastQuestion ? "채점하기" : "다음 문제"}
               accessibilityRole="button"
             >
-              <Text style={styles.nextButtonText}>
+              <Text style={[styles.actionButtonText, isLastQuestion ? styles.submitButtonText : styles.nextButtonText]}>
                 {isLastQuestion ? "채점하기" : "다음 문제"}
               </Text>
             </TouchableOpacity>
 
-            {currentQuestionIndex > 0 && (
+            {currentQuestionIndex > 0 ? (
               <TouchableOpacity
                 style={[styles.actionButton, styles.prevButton]}
                 onPress={handlePrevious}
@@ -599,12 +648,50 @@ export default function QuizScreen() {
                 accessibilityLabel="이전 문제"
                 accessibilityRole="button"
               >
-                <Text style={styles.prevButtonText}>이전 문제</Text>
+                <Text style={[styles.actionButtonText, styles.prevButtonText]}>이전 문제</Text>
               </TouchableOpacity>
+            ) : (
+              <View style={[styles.actionButton, { backgroundColor: 'transparent', borderColor: 'transparent' }]} />
             )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* 채점 중 로딩 Modal */}
+      <Modal
+        visible={showGradingModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {}}
+        accessibilityViewIsModal={true}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            style={styles.modalContent}
+            accessible={true}
+            accessibilityRole="alert"
+          >
+            <ActivityIndicator
+              size="large"
+              color={COLORS.primary.main}
+              accessible={false}
+            />
+            <Text
+              style={styles.modalTitle}
+              accessible={true}
+              accessibilityRole="header"
+            >
+              채점 중
+            </Text>
+            <Text
+              style={styles.modalMessage}
+              accessible={true}
+            >
+              AI가 답안을 채점하고 있습니다.{"\n"}잠시만 기다려주세요...
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -720,17 +807,17 @@ const createStyles = (isHighContrast: boolean) =>
       borderColor: isHighContrast ? COLORS.primary.dark : COLORS.primary.dark,
     },
     nextButtonText: {
-      color: COLORS.common.white,
-      fontSize: 26,
-      fontWeight: "bold",
+      color: COLORS.common.white, // 색상만 정의
     },
     submitButton: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      minHeight: 72,
-      backgroundColor: isHighContrast ? COLORS.status.success : COLORS.status.success,
-      borderColor: isHighContrast ? COLORS.status.success : COLORS.status.success,
+      backgroundColor: COLORS.status.success,
+      borderColor: COLORS.status.success,
+    },
+    actionButtonText: { // 모든 버튼에 적용될 공통 텍스트 스타일
+      fontSize: 24,
+      fontWeight: "bold",
+      lineHeight: 28, // 높이를 고정하기 위해 lineHeight 명시
+      textAlign: 'center',
     },
     submitButtonDisabled: {
       backgroundColor: COLORS.background.elevated,
@@ -738,23 +825,19 @@ const createStyles = (isHighContrast: boolean) =>
       opacity: 0.6,
     },
     submitButtonText: {
-      fontSize: 22,
-      fontWeight: "bold",
-      color: COLORS.text.inverse,
+      color: COLORS.text.inverse, // 색상만 정의
     },
     navButtonText: {
-      fontSize: 22,
+      fontSize: 24,
       fontWeight: "bold",
       color: COLORS.text.inverse,
     },
     prevButton: {
-      backgroundColor: isHighContrast ? COLORS.primary.main : COLORS.primary.main,
-      borderColor: isHighContrast ? COLORS.primary.dark : COLORS.primary.dark,
+      backgroundColor: isHighContrast ? COLORS.background.elevated : COLORS.gray[200],
+      borderColor: isHighContrast ? COLORS.border.main : COLORS.gray[400],
     },
     prevButtonText: {
-      color: COLORS.common.white,
-      fontSize: 26,
-      fontWeight: "bold",
+      color: COLORS.text.primary, // 색상만 정의
     },
     dictationButton: {
       backgroundColor: isHighContrast ? COLORS.secondary.lightest : COLORS.secondary.main,
@@ -766,7 +849,47 @@ const createStyles = (isHighContrast: boolean) =>
     },
     dictationButtonText: {
       color: isHighContrast ? COLORS.text.primary : COLORS.text.primary,
-      fontSize: 26,
+      fontSize: 24,
       fontWeight: "bold",
+    },
+    dictationButtonTextActive: {
+      color: COLORS.common.white,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.7)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    modalContent: {
+      backgroundColor: COLORS.background.default,
+      borderRadius: 20,
+      padding: 40,
+      alignItems: "center",
+      minWidth: 300,
+      maxWidth: "80%",
+      borderWidth: 4,
+      borderColor: COLORS.primary.main,
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 10,
+    },
+    modalTitle: {
+      fontSize: 28,
+      fontWeight: "bold",
+      color: COLORS.text.primary,
+      marginTop: 20,
+      marginBottom: 12,
+    },
+    modalMessage: {
+      fontSize: 22,
+      color: COLORS.text.secondary,
+      textAlign: "center",
+      lineHeight: 32,
     },
   });

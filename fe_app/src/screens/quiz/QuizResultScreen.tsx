@@ -20,7 +20,7 @@ import { COLORS } from "../../constants/colors";
 import { HEADER_MIN_HEIGHT } from "../../constants/dimensions";
 import { useTheme } from "../../contexts/ThemeContext";
 import { createCommonStyles } from "../../styles/commonStyles";
-import { QuizGradingResultItem } from "../../types/api/quizApiTypes";
+import { QuizAnswerRequest, QuizGradingResultItem } from "../../types/api/quizApiTypes";
 
 export default function QuizResultScreen() {
   const navigation = useNavigation<QuizResultScreenNavigationProp>();
@@ -32,7 +32,7 @@ export default function QuizResultScreen() {
   const commonStyles = React.useMemo(() => createCommonStyles(colors), [colors]);
 
   const totalQuestions = gradingResults.length;
-  const correctAnswersCount = gradingResults.filter(r => r.is_correct).length;
+  const correctAnswersCount = gradingResults.filter(r => r.isCorrect).length;
 
   const [showAllQuestions, setShowAllQuestions] = useState(false);
 
@@ -40,8 +40,8 @@ export default function QuizResultScreen() {
     useContext(TriggerContext);
 
   const percentage = totalQuestions > 0 ? Math.round((correctAnswersCount / totalQuestions) * 100) : 0;
-  const wrongAnswers = gradingResults.filter(r => !r.is_correct);
-  const correctAnswers = gradingResults.filter(r => r.is_correct);
+  const wrongAnswers = gradingResults.filter(r => !r.isCorrect);
+  const correctAnswers = gradingResults.filter(r => r.isCorrect);
 
   useEffect(() => {
     const announcement = `퀴즈 완료. ${totalQuestions}문제 중 ${correctAnswersCount}문제 정답. 정답률 ${percentage}퍼센트. ${
@@ -198,17 +198,15 @@ export default function QuizResultScreen() {
       return null;
     }
 
-    const userAnswer = userAnswers.find(ua => ua.quizId === resultItem.id)?.answer || "(답변 없음)";
-
     // 접근성 레이블 생성
     let accessibilityLabel = `문제 ${resultItem.question_number}. ${
-      resultItem.title
+      resultItem.title // question_content 대신 title 사용
     }. `;
 
-    if (resultItem.is_correct) {
-      accessibilityLabel += `정답입니다. 제출한 답: ${userAnswer}`;
+    if (resultItem.isCorrect) {
+      accessibilityLabel += `정답입니다. 제출한 답: ${resultItem.userAnswer}`;
     } else {
-      accessibilityLabel += `오답입니다. 제출한 답: ${userAnswer}. 정답은 ${resultItem.correct_answer}입니다`;
+      accessibilityLabel += `오답입니다. 제출한 답: ${resultItem.userAnswer}. 정답은 ${resultItem.correct_answer}입니다`;
     }
 
     return (
@@ -216,7 +214,7 @@ export default function QuizResultScreen() {
         key={resultItem.id}
         style={[
           styles.questionCard,
-          resultItem.is_correct ? styles.correctCard : styles.wrongCard,
+          resultItem.isCorrect ? styles.correctCard : styles.wrongCard,
           emphasize && styles.emphasizedCard,
         ]}
         accessible={true}
@@ -231,11 +229,11 @@ export default function QuizResultScreen() {
           <View
             style={[
               styles.resultBadge,
-              resultItem.is_correct ? styles.correctBadge : styles.wrongBadge,
+              resultItem.isCorrect ? styles.correctBadge : styles.wrongBadge,
             ]}
           >
             <Text style={styles.resultBadgeText}>
-              {resultItem.is_correct ? "✓ 정답" : "✗ 오답"}
+              {resultItem.isCorrect ? "✓ 정답" : "✗ 오답"}
             </Text>
           </View>
         </View>
@@ -251,30 +249,30 @@ export default function QuizResultScreen() {
           {/* 선택한 답 */}
           <View style={styles.answerRow}>
             <Text style={styles.answerLabel}>
-              {resultItem.is_correct ? "제출한 답 (정답)" : "제출한 답 (오답)"}
+              {resultItem.isCorrect ? "제출한 답 (정답)" : "제출한 답 (오답)"}
             </Text>
             <View
               style={[
                 styles.answerBox,
-                resultItem.is_correct ? styles.answerBoxCorrect : styles.answerBoxWrong,
+                resultItem.isCorrect ? styles.answerBoxCorrect : styles.answerBoxWrong,
               ]}
             >
               <Text
                 style={[
                   styles.answerBoxText,
-                  resultItem.is_correct
+                  resultItem.isCorrect
                     ? styles.answerBoxTextCorrect
                     : styles.answerBoxTextWrong,
                 ]}
               >
-                {resultItem.is_correct ? "✓ " : "✗ "}
-                {userAnswer}
+                {resultItem.isCorrect ? "✓ " : "✗ "}
+                {resultItem.userAnswer || "(답변 없음)"}
               </Text>
             </View>
           </View>
 
           {/* 오답일 경우 정답 표시 */}
-          {!resultItem.is_correct && (
+          {!resultItem.isCorrect && (
             <View style={styles.answerRow}>
               <Text style={styles.answerLabel}>정답</Text>
               <View style={[styles.answerBox, styles.answerBoxCorrect]}>
@@ -283,6 +281,16 @@ export default function QuizResultScreen() {
                 >
                   ✓ {resultItem.correct_answer || "(정답 없음)"}
                 </Text>
+              </View>
+            </View>
+          )}
+
+          {/* AI 피드백 */}
+          {!resultItem.isCorrect && resultItem.feedback && (
+            <View style={styles.feedbackSection}>
+              <Text style={styles.feedbackLabel}>AI 피드백</Text>
+              <View style={styles.feedbackBox}>
+                <Text style={styles.feedbackText}>{resultItem.feedback}</Text>
               </View>
             </View>
           )}
@@ -318,16 +326,16 @@ export default function QuizResultScreen() {
           <Text style={styles.quizTitle}>{material.title}</Text>
 
           <View style={styles.scoreCircle}>
-            <Text
-              style={styles.scoreText}
+            <View
+              style={styles.scoreContainer}
               accessible={true}
-              accessibilityLabel={`${totalQuestions}문제 중 ${correctAnswersCount}문제 정답`}
+              accessibilityLabel={`${correctAnswersCount} out of ${totalQuestions} questions correct`}
               accessibilityRole="text"
             >
-              {correctAnswersCount}
-            </Text>
-            <Text style={styles.scoreDivider}>/</Text>
-            <Text style={styles.totalText}>{totalQuestions}</Text>
+              <Text style={styles.scoreText}>{correctAnswersCount}</Text>
+              <Text style={styles.scoreDivider}>/</Text>
+              <Text style={styles.totalText}>{totalQuestions}</Text>
+            </View>
           </View>
 
           <Text
@@ -364,7 +372,7 @@ export default function QuizResultScreen() {
             {/* 틀린 문제 카드들 */}
             <View style={styles.cardsContainer}>
               {gradingResults.map((result) => {
-                if (result && !result.is_correct) {
+                if (result && !result.isCorrect) {
                   return renderQuestionCard(result, true);
                 }
                 return null;
@@ -417,7 +425,7 @@ export default function QuizResultScreen() {
             {showAllQuestions && (
               <View style={styles.cardsContainer}>
                 {gradingResults.map((result) => {
-                  if (result && result.is_correct) {
+                  if (result && result.isCorrect) {
                     return renderQuestionCard(result, false);
                   }
                   return null;
@@ -530,16 +538,21 @@ const createStyles = (isHighContrast: boolean) => StyleSheet.create({
     marginBottom: 24,
   },
   scoreCircle: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
+    width: "100%", // 너비를 꽉 채움
+    height: "auto", // 높이는 내용에 맞게 자동 조절
+    borderRadius: 20, // 둥근 모서리 사각형으로 변경
     backgroundColor: COLORS.primary.lightest,
     borderWidth: 8,
     borderColor: COLORS.primary.main,
     justifyContent: "center",
     alignItems: "center",
-    flexDirection: "row",
+    paddingVertical: 20, // 상하 여백 추가
     marginBottom: 20,
+  },
+  scoreContainer: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "center",
   },
   scoreText: {
     fontSize: 56,
@@ -691,6 +704,27 @@ const createStyles = (isHighContrast: boolean) => StyleSheet.create({
     color: COLORS.text.primary,
     lineHeight: 38,
     fontWeight: "500",
+  },
+  feedbackSection: {
+    marginTop: 16,
+    gap: 8,
+  },
+  feedbackLabel: {
+    fontSize: 17,
+    color: COLORS.primary.main,
+    fontWeight: "bold",
+  },
+  feedbackBox: {
+    backgroundColor: COLORS.primary.lightest,
+    borderColor: COLORS.primary.main,
+    borderWidth: 2,
+    borderRadius: 12,
+    padding: 16,
+  },
+  feedbackText: {
+    fontSize: 20,
+    color: COLORS.text.primary,
+    lineHeight: 30,
   },
   cardAnswers: {
     gap: 12,
