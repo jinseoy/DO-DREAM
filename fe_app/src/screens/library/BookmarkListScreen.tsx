@@ -34,7 +34,11 @@ import type { BookmarkListItem } from "../../types/api/bookmarkApiTypes";
 import SectionRenderer from "../../components/SectionRenderer";
 import { useTheme } from "../../contexts/ThemeContext";
 import { parseDocument } from "htmlparser2";
-import { HEADER_BTN_HEIGHT, HEADER_MIN_HEIGHT } from "../../constants/dimensions";
+import {
+  HEADER_BTN_HEIGHT,
+  HEADER_MIN_HEIGHT,
+} from "../../constants/dimensions";
+import { COLORS } from "../../constants/colors";
 import { Element, Node, DataNode } from "domhandler";
 import { textContent, isTag, findOne } from "domutils";
 import type { Section } from "../../types/chapter";
@@ -143,10 +147,13 @@ function parseHTMLForBookmark(html: string, baseId: number): Section[] {
 export default function BookmarkListScreen() {
   const navigation = useNavigation<BookmarkListScreenNavigationProp>();
   const route = useRoute<BookmarkListScreenRouteProp>();
-  const { material, chapterId } = route.params;
+  const { material } = route.params;
 
-  const { colors, fontSize: themeFont } = useTheme();
-  const styles = useMemo(() => createStyles(colors, themeFont), [colors, themeFont]);
+  const { colors, fontSize: themeFont, isHighContrast } = useTheme();
+  const styles = useMemo(
+    () => createStyles(colors, themeFont, isHighContrast),
+    [colors, themeFont, isHighContrast]
+  );
   const commonStyles = useMemo(() => createCommonStyles(colors), [colors]);
 
   // 뷰 모델 타입 확장
@@ -154,7 +161,11 @@ export default function BookmarkListScreen() {
     sectionType: "heading" | "paragraph" | "list";
   };
 
-  const [bookmarks, setBookmarks] = useState<BookmarkViewItem[]>([]);
+  type BookmarksByChapter = {
+    [chapterId: string]: BookmarkViewItem[];
+  };
+  const [bookmarksByChapter, setBookmarksByChapter] =
+    useState<BookmarksByChapter>({});
   const [isReviewMode, setIsReviewMode] = useState(false);
   const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -171,11 +182,6 @@ export default function BookmarkListScreen() {
     return [];
   }, [material]);
 
-  const chapter: Chapter | null =
-    chapterId !== undefined
-      ? chaptersFromJson.find((c) => c.chapterId === chapterId) ?? null
-      : null;
-
   // TriggerContext 사용
   const { setCurrentScreenId, registerVoiceHandlers } =
     useContext(TriggerContext);
@@ -185,24 +191,31 @@ export default function BookmarkListScreen() {
     try {
       const all = await fetchAllBookmarks();
 
-      const chapterIdStr = String(chapterId);
-      const filtered: BookmarkViewItem[] = all
-        .filter(
-          (b) => b.materialId === material.id && b.titleId === chapterIdStr
-        )
-        .map((b) => ({
-          ...b,
-          sectionType: "paragraph", // 저장된 contents는 문자열이므로 기본적으로 paragraph 처리
-        }));
+      const materialBookmarks = all.filter((b) => b.materialId === material.id);
 
-      setBookmarks(filtered);
+      const groupedByChapter: BookmarksByChapter = materialBookmarks.reduce(
+        (acc, bookmark) => {
+          const viewItem: BookmarkViewItem = {
+            ...bookmark,
+            sectionType: "paragraph",
+          };
+          if (!acc[bookmark.titleId]) {
+            acc[bookmark.titleId] = [];
+          }
+          acc[bookmark.titleId].push(viewItem);
+          return acc;
+        },
+        {} as BookmarksByChapter
+      );
+
+      setBookmarksByChapter(groupedByChapter);
     } catch (error) {
       console.error("[BookmarkListScreen] 저장 목록 로드 실패:", error);
       AccessibilityInfo.announceForAccessibility(
         "저장된 내용을 불러오지 못했습니다."
       );
     }
-  }, [material.id, chapterId]);
+  }, [material.id]);
 
   useEffect(() => {
     loadBookmarks();
@@ -210,7 +223,10 @@ export default function BookmarkListScreen() {
 
   // 화면 진입 안내
   useEffect(() => {
-    const count = bookmarks.length;
+    const count = Object.values(bookmarksByChapter).reduce(
+      (sum, b) => sum + b.length,
+      0
+    );
     const announcement =
       count > 0
         ? `저장된 내용 화면입니다. 지금 저장된 내용이 ${count}개 있습니다. 항목을 탭하면 그 위치로 이동하고, 길게 누르면 내용을 들을 수 있습니다.`
@@ -221,7 +237,7 @@ export default function BookmarkListScreen() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [bookmarks.length]);
+  }, [bookmarksByChapter]);
 
   // 복습 모드 종료 시 TTS 정지
   useEffect(() => {
@@ -290,6 +306,11 @@ export default function BookmarkListScreen() {
 
   // 복습 모드 시작 (저장된 contents 순서대로)
   const handleStartReviewMode = useCallback(async () => {
+    const bookmarks = Object.values(bookmarksByChapter).flat();
+    if (bookmarks.length === 0) {
+      AccessibilityInfo.announceForAccessibility("저장된 내용이 없습니다.");
+      return;
+    }
     if (bookmarks.length === 0) {
       AccessibilityInfo.announceForAccessibility("저장된 내용이 없습니다.");
       return;
@@ -302,7 +323,7 @@ export default function BookmarkListScreen() {
       // 북마크들을 섹션 구조와 동일하게 재생할 수 있도록 SectionRenderer 규칙 대비
       const sections = bookmarks.map((b, idx) => ({
         id: idx,
-        text: b.contents,
+        text: textContent(parseDocument(b.contents)),
         type: b.sectionType ?? "paragraph",
       }));
 
@@ -365,7 +386,7 @@ export default function BookmarkListScreen() {
         "복습 모드를 시작할 수 없습니다."
       );
     }
-  }, [bookmarks]);
+  }, [bookmarksByChapter]);
 
   // 복습 모드 중지
   const handleStopReviewMode = useCallback(async () => {
@@ -397,9 +418,22 @@ export default function BookmarkListScreen() {
               titleId: bookmark.titleId,
             });
 
-            setBookmarks((prev) =>
-              prev.filter((b) => b.bookmarkId !== bookmark.bookmarkId)
-            );
+            setBookmarksByChapter((prev: BookmarksByChapter) => {
+              const newBookmarksByChapter = { ...prev };
+              const chapterId = bookmark.titleId;
+
+              if (newBookmarksByChapter[chapterId]) {
+                newBookmarksByChapter[chapterId] = newBookmarksByChapter[
+                  chapterId
+                ].filter(
+                  (b: BookmarkViewItem) => b.bookmarkId !== bookmark.bookmarkId
+                );
+                if (newBookmarksByChapter[chapterId].length === 0) {
+                  delete newBookmarksByChapter[chapterId];
+                }
+              }
+              return newBookmarksByChapter;
+            });
 
             AccessibilityInfo.announceForAccessibility(
               "저장된 내용을 삭제했습니다."
@@ -427,7 +461,7 @@ export default function BookmarkListScreen() {
 
     navigation.navigate("Player", {
       material,
-      chapterId,
+      chapterId: Number(bookmark.titleId),
       fromStart: false,
       initialSectionIndex: 0,
     });
@@ -495,9 +529,8 @@ export default function BookmarkListScreen() {
             accessible={true}
             accessibilityRole="header"
           >
-            저장된 내용
+            저장 목록
           </Text>
-          <Text style={styles.countText}>{bookmarks.length}개</Text>
         </View>
 
         <View style={styles.headerRight}>
@@ -509,10 +542,17 @@ export default function BookmarkListScreen() {
       </View>
 
       {/* 챕터 정보 */}
-      <View style={styles.chapterInfo}>
-        <Text style={styles.subjectText}>{material.title}</Text>
-        <Text style={styles.chapterTitle}>
-          {chapter ? chapter.title : `${chapterId} 챕터`}
+      <View style={styles.infoSection}>
+        <Text style={styles.materialTitle} accessibilityRole="text">
+          {material.title}
+        </Text>
+        <Text style={styles.itemCount}>
+          총{" "}
+          {Object.values(bookmarksByChapter).reduce(
+            (sum, b) => sum + b.length,
+            0
+          )}
+          개의 저장된 내용
         </Text>
       </View>
 
@@ -524,7 +564,7 @@ export default function BookmarkListScreen() {
         contentContainerStyle={styles.listContent}
         accessible={false}
       >
-        {bookmarks.length === 0 ? (
+        {Object.keys(bookmarksByChapter).length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text
               style={styles.emptyText}
@@ -542,76 +582,73 @@ export default function BookmarkListScreen() {
             </Text>
           </View>
         ) : (
-          bookmarks.map((bookmark, index) => {
-            const isActive = isReviewMode && currentReviewIndex === index;
+          Object.entries(bookmarksByChapter).map(([chapId, bookmarks]) => {
+            const chapter = chaptersFromJson.find(
+              (c) => c.chapterId === Number(chapId)
+            );
 
             return (
-              <View
-                key={bookmark.bookmarkId}
-                style={[
-                  styles.bookmarkCard,
-                  isActive && styles.activeBookmarkCard,
-                ]}
-              >
-                {/* 북마크 내용을 누르면 이동 / 길게 누르면 재생 */}
-                <TouchableOpacity
-                  style={styles.bookmarkContent}
-                  onPress={() => handleGoToSection(bookmark)}
-                  onLongPress={() => handlePlayBookmark(bookmark)}
-                  accessible={true}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${
-                    index + 1
-                  }번째 저장된 내용. ${getSectionTypeLabel(
-                    bookmark.sectionType
-                  )}. 제목 ${bookmark.title}. 저장 시간 ${formatDate(
-                    bookmark.createdAt
-                  )}.`}
-                  accessibilityHint="탭하면 그 위치로 이동하고, 길게 누르면 내용을 들을 수 있습니다."
-                >
-                  {/* 상단 번호 + 타입 */}
-                  <View style={styles.bookmarkHeader}>
-                    <Text style={styles.sectionNumber}>#{index + 1}</Text>
-                    <Text style={styles.sectionTypeBadge}>
-                      {getSectionTypeLabel(bookmark.sectionType)}
-                    </Text>
-                  </View>
+              <View key={chapId} style={styles.chapterGroup}>
+                {/* <Text style={styles.chapterTitle}>{chapter?.title || `챕터 ${chapId}`}</Text> */}
+                {bookmarks.map((bookmark, index) => {
+                  const isActive = isReviewMode && currentReviewIndex === index; // TODO: 복습모드 인덱스 계산 로직 수정 필요
 
-                  {/* 제목 */}
-                  <Text style={styles.bookmarkTitle}>{bookmark.title}</Text>
+                  return (
+                    <View
+                      key={bookmark.bookmarkId}
+                      style={[
+                        styles.bookmarkCard,
+                        isActive && styles.activeBookmarkCard,
+                      ]}
+                    >
+                      {/* 북마크 내용을 누르면 이동 / 길게 누르면 재생 */}
+                      <TouchableOpacity
+                        style={styles.bookmarkContent}
+                        onPress={() => handleGoToSection(bookmark)}
+                        onLongPress={() => handlePlayBookmark(bookmark)}
+                        accessible={true}
+                        accessibilityRole="button"
+                        accessibilityLabel={`저장된 내용: ${
+                          bookmark.title
+                        }. ${formatDate(bookmark.createdAt)}.`}
+                        accessibilityHint="탭하면 해당 위치로 이동하고, 길게 누르면 내용을 들을 수 있습니다."
+                      >
+                        {/* 상단 번호 + 타입 */}
+                        <View style={styles.bookmarkHeader}>
+                          <Text style={styles.sectionNumber}>#{chapId}</Text>
+                          {/* <Text style={styles.sectionTypeBadge}>
+                            {getSectionTypeLabel(bookmark.sectionType)}
+                          </Text> */}
+                        </View>
 
-                  {/* SectionRenderer 적용 */}
-                  <View style={styles.sectionRendererWrapper}>
-                    <View style={styles.sectionRendererWrapper}>
-                      {parseHTMLForBookmark(
-                        bookmark.contents,
-                        bookmark.bookmarkId
-                      ).map((sec) => (
-                        <SectionRenderer key={sec.id} section={sec} />
-                      ))}
+                        {/* 제목 */}
+                        <Text style={styles.bookmarkTitle}>
+                          {bookmark.title}
+                        </Text>
+
+                        {/* 하단 날짜 */}
+                        <View style={styles.metaContainer}>
+                          <Text style={styles.dateText}>
+                            {formatDate(bookmark.createdAt)}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      {/* 삭제 버튼 */}
+                      <TouchableOpacity
+                        style={styles.deleteButton}
+                        onPress={() => handleDeleteBookmark(bookmark)}
+                        accessible={true}
+                        accessibilityRole="button"
+                        accessibilityLabel="저장 삭제"
+                        accessibilityHint="두 번 탭하면 이 저장된 내용을 삭제합니다."
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                      >
+                        <Text style={styles.deleteButtonText}>삭제</Text>
+                      </TouchableOpacity>
                     </View>
-                  </View>
-
-                  {/* 하단 날짜 */}
-                  <View style={styles.bookmarkFooter}>
-                    <Text style={styles.dateText}>
-                      {formatDate(bookmark.createdAt)}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-
-                {/* 삭제 버튼 */}
-                <TouchableOpacity
-                  style={styles.deleteButton}
-                  onPress={() => handleDeleteBookmark(bookmark)}
-                  accessible={true}
-                  accessibilityRole="button"
-                  accessibilityLabel="저장된 내용 삭제"
-                  accessibilityHint="이 저장된 내용을 삭제합니다."
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                >
-                  <Text style={styles.deleteButtonText}>🗑️</Text>
-                </TouchableOpacity>
+                  );
+                })}
               </View>
             );
           })
@@ -619,54 +656,50 @@ export default function BookmarkListScreen() {
       </ScrollView>
 
       {/* 하단: 복습 모드 버튼 */}
-      {bookmarks.length > 0 && (
+      {Object.keys(bookmarksByChapter).length > 0 && (
         <View style={styles.bottomContainer}>
-          {isReviewMode ? (
-            <View style={styles.reviewModeActive}>
-              <View style={styles.reviewInfo}>
-                <Text style={styles.reviewInfoText}>
-                  {`🔄 복습 중: ${currentReviewIndex + 1} / ${
-                    bookmarks.length
-                  }`}
-                </Text>
-                <Text style={styles.reviewSubText}>
-                  각 저장된 내용을 2회씩 반복합니다
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.stopButton}
-                onPress={handleStopReviewMode}
-                accessible={true}
-                accessibilityLabel="복습 모드 중지"
-                accessibilityRole="button"
-                accessibilityHint="복습을 멈춥니다."
-              >
-                <Text style={styles.stopButtonText}>⏹ 중지</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.reviewButton}
-              onPress={handleStartReviewMode}
-              accessible={true}
-              accessibilityLabel="복습 모드 시작"
-              accessibilityRole="button"
-              accessibilityHint="저장된 내용을 순서대로 두 번씩 들을 수 있습니다."
-            >
-              <Text style={styles.reviewButtonText}>🔄 복습 모드</Text>
-              <Text style={styles.reviewButtonSubtext}>
-                저장된 내용을 각 2회씩 반복 재생
-              </Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={[
+              styles.reviewButton,
+              isReviewMode && styles.reviewButtonActive,
+            ]}
+            onPress={
+              isReviewMode ? handleStopReviewMode : handleStartReviewMode
+            }
+            accessible={true}
+            accessibilityLabel={
+              isReviewMode ? "복습 모드 중지" : "복습 모드 시작"
+            }
+            accessibilityRole="button"
+            accessibilityHint={
+              isReviewMode
+                ? "복습을 멈춥니다."
+                : "저장된 내용을 순서대로 두 번씩 들을 수 있습니다."
+            }
+          >
+            {isReviewMode ? (
+              <>
+                <Text style={styles.reviewButtonText}>복습 중지</Text>
+                <Text style={styles.reviewButtonSubtext}>2회씩 반복 중</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.reviewButtonText}>복습 모드</Text>
+                <Text style={styles.reviewButtonSubtext}>2회씩 반복 재생</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
       )}
     </SafeAreaView>
   );
 }
-const createStyles = (colors: any, fontSize: (size: number) => number) => {
-  const isPrimaryColors = 'primary' in colors;
+const createStyles = (
+  colors: any,
+  fontSize: (size: number) => number,
+  isHighContrast: boolean
+) => {
+  const isPrimaryColors = "primary" in colors;
 
   return StyleSheet.create({
     container: {
@@ -676,247 +709,250 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
 
     header: {
       borderBottomWidth: 3,
-      borderBottomColor: isPrimaryColors ? colors.primary.main : colors.border.default,
+      borderBottomColor: isHighContrast
+        ? COLORS.secondary.main
+        : isPrimaryColors
+        ? colors.primary.main
+        : colors.border.default,
       minHeight: HEADER_MIN_HEIGHT,
     },
-  headerTitle: {
-    alignItems: "center",
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    height: HEADER_BTN_HEIGHT,
-  },
-  titleText: {
-    fontSize: fontSize(28),
-    fontWeight: "bold",
-    color: colors.text.primary,
-  },
-  countText: {
-    fontSize: fontSize(22),
-    color: colors.text.secondary,
-    marginTop: 4,
-  },
+    headerTitle: {
+      alignItems: "center",
+    },
+    headerRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      height: HEADER_BTN_HEIGHT,
+    },
+    titleText: {
+      fontSize: fontSize(28),
+      fontWeight: "bold",
+      color: colors.text.primary,
+    },
+    countText: {
+      fontSize: fontSize(22),
+      color: colors.text.secondary,
+      marginTop: 4,
+    },
 
-  /* -------------------------
-   * Chapter Info
-   * ------------------------- */
-  chapterInfo: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: colors.background.elevated || colors.background.default,
-    borderBottomWidth: 2,
-    borderBottomColor: isPrimaryColors ? colors.border.light : colors.border.default,
-  },
-  subjectText: {
-    fontSize: fontSize(22),
-    color: colors.text.secondary,
-    marginBottom: 4,
-  },
-  chapterTitle: {
-    fontSize: fontSize(26),
-    fontWeight: "bold",
-    color: colors.text.primary,
-  },
+    /* -------------------------
+     * Chapter Info
+     * (infoSection from QuestionListScreen)
+     * ------------------------- */
+    infoSection: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderBottomWidth: 2,
+      borderBottomColor: isHighContrast
+        ? COLORS.secondary.main
+        : isPrimaryColors
+        ? colors.primary.main
+        : colors.border.default,
+      backgroundColor: colors.background.elevated || colors.background.default,
+    },
+    materialTitle: {
+      fontSize: fontSize(26),
+      fontWeight: "bold",
+      color: colors.text.primary,
+      marginBottom: 8,
+    },
+    itemCount: {
+      fontSize: fontSize(17),
+      color: colors.text.secondary,
+    },
 
-  /* -------------------------
-   * List Area
-   * ------------------------- */
-  listArea: {
-    flex: 1,
-  },
-  listContent: {
-    padding: 16,
-  },
+    /* -------------------------
+     * List Area
+     * ------------------------- */
+    listArea: {
+      flex: 1,
+    },
+    listContent: {
+      padding: 16,
+    },
 
-  /* -------------------------
-   * Empty
-   * ------------------------- */
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 80,
-  },
-  emptyText: {
-    fontSize: fontSize(28),
-    fontWeight: "bold",
-    color: colors.text.tertiary || colors.text.secondary,
-    marginBottom: 12,
-  },
-  emptyHint: {
-    fontSize: fontSize(24),
-    color: isPrimaryColors ? colors.border.main : colors.border.default,
-    textAlign: "center",
-    lineHeight: 34,
-  },
+    /* -------------------------
+     * Empty
+     * ------------------------- */
+    emptyContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingVertical: 80,
+    },
+    emptyText: {
+      fontSize: fontSize(28),
+      fontWeight: "bold",
+      color: colors.text.tertiary || colors.text.secondary,
+      marginBottom: 12,
+    },
+    emptyHint: {
+      fontSize: fontSize(24),
+      color: isPrimaryColors ? colors.border.main : colors.border.default,
+      textAlign: "center",
+      lineHeight: 34,
+    },
 
-  /* -------------------------
-   * Bookmark Card
-   * ------------------------- */
-  bookmarkCard: {
-    backgroundColor: colors.background.default,
-    borderRadius: 16,
-    marginBottom: 20,
-    borderWidth: 3,
-    borderColor: isPrimaryColors ? colors.secondary.main : colors.accent.secondary,
-    overflow: "hidden",
-    flexDirection: "row",
-    minHeight: 150,
-  },
-  activeBookmarkCard: {
-    borderColor: colors.status.success,
-    backgroundColor: isPrimaryColors ? colors.status.successLight : colors.background.elevated,
-  },
+    chapterGroup: {
+      marginBottom: 24,
+    },
 
-  bookmarkContent: {
-    flex: 1,
-    padding: 20,
-  },
+    chapterTitle: {
+      fontSize: fontSize(22),
+      fontWeight: "bold",
+      color: colors.text.secondary,
+      marginBottom: 16,
+      paddingBottom: 8,
+      borderBottomWidth: 2,
+      borderBottomColor: isPrimaryColors
+        ? colors.border.light
+        : colors.border.default,
+    },
 
-  bookmarkHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  sectionNumber: {
-    fontSize: fontSize(24),
-    fontWeight: "bold",
-    color: isPrimaryColors ? colors.secondary.dark : colors.accent.secondary,
-  },
-  sectionTypeBadge: {
-    fontSize: fontSize(18),
-    color: colors.text.secondary,
-    backgroundColor: isPrimaryColors ? colors.secondary.lightest : colors.background.elevated,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 8,
-    fontWeight: "600",
-  },
+    /* -------------------------
+     * Bookmark Card
+     * ------------------------- */
+    bookmarkCard: {
+      backgroundColor: isPrimaryColors
+        ? colors.primary.default
+        : colors.background.elevated,
+      borderRadius: 12,
+      marginBottom: 20,
+      borderWidth: 2,
+      borderColor: isPrimaryColors ? colors.primary.main : colors.accent.primary,
+      overflow: "hidden",
+    },
+    activeBookmarkCard: {
+      borderColor: colors.status.success,
+      backgroundColor: isPrimaryColors
+        ? colors.status.successLight
+        : colors.background.elevated,
+    },
+    bookmarkContent: {
+      flex: 1,
+      padding: 16,
+    },
 
-  bookmarkTitle: {
-    fontSize: fontSize(24),
-    fontWeight: "700",
-    color: colors.text.primary,
-    marginBottom: 8,
-  },
+    bookmarkHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 8,
+    },
+    sectionNumber: {
+      fontSize: fontSize(24),
+      fontWeight: "bold",
+      color: isPrimaryColors ? colors.secondary.dark : colors.accent.secondary,
+    },
+    sectionTypeBadge: {
+      fontSize: fontSize(18),
+      color: colors.text.secondary,
+      backgroundColor: isPrimaryColors
+        ? colors.secondary.lightest
+        : colors.background.elevated,
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      borderRadius: 8,
+      fontWeight: "600",
+    },
 
-  /* SectionRenderer Wrapper */
-  sectionRendererWrapper: {
-    marginTop: 6,
-    marginBottom: 16,
-  },
+    bookmarkTitle: {
+      fontSize: fontSize(24),
+      fontWeight: "700",
+      color: colors.text.primary,
+      marginBottom: 8,
+    },
 
-  bookmarkText: {
-    fontSize: fontSize(20),
-    lineHeight: 34,
-    color: colors.text.secondary,
-    fontWeight: "500",
-  },
+    /* SectionRenderer Wrapper */
+    sectionRendererWrapper: {
+      marginTop: 6,
+      marginBottom: 16,
+    },
 
-  bookmarkFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  dateText: {
-    fontSize: fontSize(16),
-    color: colors.text.tertiary || colors.text.secondary,
-  },
+    bookmarkText: {
+      fontSize: fontSize(20),
+      lineHeight: 34,
+      color: colors.text.secondary,
+      fontWeight: "500",
+    },
 
-  /* -------------------------
-   * Delete Button
-   * ------------------------- */
-  deleteButton: {
-    width: 80,
-    backgroundColor: colors.status.error,
-    justifyContent: "center",
-    alignItems: "center",
-    minHeight: 150,
-  },
-  deleteButtonText: {
-    fontSize: fontSize(36),
-    color: isPrimaryColors ? colors.text.inverse : colors.text.primary,
-  },
+    metaContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: 12,
+    },
+    dateText: {
+      fontSize: fontSize(15),
+      color: colors.text.tertiary || colors.text.secondary,
+    },
 
-  /* -------------------------
-   * Bottom review controls
-   * ------------------------- */
-  bottomContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderTopWidth: 3,
-    borderTopColor: isPrimaryColors ? colors.border.light : colors.border.default,
-    backgroundColor: colors.background.elevated || colors.background.default,
-  },
+    /* -------------------------
+     * Delete Button
+     * ------------------------- */
+    deleteButton: {
+      backgroundColor: colors.status.error,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      alignItems: "center",
+      borderTopWidth: 2,
+      borderTopColor: isPrimaryColors
+        ? colors.border.light
+        : colors.border.default,
+    },
+    deleteButtonText: {
+      fontSize: fontSize(16),
+      fontWeight: "700",
+      color: isPrimaryColors ? colors.text.inverse : colors.text.primary,
+    },
 
-  reviewButton: {
-    backgroundColor: colors.status.success,
-    borderRadius: 16,
-    padding: 24,
-    alignItems: "center",
-    minHeight: 100,
-    justifyContent: "center",
-    borderWidth: 3,
-    borderColor: colors.status.success,
-  },
-  reviewButtonText: {
-    fontSize: fontSize(30),
-    fontWeight: "bold",
-    color: isPrimaryColors ? colors.text.inverse : colors.text.primary,
-    marginBottom: 8,
-  },
-  reviewButtonSubtext: {
-    fontSize: fontSize(22),
-    color: isPrimaryColors ? colors.status.successLight : colors.text.secondary,
-    fontWeight: "700",
-  },
+    /* -------------------------
+     * Bottom review controls
+     * ------------------------- */
+    bottomContainer: {
+      paddingHorizontal: 20,
+      paddingVertical: 20,
+      borderTopWidth: 3,
+      borderTopColor: isPrimaryColors
+        ? colors.border.light
+        : colors.border.default,
+      backgroundColor: colors.background.elevated || colors.background.default,
+    },
 
-  reviewModeActive: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  reviewInfo: {
-    flex: 1,
-  },
-  reviewInfoText: {
-    fontSize: fontSize(26),
-    fontWeight: "bold",
-    color: colors.status.success,
-    marginBottom: 6,
-  },
-  reviewSubText: {
-    fontSize: fontSize(22),
-    color: colors.text.secondary,
-    fontWeight: "600",
-  },
+    reviewButton: {
+      backgroundColor: colors.status.success,
+      borderRadius: 16,
+      padding: 24,
+      alignItems: "center",
+      minHeight: 100,
+      justifyContent: "center",
+      borderWidth: 3,
+      borderColor: colors.status.success,
+    },
+    reviewButtonActive: {
+      backgroundColor: colors.status.error,
+      borderColor: colors.status.error,
+    },
+    reviewButtonText: {
+      fontSize: fontSize(30),
+      fontWeight: "bold",
+      color: isPrimaryColors ? colors.text.inverse : colors.text.primary,
+      marginBottom: 8,
+    },
+    reviewButtonSubtext: {
+      fontSize: fontSize(22),
+      color: isPrimaryColors
+        ? colors.status.successLight
+        : colors.text.secondary,
+      fontWeight: "700",
+    },
 
-  stopButton: {
-    backgroundColor: colors.status.error,
-    borderRadius: 12,
-    paddingVertical: 20,
-    paddingHorizontal: 28,
-    minHeight: 72,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: colors.status.error,
-  },
-  stopButtonText: {
-    fontSize: fontSize(26),
-    fontWeight: "bold",
-    color: isPrimaryColors ? colors.text.inverse : colors.text.primary,
-  },
-
-  /* -------------------------
-   * Error text
-   * ------------------------- */
-  errorText: {
-    fontSize: fontSize(26),
-    color: colors.text.secondary,
-    fontWeight: "600",
-  },
+    /* -------------------------
+     * Error text
+     * ------------------------- */
+    errorText: {
+      fontSize: fontSize(26),
+      color: colors.text.secondary,
+      fontWeight: "600",
+    },
   });
 };
