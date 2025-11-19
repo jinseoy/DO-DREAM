@@ -1,4 +1,4 @@
-import React, { useEffect, useContext, useCallback } from "react";
+import React, { useEffect, useContext, useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -13,49 +13,76 @@ import {
   QuizListScreenNavigationProp,
   QuizListScreenRouteProp,
 } from "../../navigation/navigationTypes";
-import { getQuizzesByChapterId } from "../../data/dummyQuizzes";
-import { getChapterById } from "../../data/dummyChapters";
-import { Quiz } from "../../types/quiz";
+import { QuizQuestion } from "../../types/quiz";
+import { fetchQuizzes } from "../../api/quizApi";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
 import { useTheme } from "../../contexts/ThemeContext";
 import { HEADER_BTN_HEIGHT, HEADER_MIN_HEIGHT } from "../../constants/dimensions";
+import { COLORS } from "../../constants/colors";
+import { createCommonStyles } from "../../styles/commonStyles";
 
 export default function QuizListScreen() {
-  const { colors, fontSize: themeFont } = useTheme();
-  const styles = React.useMemo(() => createStyles(colors, themeFont), [colors, themeFont]);
+  const { colors, fontSize: themeFont, isHighContrast } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors, themeFont, isHighContrast), [colors, themeFont, isHighContrast]);
+  const commonStyles = React.useMemo(() => createCommonStyles(colors), [colors]);
   const navigation = useNavigation<QuizListScreenNavigationProp>();
   const route = useRoute<QuizListScreenRouteProp>();
-  const { material, chapterId } = route.params;
+  const { material } = route.params;
 
-  const quizzes = getQuizzesByChapterId(chapterId.toString());
-  const chapter = getChapterById(chapterId);
+  const [quizzes, setQuizzes] = useState<QuizQuestion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const { setCurrentScreenId, registerVoiceHandlers } =
     useContext(TriggerContext);
 
   useEffect(() => {
-    const announcement = `${material.title}, ${chapter?.title} 퀴즈 목록. ${quizzes.length}개의 퀴즈가 있습니다. 상단의 음성 명령 버튼을 두 번 탭한 후, 첫 번째 퀴즈, 두 번째 퀴즈, 1번 퀴즈, 2번 퀴즈, 마지막 퀴즈, 뒤로 가기와 같이 말할 수 있습니다.`;
-    AccessibilityInfo.announceForAccessibility(announcement);
-  }, [material.title, chapter?.title, quizzes.length]);
+    const loadQuizzes = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const quizData = await fetchQuizzes(material.id);
+        setQuizzes(quizData);
+
+        const announcement = `${material.title} 퀴즈 목록. 총 ${quizData.length}개의 문제가 있습니다. 상단의 말하기 버튼을 두 번 탭한 후, '1번 문제', '마지막 문제', '뒤로 가기'와 같이 말할 수 있습니다.`;
+        AccessibilityInfo.announceForAccessibility(announcement);
+
+      } catch (e) {
+        console.error("[QuizListScreen] 퀴즈 로딩 실패:", e);
+        setError("퀴즈를 불러오는 중 오류가 발생했습니다.");
+        AccessibilityInfo.announceForAccessibility("퀴즈 목록을 불러오는 데 실패했습니다. 네트워크 상태를 확인해 주세요.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadQuizzes();
+  }, [material.id, material.title]);
 
   const handleGoBack = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
 
   const handleQuizPress = useCallback(
-    (quiz: Quiz) => {
-      AccessibilityInfo.announceForAccessibility(`${quiz.title} 시작합니다.`);
-      navigation.navigate("Quiz", { quiz });
+    (quizQuestion: QuizQuestion, index: number) => {
+      AccessibilityInfo.announceForAccessibility(
+        `${index + 1}번 문제. 퀴즈 풀이 화면으로 이동합니다.`
+      );
+      navigation.navigate("Quiz", {
+        material: material,
+        questions: quizzes,
+        startIndex: index,
+      });
     },
-    [navigation]
+    [navigation, material.id, quizzes]
   );
 
   // 🎙 퀴즈 목록 전용 음성 명령(rawText) 처리
   const handleQuizListVoiceRaw = useCallback(
-    (spoken: string) => {
+    (spoken: string): boolean => {
       const raw = spoken.trim().toLowerCase();
-      if (!raw) return;
+      if (!raw) return false;
 
       const normalized = raw.replace(/\s+/g, "");
 
@@ -66,12 +93,13 @@ export default function QuizListScreen() {
           normalized.includes("이전화면으로")
         ) {
           handleGoBack();
+          return true;
         } else {
           AccessibilityInfo.announceForAccessibility(
             "아직 퀴즈가 없습니다. 뒤로 가기라고 말씀하시면 이전 화면으로 돌아갑니다."
           );
+          return false;
         }
-        return;
       }
 
       if (
@@ -79,8 +107,8 @@ export default function QuizListScreen() {
         normalized.includes("마지막문제")
       ) {
         const lastIndex = quizzes.length - 1;
-        handleQuizPress(quizzes[lastIndex]);
-        return;
+        handleQuizPress(quizzes[lastIndex], lastIndex);
+        return true;
       }
 
       if (
@@ -91,8 +119,8 @@ export default function QuizListScreen() {
         normalized.includes("첫문제") ||
         normalized.includes("처음문제")
       ) {
-        handleQuizPress(quizzes[0]);
-        return;
+        handleQuizPress(quizzes[0], 0);
+        return true;
       }
 
       const hanToNum: Record<string, number> = {
@@ -138,8 +166,8 @@ export default function QuizListScreen() {
       }
 
       if (targetIndex !== null) {
-        handleQuizPress(quizzes[targetIndex]);
-        return;
+        handleQuizPress(quizzes[targetIndex], targetIndex);
+        return true;
       }
 
       if (
@@ -149,68 +177,53 @@ export default function QuizListScreen() {
         normalized.includes("이전화면으로")
       ) {
         handleGoBack();
-        return;
+        return true;
       }
 
       console.log("[VoiceCommands][QuizList] 처리할 수 없는 rawText:", spoken);
       AccessibilityInfo.announceForAccessibility(
         "이 화면에서 사용할 수 없는 음성 명령입니다. 첫 번째 퀴즈, 두 번째 퀴즈, 1번 퀴즈, 2번 퀴즈, 마지막 퀴즈, 뒤로 가기처럼 말해 주세요."
       );
+      return false;
     },
     [quizzes, handleGoBack, handleQuizPress]
   );
 
-  useEffect(() => {
+  useEffect(() => { // 음성 명령 핸들러 등록
     setCurrentScreenId("QuizList");
-
     registerVoiceHandlers("QuizList", {
       goBack: handleGoBack,
       rawText: handleQuizListVoiceRaw,
     });
-
     return () => {
       registerVoiceHandlers("QuizList", {});
     };
   }, [
-    setCurrentScreenId,
+    setCurrentScreenId, // handleQuizListVoiceRaw가 quizzes 상태에 의존하므로, quizzes가 바뀔 때마다 핸들러를 새로 등록해야 함
     registerVoiceHandlers,
     handleGoBack,
     handleQuizListVoiceRaw,
   ]);
 
-  const renderQuizItem = ({ item, index }: { item: Quiz; index: number }) => {
-    const quizTypeLabel =
-      item.quizType === "AI_GENERATED" ? "AI 생성" : "선생님 제작";
+  const renderQuizQuestionItem = ({ item, index }: { item: QuizQuestion; index: number }) => {
+    const quizTypeLabel = item.question_type; // 예: 'TERM_DEFINITION'
     const accessibilityLabel = `${index + 1}번. ${
       item.title
-    }. ${quizTypeLabel}. 문제 ${item.questions.length}개.`;
+    }. 문제 유형: ${quizTypeLabel}.`;
 
     return (
       <TouchableOpacity
         style={styles.quizButton}
-        onPress={() => handleQuizPress(item)}
+        onPress={() => handleQuizPress(item, index)}
         accessible={true}
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
-        accessibilityHint="두 번 탭하여 퀴즈를 시작하세요"
       >
         <View style={styles.quizContent}>
-          <View style={styles.quizHeader}>
-            <Text style={styles.quizTitle}>{item.title}</Text>
-            <View
-              style={[
-                styles.typeBadge,
-                item.quizType === "AI_GENERATED"
-                  ? styles.aiBadge
-                  : styles.teacherBadge,
-              ]}
-            >
-              <Text style={styles.typeBadgeText}>{quizTypeLabel}</Text>
-            </View>
+          <Text style={styles.quizTitle}>{`${index + 1}. ${item.title}`}</Text>
+          <View style={styles.quizTypeBadge}>
+            <Text style={styles.quizTypeBadgeText}>{quizTypeLabel}</Text>
           </View>
-          <Text style={styles.questionCount}>
-            문제 {item.questions.length}개
-          </Text>
         </View>
       </TouchableOpacity>
     );
@@ -230,10 +243,13 @@ export default function QuizListScreen() {
           <Text style={styles.backButtonText}>← 뒤로</Text>
         </TouchableOpacity>
 
-        <VoiceCommandButton accessibilityHint="두 번 탭한 후, 첫 번째 퀴즈, 두 번째 퀴즈, 1번 퀴즈, 2번 퀴즈, 마지막 퀴즈, 뒤로 가기와 같은 명령을 말씀하세요" />
+        <VoiceCommandButton
+          style={commonStyles.headerVoiceButton}
+          accessibilityHint="두 번 탭한 후, 첫 번째 퀴즈, 두 번째 퀴즈, 1번 퀴즈, 2번 퀴즈, 마지막 퀴즈, 뒤로 가기와 같은 명령을 말씀하세요"
+        />
       </View>
 
-      {quizzes.length > 0 && (
+      {!loading && (
         <View style={styles.headerInfo}>
           <Text
             style={styles.subjectText}
@@ -242,13 +258,13 @@ export default function QuizListScreen() {
           >
             {material.title}
           </Text>
-          <Text style={styles.chapterTitle}>{chapter?.title}</Text>
+          <Text style={styles.chapterTitle}>전체 퀴즈 목록</Text>
         </View>
       )}
     </View>
   );
 
-  if (quizzes.length === 0) {
+  if (loading || error) {
     return (
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
         {Header}
@@ -258,7 +274,9 @@ export default function QuizListScreen() {
             accessible={true}
             accessibilityRole="text"
           >
-            아직 퀴즈가 없습니다.
+            {loading ? "퀴즈를 불러오는 중입니다..." :
+             error ? error :
+             "아직 퀴즈가 없습니다."}
           </Text>
         </View>
       </SafeAreaView>
@@ -269,8 +287,8 @@ export default function QuizListScreen() {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       {Header}
       <FlatList
-        data={quizzes}
-        renderItem={renderQuizItem}
+        data={quizzes} // API로 받아온 퀴즈 목록
+        renderItem={renderQuizQuestionItem}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
@@ -280,7 +298,7 @@ export default function QuizListScreen() {
   );
 }
 
-const createStyles = (colors: any, fontSize: (size: number) => number) => {
+const createStyles = (colors: any, fontSize: (size: number) => number, isHighContrast: boolean) => {
   const isPrimaryColors = 'primary' in colors;
 
   return StyleSheet.create({
@@ -292,7 +310,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       paddingHorizontal: 24,
       paddingVertical: 16,
       borderBottomWidth: 3,
-      borderBottomColor: colors.primary.main,
+      borderBottomColor: isHighContrast ? COLORS.secondary.main : colors.primary.main,
       minHeight: HEADER_MIN_HEIGHT,
     },
     headerTopRow: {
@@ -330,48 +348,39 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       paddingBottom: 40,
     },
     quizButton: {
-      backgroundColor: colors.background.elevated || colors.background.default,
+      backgroundColor: isPrimaryColors ? colors.primary.lightest : colors.background.elevated,
       borderRadius: 12,
-      marginBottom: 16,
-      padding: 20,
+      padding: 24,
       borderWidth: 3,
-      borderColor: isPrimaryColors ? colors.border.light : colors.border.default,
+      borderColor: isPrimaryColors ? colors.primary.main : colors.accent.primary,
       minHeight: 100,
+      marginBottom: 16,
+      justifyContent: "center",
     },
     quizContent: {
-      gap: 12,
-    },
-    quizHeader: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      gap: 12,
     },
     quizTitle: {
       fontSize: fontSize(26),
-      fontWeight: "600",
+      fontWeight: "700",
       color: colors.text.primary,
       flex: 1,
+      marginRight: 12,
     },
-    typeBadge: {
+    quizTypeBadge: {
+      backgroundColor: colors.status.info,
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 16,
+      justifyContent: "center",
+      alignItems: "center",
     },
-    aiBadge: {
-      backgroundColor: colors.status.info,
-    },
-    teacherBadge: {
-      backgroundColor: isPrimaryColors ? colors.secondary.main : colors.accent.secondary,
-    },
-    typeBadgeText: {
-      fontSize: fontSize(14),
-      color: isPrimaryColors ? colors.text.inverse : colors.text.primary,
-      fontWeight: "600",
-    },
-    questionCount: {
+    quizTypeBadgeText: {
       fontSize: fontSize(20),
-      color: colors.text.secondary,
+      fontWeight: "600",
+      color: colors.text.inverse,
     },
     emptyContainer: {
       flex: 1,

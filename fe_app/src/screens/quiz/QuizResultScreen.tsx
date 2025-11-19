@@ -18,40 +18,50 @@ import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
 import { COLORS } from "../../constants/colors";
 import { HEADER_MIN_HEIGHT } from "../../constants/dimensions";
+import { useTheme } from "../../contexts/ThemeContext";
+import { createCommonStyles } from "../../styles/commonStyles";
+import { QuizGradingResultItem } from "../../types/api/quizApiTypes";
 
 export default function QuizResultScreen() {
   const navigation = useNavigation<QuizResultScreenNavigationProp>();
   const route = useRoute<QuizResultScreenRouteProp>();
-  const { quiz, score, totalQuestions, answers } = route.params;
+  const { material, gradingResults, userAnswers } = route.params;
+  const { isHighContrast, colors } = useTheme();
+
+  const styles = React.useMemo(() => createStyles(isHighContrast), [isHighContrast]);
+  const commonStyles = React.useMemo(() => createCommonStyles(colors), [colors]);
+
+  const totalQuestions = gradingResults.length;
+  const correctAnswersCount = gradingResults.filter(r => r.is_correct).length;
 
   const [showAllQuestions, setShowAllQuestions] = useState(false);
 
   const { setCurrentScreenId, registerVoiceHandlers } =
     useContext(TriggerContext);
 
-  const percentage = Math.round((score / totalQuestions) * 100);
-  const wrongAnswers = answers.filter((a) => a.isCorrect === false);
-  const correctAnswers = answers.filter((a) => a.isCorrect === true);
+  const percentage = totalQuestions > 0 ? Math.round((correctAnswersCount / totalQuestions) * 100) : 0;
+  const wrongAnswers = gradingResults.filter(r => !r.is_correct);
+  const correctAnswers = gradingResults.filter(r => r.is_correct);
 
   useEffect(() => {
-    const announcement = `퀴즈 완료. ${totalQuestions}문제 중 ${score}문제 정답. 정답률 ${percentage}퍼센트. ${
+    const announcement = `퀴즈 완료. ${totalQuestions}문제 중 ${correctAnswersCount}문제 정답. 정답률 ${percentage}퍼센트. ${
       wrongAnswers.length > 0
         ? `틀린 문제는 ${wrongAnswers.length}개입니다. 복습이 필요합니다.`
         : "모든 문제를 맞혔습니다. 완벽합니다!"
     }`;
     AccessibilityInfo.announceForAccessibility(announcement);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [score, totalQuestions, percentage, wrongAnswers.length]);
+  }, [correctAnswersCount, totalQuestions, percentage, wrongAnswers.length]);
 
   const handleGoToLibrary = useCallback(() => {
     AccessibilityInfo.announceForAccessibility("서재로 돌아갑니다.");
     navigation.navigate("Library");
   }, [navigation]);
 
-  const handleRetry = useCallback(() => {
-    AccessibilityInfo.announceForAccessibility("퀴즈를 다시 시작합니다.");
-    navigation.navigate("Quiz", { quiz });
-  }, [navigation, quiz]);
+  const handleRetry = useCallback(() => { // 퀴즈 목록으로 이동하여 다시 풀 수 있도록 변경
+    AccessibilityInfo.announceForAccessibility("퀴즈 목록으로 이동합니다.");
+    navigation.navigate("QuizList", { material, chapterId: 0 }); // chapterId는 더미값
+  }, [navigation, material]);
 
   const handleToggleAllQuestions = useCallback(() => {
     setShowAllQuestions((prev) => {
@@ -65,9 +75,9 @@ export default function QuizResultScreen() {
 
   // QuizResultScreen 전용 음성 명령 처리
   const handleQuizResultVoiceCommand = useCallback(
-    (spoken: string) => {
+    (spoken: string): boolean => {
       const t = spoken.trim().toLowerCase();
-      if (!t) return;
+      if (!t) return false;
 
       // 다시 풀기 / 재도전
       if (
@@ -76,7 +86,7 @@ export default function QuizResultScreen() {
         (t.includes("퀴즈") && t.includes("풀"))
       ) {
         handleRetry();
-        return;
+        return true;
       }
 
       // 서재로 / 목록으로
@@ -88,7 +98,7 @@ export default function QuizResultScreen() {
         t.includes("홈")
       ) {
         handleGoToLibrary();
-        return;
+        return true;
       }
 
       // 맞은 문제 펼치기 / 접기 / 토글
@@ -140,18 +150,19 @@ export default function QuizResultScreen() {
             return next;
           });
         }
-        return;
+        return true;
       }
 
       // 뒤로 가기 (전역 파서가 놓친 경우 대비)
       if (t.includes("뒤로") || t.includes("이전 화면")) {
         navigation.goBack();
-        return;
+        return true;
       }
 
       AccessibilityInfo.announceForAccessibility(
         "이 화면에서는 다시 풀기, 서재로, 맞은 문제 펼치기, 맞은 문제 접기, 뒤로 가기와 같은 음성 명령을 사용할 수 있습니다."
       );
+      return false;
     },
     [handleRetry, handleGoToLibrary, navigation]
   );
@@ -162,6 +173,7 @@ export default function QuizResultScreen() {
 
     registerVoiceHandlers("QuizResult", {
       goBack: () => navigation.goBack(),
+      openLibrary: handleGoToLibrary,
       openQuiz: handleRetry, // "퀴즈" 명령이 들어오면 다시 풀기
       rawText: handleQuizResultVoiceCommand,
     });
@@ -178,45 +190,33 @@ export default function QuizResultScreen() {
   ]);
 
   const renderQuestionCard = (
-    questionIndex: number,
-    isCorrect: boolean,
+    resultItem: QuizGradingResultItem,
     emphasize: boolean = false
   ) => {
-    const question = quiz.questions[questionIndex];
-    if (!question) {
-      console.error(`Question at index ${questionIndex} not found`);
+    if (!resultItem) {
+      console.error(`결과 항목이 없습니다.`);
       return null;
     }
 
-    const answer = answers[questionIndex];
-    if (!answer) {
-      console.error(`Answer at index ${questionIndex} not found`);
-      return null;
-    }
-
-    // 옵션 찾기
-    const selectedOption = question.options.find(
-      (opt) => opt.id === answer.selectedOptionId
-    );
-    const correctOption = question.options.find((opt) => opt.isCorrect);
+    const userAnswer = userAnswers.find(ua => ua.quizId === resultItem.id)?.answer || "(답변 없음)";
 
     // 접근성 레이블 생성
-    let accessibilityLabel = `문제 ${questionIndex + 1}. ${
-      question.questionText
+    let accessibilityLabel = `문제 ${resultItem.question_number}. ${
+      resultItem.title
     }. `;
 
-    if (isCorrect) {
-      accessibilityLabel += `정답입니다. 선택한 답 ${selectedOption?.optionText}`;
+    if (resultItem.is_correct) {
+      accessibilityLabel += `정답입니다. 제출한 답: ${userAnswer}`;
     } else {
-      accessibilityLabel += `오답입니다. 선택한 답 ${selectedOption?.optionText}. 정답은 ${correctOption?.optionText}입니다`;
+      accessibilityLabel += `오답입니다. 제출한 답: ${userAnswer}. 정답은 ${resultItem.correct_answer}입니다`;
     }
 
     return (
       <View
-        key={question.id}
+        key={resultItem.id}
         style={[
           styles.questionCard,
-          isCorrect ? styles.correctCard : styles.wrongCard,
+          resultItem.is_correct ? styles.correctCard : styles.wrongCard,
           emphasize && styles.emphasizedCard,
         ]}
         accessible={true}
@@ -226,16 +226,16 @@ export default function QuizResultScreen() {
         {/* 문제 헤더 */}
         <View style={styles.cardHeader}>
           <View style={styles.questionNumberBadge}>
-            <Text style={styles.questionNumberText}>{questionIndex + 1}</Text>
+            <Text style={styles.questionNumberText}>{resultItem.question_number}</Text>
           </View>
           <View
             style={[
               styles.resultBadge,
-              isCorrect ? styles.correctBadge : styles.wrongBadge,
+              resultItem.is_correct ? styles.correctBadge : styles.wrongBadge,
             ]}
           >
             <Text style={styles.resultBadgeText}>
-              {isCorrect ? "✓ 정답" : "✗ 오답"}
+              {resultItem.is_correct ? "✓ 정답" : "✗ 오답"}
             </Text>
           </View>
         </View>
@@ -243,7 +243,7 @@ export default function QuizResultScreen() {
         {/* 문제 내용 */}
         <View style={styles.cardContent}>
           <Text style={styles.cardQuestionLabel}>문제</Text>
-          <Text style={styles.cardQuestionText}>{question.questionText}</Text>
+          <Text style={styles.cardQuestionText}>{resultItem.title}</Text>
         </View>
 
         {/* 답안 정보 */}
@@ -251,37 +251,37 @@ export default function QuizResultScreen() {
           {/* 선택한 답 */}
           <View style={styles.answerRow}>
             <Text style={styles.answerLabel}>
-              {isCorrect ? "선택한 답 (정답)" : "선택한 답 (오답)"}
+              {resultItem.is_correct ? "제출한 답 (정답)" : "제출한 답 (오답)"}
             </Text>
             <View
               style={[
                 styles.answerBox,
-                isCorrect ? styles.answerBoxCorrect : styles.answerBoxWrong,
+                resultItem.is_correct ? styles.answerBoxCorrect : styles.answerBoxWrong,
               ]}
             >
               <Text
                 style={[
                   styles.answerBoxText,
-                  isCorrect
+                  resultItem.is_correct
                     ? styles.answerBoxTextCorrect
                     : styles.answerBoxTextWrong,
                 ]}
               >
-                {isCorrect ? "✓ " : "✗ "}
-                {selectedOption?.optionText || "(선택 없음)"}
+                {resultItem.is_correct ? "✓ " : "✗ "}
+                {userAnswer}
               </Text>
             </View>
           </View>
 
           {/* 오답일 경우 정답 표시 */}
-          {!isCorrect && (
+          {!resultItem.is_correct && (
             <View style={styles.answerRow}>
               <Text style={styles.answerLabel}>정답</Text>
               <View style={[styles.answerBox, styles.answerBoxCorrect]}>
                 <Text
                   style={[styles.answerBoxText, styles.answerBoxTextCorrect]}
                 >
-                  ✓ {correctOption?.optionText || "(정답 없음)"}
+                  ✓ {resultItem.correct_answer || "(정답 없음)"}
                 </Text>
               </View>
             </View>
@@ -296,7 +296,10 @@ export default function QuizResultScreen() {
       {/* 상단 오른쪽 음성 명령 버튼 */}
       <View style={styles.header}>
         <View style={{ flex: 1 }} />
-        <VoiceCommandButton accessibilityHint="두 번 탭한 후 다시 풀기, 서재로, 맞은 문제 펼치기, 맞은 문제 접기와 같은 명령을 말씀하세요." />
+        <VoiceCommandButton
+          style={commonStyles.headerVoiceButton}
+          accessibilityHint="두 번 탭한 후 다시 풀기, 서재로, 맞은 문제 펼치기, 맞은 문제 접기와 같은 명령을 말씀하세요."
+        />
       </View>
 
       <ScrollView
@@ -312,16 +315,16 @@ export default function QuizResultScreen() {
           >
             퀴즈 완료!
           </Text>
-          <Text style={styles.quizTitle}>{quiz.title}</Text>
+          <Text style={styles.quizTitle}>{material.title}</Text>
 
           <View style={styles.scoreCircle}>
             <Text
               style={styles.scoreText}
               accessible={true}
-              accessibilityLabel={`${totalQuestions}문제 중 ${score}문제 정답`}
+              accessibilityLabel={`${totalQuestions}문제 중 ${correctAnswersCount}문제 정답`}
               accessibilityRole="text"
             >
-              {score}
+              {correctAnswersCount}
             </Text>
             <Text style={styles.scoreDivider}>/</Text>
             <Text style={styles.totalText}>{totalQuestions}</Text>
@@ -345,8 +348,9 @@ export default function QuizResultScreen() {
                 style={styles.sectionTitle}
                 accessible={true}
                 accessibilityRole="header"
+                accessibilityLabel="틀린 문제"
               >
-                ❌ 틀린 문제: {wrongAnswers.length}개
+                틀린 문제: {wrongAnswers.length}개
               </Text>
               <Text
                 style={styles.sectionSubtitle}
@@ -359,9 +363,9 @@ export default function QuizResultScreen() {
 
             {/* 틀린 문제 카드들 */}
             <View style={styles.cardsContainer}>
-              {answers.map((answer, index) => {
-                if (answer && !answer.isCorrect && quiz.questions[index]) {
-                  return renderQuestionCard(index, false, true);
+              {gradingResults.map((result) => {
+                if (result && !result.is_correct) {
+                  return renderQuestionCard(result, true);
                 }
                 return null;
               })}
@@ -412,10 +416,9 @@ export default function QuizResultScreen() {
 
             {showAllQuestions && (
               <View style={styles.cardsContainer}>
-                {answers.map((answer, index) => {
-                  // 안전성 체크: index가 유효하고 맞은 답인 경우에만 렌더링
-                  if (answer && answer.isCorrect && quiz.questions[index]) {
-                    return renderQuestionCard(index, true, false);
+                {gradingResults.map((result) => {
+                  if (result && result.is_correct) {
+                    return renderQuestionCard(result, false);
                   }
                   return null;
                 })}
@@ -488,7 +491,7 @@ export default function QuizResultScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (isHighContrast: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background.default,
@@ -512,7 +515,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     paddingBottom: 32,
     borderBottomWidth: 3,
-    borderBottomColor: COLORS.border.light,
+    borderBottomColor: isHighContrast ? '#FEC73D' : COLORS.border.light,
   },
   summaryTitle: {
     fontSize: 40,
