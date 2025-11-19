@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
-  TrendingUp,
   FileText,
   MessageCircle,
   Award,
@@ -13,7 +12,6 @@ import {
   SortAsc,
 } from 'lucide-react';
 import './StudentRoom.css';
-import teacherAvatar from '../assets/classList/teacher.png';
 
 type Student = {
   id: string;
