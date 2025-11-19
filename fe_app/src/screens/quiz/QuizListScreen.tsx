@@ -18,9 +18,11 @@ import { getChapterById } from "../../data/dummyChapters";
 import { Quiz } from "../../types/quiz";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
-import { COLORS } from "../../constants/colors";
+import { useTheme } from "../../contexts/ThemeContext";
 
 export default function QuizListScreen() {
+  const { colors, fontSize: themeFont } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors, themeFont), [colors, themeFont]);
   const navigation = useNavigation<QuizListScreenNavigationProp>();
   const route = useRoute<QuizListScreenRouteProp>();
   const { material, chapterId } = route.params;
@@ -277,104 +279,108 @@ export default function QuizListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background.default,
-  },
-  header: {
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 16,
-    borderBottomWidth: 3,
-    borderBottomColor: COLORS.border.light,
-  },
-  headerTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  backButton: {
-    paddingVertical: 8,
-    paddingRight: 16,
-    alignSelf: "flex-start",
-  },
-  backButtonText: {
-    fontSize: 20,
-    color: COLORS.primary.main,
-    fontWeight: "600",
-  },
-  headerInfo: {
-    marginTop: 16,
-  },
-  subjectText: {
-    fontSize: 22,
-    color: COLORS.text.secondary,
-    marginBottom: 4,
-  },
-  chapterTitle: {
-    fontSize: 30,
-    fontWeight: "bold",
-    color: COLORS.text.primary,
-  },
-  listContent: {
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 40,
-  },
-  quizButton: {
-    backgroundColor: COLORS.background.elevated,
-    borderRadius: 12,
-    marginBottom: 16,
-    padding: 20,
-    borderWidth: 3,
-    borderColor: COLORS.border.light,
-    minHeight: 100,
-  },
-  quizContent: {
-    gap: 12,
-  },
-  quizHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  quizTitle: {
-    fontSize: 26,
-    fontWeight: "600",
-    color: COLORS.text.primary,
-    flex: 1,
-  },
-  typeBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  aiBadge: {
-    backgroundColor: COLORS.status.info, // AI 생성은 정보 색상(파란색)으로
-  },
-  teacherBadge: {
-    backgroundColor: COLORS.secondary.main,
-  },
-  typeBadgeText: {
-    fontSize: 14,
-    color: COLORS.text.inverse,
-    fontWeight: "600",
-  },
-  questionCount: {
-    fontSize: 20,
-    color: COLORS.text.secondary,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 24,
-  },
-  emptyText: {
-    fontSize: 26,
-    color: COLORS.text.tertiary,
-    textAlign: "center",
-  },
-});
+const createStyles = (colors: any, fontSize: (size: number) => number) => {
+  const isPrimaryColors = 'primary' in colors;
+
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.default,
+    },
+    header: {
+      paddingHorizontal: 24,
+      paddingTop: 12,
+      paddingBottom: 16,
+      borderBottomWidth: 3,
+      borderBottomColor: isPrimaryColors ? colors.border.light : colors.border.default,
+    },
+    headerTopRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    backButton: {
+      paddingVertical: 8,
+      paddingRight: 16,
+      alignSelf: "flex-start",
+    },
+    backButtonText: {
+      fontSize: fontSize(20),
+      color: isPrimaryColors ? colors.primary.main : colors.accent.primary,
+      fontWeight: "600",
+    },
+    headerInfo: {
+      marginTop: 16,
+    },
+    subjectText: {
+      fontSize: fontSize(22),
+      color: colors.text.secondary,
+      marginBottom: 4,
+    },
+    chapterTitle: {
+      fontSize: fontSize(30),
+      fontWeight: "bold",
+      color: colors.text.primary,
+    },
+    listContent: {
+      paddingHorizontal: 24,
+      paddingTop: 20,
+      paddingBottom: 40,
+    },
+    quizButton: {
+      backgroundColor: colors.background.elevated || colors.background.default,
+      borderRadius: 12,
+      marginBottom: 16,
+      padding: 20,
+      borderWidth: 3,
+      borderColor: isPrimaryColors ? colors.border.light : colors.border.default,
+      minHeight: 100,
+    },
+    quizContent: {
+      gap: 12,
+    },
+    quizHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+    },
+    quizTitle: {
+      fontSize: fontSize(26),
+      fontWeight: "600",
+      color: colors.text.primary,
+      flex: 1,
+    },
+    typeBadge: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+    },
+    aiBadge: {
+      backgroundColor: colors.status.info,
+    },
+    teacherBadge: {
+      backgroundColor: isPrimaryColors ? colors.secondary.main : colors.accent.secondary,
+    },
+    typeBadgeText: {
+      fontSize: fontSize(14),
+      color: isPrimaryColors ? colors.text.inverse : colors.text.primary,
+      fontWeight: "600",
+    },
+    questionCount: {
+      fontSize: fontSize(20),
+      color: colors.text.secondary,
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 24,
+    },
+    emptyText: {
+      fontSize: fontSize(26),
+      color: colors.text.tertiary || colors.text.secondary,
+      textAlign: "center",
+    },
+  });
+};

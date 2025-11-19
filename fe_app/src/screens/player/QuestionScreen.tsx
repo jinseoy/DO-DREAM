@@ -29,7 +29,7 @@ import { asrService } from "../../services/asrService";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
 import BackButton from "../../components/BackButton";
-import { commonStyles } from "../../styles/commonStyles";
+import { createCommonStyles } from "../../styles/commonStyles";
 import { ragApi } from "../../api/ragApi";
 import type { RagChatRequest } from "../../types/api/ragApiTypes";
 import {
@@ -38,7 +38,7 @@ import {
   addMessageToQuestionHistory,
   QuestionMessage,
 } from "../../services/questionStorage";
-import { COLORS } from "../../constants/colors";
+import { useTheme } from "../../contexts/ThemeContext";
 
 type MsgType = "user" | "bot";
 interface Message {
@@ -63,6 +63,10 @@ export default function QuestionScreen() {
 
   const { setCurrentScreenId, registerVoiceHandlers } =
     useContext(TriggerContext);
+
+  const { colors, fontSize: themeFont } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors, themeFont), [colors, themeFont]);
+  const commonStyles = React.useMemo(() => createCommonStyles(colors), [colors]);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
@@ -794,179 +798,183 @@ export default function QuestionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  inner: {
-    flex: 1,
-  },
+const createStyles = (colors: any, fontSize: (size: number) => number) => {
+  const isPrimaryColors = 'primary' in colors;
 
-  header: {
-    borderBottomWidth: 3,
-    borderBottomColor: COLORS.border.light,
-    backgroundColor: COLORS.background.default,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "600",
-    color: COLORS.text.secondary,
-    flex: 1,
-    textAlign: "center",
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  clearButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    minHeight: 44,
-    minWidth: 60,
-    justifyContent: "center",
-    alignItems: "center",
-    borderColor: COLORS.status.error,
-    backgroundColor: COLORS.status.errorLight,
-    borderWidth: 3,
-    borderRadius: 12,
-  },
-  clearTxt: {
-    fontSize: 18,
-    color: COLORS.status.error,
-    fontWeight: "700",
-  },
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    inner: {
+      flex: 1,
+    },
 
-  chatArea: {
-    flex: 1,
-    backgroundColor: COLORS.primary.lightest,
-  },
-  chatContent: {
-    flexGrow: 1,
-  },
-  messagesContainer: {
-    flexGrow: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 16,
-  },
-  messagesEmpty: {
-    justifyContent: "flex-start",
-  },
-  messagesFilled: {
-    justifyContent: "flex-end",
-  },
+    header: {
+      borderBottomWidth: 3,
+      borderBottomColor: isPrimaryColors ? colors.border.light : colors.border.default,
+      backgroundColor: colors.background.default,
+    },
+    title: {
+      fontSize: fontSize(22),
+      fontWeight: "600",
+      color: colors.text.secondary,
+      flex: 1,
+      textAlign: "center",
+    },
+    headerRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    clearButton: {
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      minHeight: 44,
+      minWidth: 60,
+      justifyContent: "center",
+      alignItems: "center",
+      borderColor: colors.status.error,
+      backgroundColor: isPrimaryColors ? colors.status.errorLight : colors.background.elevated,
+      borderWidth: 3,
+      borderRadius: 12,
+    },
+    clearTxt: {
+      fontSize: fontSize(18),
+      color: colors.status.error,
+      fontWeight: "700",
+    },
 
-  messageRow: { marginBottom: 12, flexDirection: "row" },
-  userRow: { justifyContent: "flex-end" },
-  botRow: { justifyContent: "flex-start" },
+    chatArea: {
+      flex: 1,
+      backgroundColor: isPrimaryColors ? colors.primary.lightest : colors.background.elevated,
+    },
+    chatContent: {
+      flexGrow: 1,
+    },
+    messagesContainer: {
+      flexGrow: 1,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 16,
+    },
+    messagesEmpty: {
+      justifyContent: "flex-start",
+    },
+    messagesFilled: {
+      justifyContent: "flex-end",
+    },
 
-  bubble: {
-    maxWidth: "85%",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  userBubble: {
-    backgroundColor: COLORS.primary.main,
-    alignSelf: "flex-end",
-  },
-  botBubble: {
-    backgroundColor: COLORS.secondary.main,
-    alignSelf: "flex-start",
-  },
+    messageRow: { marginBottom: 12, flexDirection: "row" },
+    userRow: { justifyContent: "flex-end" },
+    botRow: { justifyContent: "flex-start" },
 
-  draftBubble: {
-    opacity: 0.85,
-    borderWidth: 2,
-    borderColor: COLORS.primary.light,
-  },
+    bubble: {
+      maxWidth: "85%",
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 12,
+    },
+    userBubble: {
+      backgroundColor: isPrimaryColors ? colors.primary.main : colors.accent.primary,
+      alignSelf: "flex-end",
+    },
+    botBubble: {
+      backgroundColor: isPrimaryColors ? colors.secondary.main : colors.accent.secondary,
+      alignSelf: "flex-start",
+    },
 
-  msgText: { fontSize: 20, lineHeight: 30, marginBottom: 6 },
-  userText: { color: COLORS.text.inverse },
-  botText: { color: COLORS.text.primary },
+    draftBubble: {
+      opacity: 0.85,
+      borderWidth: 2,
+      borderColor: isPrimaryColors ? colors.primary.light : colors.border.focus,
+    },
 
-  timeText: { fontSize: 13, marginTop: 4 },
-  userTime: { color: COLORS.primary.lighter },
-  botTime: { color: COLORS.text.tertiary },
+    msgText: { fontSize: fontSize(20), lineHeight: 30, marginBottom: 6 },
+    userText: { color: isPrimaryColors ? colors.text.inverse : colors.text.primary },
+    botText: { color: colors.text.primary },
 
-  welcomeBubble: {
-    backgroundColor: COLORS.secondary.main,
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 12,
-    alignSelf: "flex-start",
-    maxWidth: "95%",
-  },
-  welcomeTxt: {
-    fontSize: 20,
-    lineHeight: 30,
-    color: COLORS.text.primary,
-    marginBottom: 8,
-  },
+    timeText: { fontSize: fontSize(13), marginTop: 4 },
+    userTime: { color: isPrimaryColors ? colors.primary.lighter : colors.text.secondary },
+    botTime: { color: colors.text.tertiary || colors.text.secondary },
 
-  waveBar: {
-    backgroundColor: COLORS.primary.main,
-    paddingVertical: 22,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  waveDots: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  waveDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: COLORS.secondary.main,
-  },
+    welcomeBubble: {
+      backgroundColor: isPrimaryColors ? colors.secondary.main : colors.accent.secondary,
+      borderRadius: 12,
+      padding: 20,
+      marginBottom: 12,
+      alignSelf: "flex-start",
+      maxWidth: "95%",
+    },
+    welcomeTxt: {
+      fontSize: fontSize(20),
+      lineHeight: 30,
+      color: colors.text.primary,
+      marginBottom: 8,
+    },
 
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: COLORS.background.default,
-    borderTopWidth: 2,
-    borderTopColor: COLORS.border.main,
-    gap: 10,
-  },
-  input: {
-    flex: 1,
-    minHeight: BTN_HEIGHT,
-    maxHeight: 220,
-    backgroundColor: COLORS.background.elevated,
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    fontSize: 18,
-    color: COLORS.text.secondary,
-    borderWidth: 2,
-    borderColor: COLORS.border.light,
-  },
+    waveBar: {
+      backgroundColor: isPrimaryColors ? colors.primary.main : colors.accent.primary,
+      paddingVertical: 22,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    waveDots: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 12,
+    },
+    waveDot: {
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      backgroundColor: isPrimaryColors ? colors.secondary.main : colors.accent.secondary,
+    },
 
-  sendBtn: {
-    height: BTN_HEIGHT,
-    backgroundColor: COLORS.primary.main,
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    minWidth: 88,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: COLORS.primary.dark,
-  },
-  sendDisabled: {
-    backgroundColor: COLORS.border.main,
-    borderColor: COLORS.border.main,
-  },
-  sendTxt: {
-    color: COLORS.text.primary,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-});
+    inputRow: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: colors.background.default,
+      borderTopWidth: 2,
+      borderTopColor: isPrimaryColors ? colors.border.main : colors.border.default,
+      gap: 10,
+    },
+    input: {
+      flex: 1,
+      minHeight: BTN_HEIGHT,
+      maxHeight: 220,
+      backgroundColor: isPrimaryColors ? colors.background.elevated : colors.background.elevated,
+      borderRadius: 24,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      fontSize: fontSize(18),
+      color: colors.text.secondary,
+      borderWidth: 2,
+      borderColor: isPrimaryColors ? colors.border.light : colors.border.default,
+    },
+
+    sendBtn: {
+      height: BTN_HEIGHT,
+      backgroundColor: isPrimaryColors ? colors.primary.main : colors.accent.primary,
+      borderRadius: 24,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      minWidth: 88,
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 2,
+      borderColor: isPrimaryColors ? colors.primary.dark : colors.border.focus,
+    },
+    sendDisabled: {
+      backgroundColor: isPrimaryColors ? colors.border.main : colors.border.default,
+      borderColor: isPrimaryColors ? colors.border.main : colors.border.default,
+    },
+    sendTxt: {
+      color: colors.text.primary,
+      fontSize: fontSize(16),
+      fontWeight: "700",
+    },
+  });
+};

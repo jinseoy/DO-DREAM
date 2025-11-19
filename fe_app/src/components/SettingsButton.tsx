@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { TouchableOpacity, Text, StyleSheet, ViewStyle } from "react-native";
-import { COLORS } from "../constants/colors";
+import { useTheme } from "../contexts/ThemeContext";
 
 interface SettingsButtonProps {
   onPress: () => void;
@@ -15,6 +15,9 @@ export default function SettingsButton({
   showLabel = false,
   accessibilityHint = "재생 속도 및 화면 설정을 변경합니다.",
 }: SettingsButtonProps) {
+  const { colors, fontSize } = useTheme();
+  const styles = useMemo(() => createStyles(colors, fontSize), [colors, fontSize]);
+
   return (
     <TouchableOpacity
       style={[styles.settingsButton, style]}
@@ -26,29 +29,33 @@ export default function SettingsButton({
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
       <Text style={styles.settingsIcon}>
-        {showLabel ? "⚙️ 설정" : "⚙️"}
+        {showLabel ? "설정" : "⚙️"}
       </Text>
     </TouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
-  settingsButton: {
-    minWidth: 56,
-    minHeight: 52,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.primary.lightest,
-    borderColor: COLORS.primary.main,
-    borderRadius: 12,
-    borderWidth: 3,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    marginRight: 4,
-  },
-  settingsIcon: {
-    fontSize: 18,
-    color: COLORS.primary.main,
-    fontWeight: "bold",
-  },
-});
+const createStyles = (colors: any, fontSize: (size: number) => number) => {
+  const isPrimaryColors = 'primary' in colors;
+
+  return StyleSheet.create({
+    settingsButton: {
+      minWidth: 56,
+      minHeight: 52,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: isPrimaryColors ? colors.primary.lightest : colors.background.elevated,
+      borderColor: isPrimaryColors ? colors.primary.main : colors.accent.secondary,
+      borderRadius: 12,
+      borderWidth: 3,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      marginRight: 4,
+    },
+    settingsIcon: {
+      fontSize: 18,
+      color: isPrimaryColors ? colors.primary.main : colors.accent.secondary,
+      fontWeight: "bold",
+    },
+  });
+};

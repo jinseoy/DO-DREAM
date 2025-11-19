@@ -19,12 +19,17 @@ import * as Haptics from "expo-haptics";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
 import BackButton from "../../components/BackButton";
-import { commonStyles } from "../../styles/commonStyles";
+import { createCommonStyles } from "../../styles/commonStyles";
+import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const logout = useAuthStore((state) => state.logout);
+
+  const { colors, fontSize: themeFont } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors, themeFont), [colors, themeFont]);
+  const commonStyles = React.useMemo(() => createCommonStyles(colors), [colors]);
 
   const settings = useAppSettingsStore((state) => state.settings);
   const setTTSRate = useAppSettingsStore((state) => state.setTTSRate);
@@ -245,7 +250,6 @@ export default function SettingsScreen() {
     onDecrease: () => void,
     onIncrease: () => void
   ) => {
-    const HC = settings.highContrastMode;
     const baseSize = 24;
     const scale = settings.fontSizeScale;
 
@@ -255,7 +259,6 @@ export default function SettingsScreen() {
           style={[
             styles.controlLabel,
             { fontSize: baseSize * scale },
-            HC && styles.textHC,
           ]}
           accessible={true}
           accessibilityRole="header"
@@ -265,7 +268,7 @@ export default function SettingsScreen() {
 
         <View style={styles.btnRow}>
           <View
-            style={[styles.valueBox, HC && styles.valueBoxHC]}
+            style={styles.valueBox}
             accessible={true}
             accessibilityLabel={`현재 ${label}`}
             accessibilityValue={{ text: `${displayFormatter(value)} ${unit}` }}
@@ -275,7 +278,6 @@ export default function SettingsScreen() {
               style={[
                 styles.valueNum,
                 { fontSize: (baseSize + 4) * scale },
-                HC && styles.valueNumHC,
               ]}
             >
               {displayFormatter(value)}
@@ -284,7 +286,6 @@ export default function SettingsScreen() {
               style={[
                 styles.valueUnit,
                 { fontSize: (baseSize - 4) * scale },
-                HC && styles.valueNumHC,
               ]}
             >
               {unit}
@@ -295,7 +296,6 @@ export default function SettingsScreen() {
             style={[
               styles.ctrlBtn,
               value <= min && styles.ctrlBtnDisabled,
-              HC && styles.ctrlBtnHC,
             ]}
             onPress={onDecrease}
             disabled={value <= min}
@@ -310,7 +310,6 @@ export default function SettingsScreen() {
                 styles.ctrlBtnTxt,
                 { fontSize: (baseSize + 16) * scale },
                 value <= min && styles.ctrlBtnTxtDisabled,
-                HC && styles.ctrlBtnTxtHC,
               ]}
             >
               −
@@ -321,7 +320,6 @@ export default function SettingsScreen() {
             style={[
               styles.ctrlBtn,
               value >= max && styles.ctrlBtnDisabled,
-              HC && styles.ctrlBtnHC,
             ]}
             onPress={onIncrease}
             disabled={value >= max}
@@ -336,7 +334,6 @@ export default function SettingsScreen() {
                 styles.ctrlBtnTxt,
                 { fontSize: (baseSize + 16) * scale },
                 value >= max && styles.ctrlBtnTxtDisabled,
-                HC && styles.ctrlBtnTxtHC,
               ]}
             >
               +
@@ -352,7 +349,6 @@ export default function SettingsScreen() {
     value: boolean,
     onChange: (v: boolean) => void
   ) => {
-    const HC = settings.highContrastMode;
     const baseSize = 24;
     const scale = settings.fontSizeScale;
 
@@ -362,7 +358,6 @@ export default function SettingsScreen() {
           style={[
             styles.controlLabel,
             { fontSize: baseSize * scale },
-            HC && styles.textHC,
           ]}
         >
           {label}
@@ -389,7 +384,6 @@ export default function SettingsScreen() {
     bg: string,
     border: string
   ) => {
-    const HC = settings.highContrastMode;
     const baseSize = 24;
     const scale = settings.fontSizeScale;
 
@@ -398,7 +392,6 @@ export default function SettingsScreen() {
         style={[
           styles.actionBtn,
           { backgroundColor: bg, borderColor: border },
-          HC && styles.actionBtnHC,
         ]}
         onPress={onPress}
         accessible={true}
@@ -409,7 +402,6 @@ export default function SettingsScreen() {
           style={[
             styles.actionTxt,
             { fontSize: baseSize * scale },
-            HC && styles.actionTxtHC,
           ]}
         >
           {label}
@@ -444,8 +436,9 @@ export default function SettingsScreen() {
       // 2) 재생 속도 (빠르게 / 느리게 / 기본 / 두 배 / 최고 / 최저 / 직접 값 지정)
       if (nospace.includes("속도") || nospace.includes("배속")) {
         // 직접 값 지정 패턴: "1.2배", "영점팔배", "0.8배" 등
+        // 10배 이상도 처리: "12배", "10.5배"
         const directValuePatterns = [
-          { pattern: /([0-2])\.?([0-9])배/, extractor: (m: RegExpMatchArray) => parseFloat(`${m[1]}.${m[2]}`) },
+          { pattern: /([0-9]{1,2})\.?([0-9])?배/, extractor: (m: RegExpMatchArray) => parseFloat(m[2] ? `${m[1]}.${m[2]}` : m[1]) },
           { pattern: /영?점([0-9])배/, extractor: (m: RegExpMatchArray) => parseFloat(`0.${m[1]}`) },
           { pattern: /일?점([0-9])배/, extractor: (m: RegExpMatchArray) => parseFloat(`1.${m[1]}`) },
         ];
@@ -453,8 +446,8 @@ export default function SettingsScreen() {
         for (const { pattern, extractor } of directValuePatterns) {
           const match = nospace.match(pattern);
           if (match) {
-            const value = extractor(match);
-            if (value >= 0.5 && value <= 2.0) {
+            const value = Math.max(0.5, Math.min(12.0, extractor(match)));
+            if (value >= 0.5 && value <= 12.0) {
               handleRateChange(value);
               return;
             }
@@ -490,7 +483,7 @@ export default function SettingsScreen() {
           nospace.includes("최대속도") ||
           nospace.includes("가장빠")
         ) {
-          handleRateChange(2.0);
+          handleRateChange(12.0);
           return;
         }
 
@@ -512,7 +505,7 @@ export default function SettingsScreen() {
           nospace.includes("증가")
         ) {
           const next = Math.min(
-            2.0,
+            12.0,
             Number((settings.ttsRate + 0.1).toFixed(2))
           );
           handleRateChange(next);
@@ -878,11 +871,11 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView
-      style={[styles.container, HC && styles.containerHC]}
+      style={styles.container}
       edges={["top"]}
     >
       {/* 상단 헤더: 뒤로가기 + 타이틀 + 음성 명령 버튼 */}
-      <View style={[commonStyles.headerContainer, styles.header, HC && styles.headerHC]}>
+      <View style={[commonStyles.headerContainer, styles.header]}>
         <BackButton
           onPress={handleGoBack}
           style={commonStyles.headerBackButton}
@@ -890,7 +883,6 @@ export default function SettingsScreen() {
             // BackButton의 기본 텍스트 스타일을 가져와서 확장
             { fontSize: 20, color: COLORS.primary.main, fontWeight: "600" },
             { fontSize: (baseSize + 4) * scale },
-            HC && styles.textHC,
           ]}
         />
 
@@ -898,7 +890,6 @@ export default function SettingsScreen() {
           style={[
             styles.headerTitle,
             { fontSize: (baseSize + 8) * scale },
-            HC && styles.textHC,
           ]}
           accessible={true}
           accessibilityRole="header"
@@ -918,12 +909,11 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.section, HC && styles.sectionHC]}>
+        <View style={styles.section}>
           <Text
             style={[
               styles.sectionTitle,
               { fontSize: (baseSize + 4) * scale },
-              HC && styles.textHC,
             ]}
             accessible={true}
             accessibilityRole="header"
@@ -936,7 +926,7 @@ export default function SettingsScreen() {
             "재생 속도",
             settings.ttsRate,
             0.5,
-            2.0,
+            12.0,
             0.1,
             (v) => v.toFixed(1),
             "배",
@@ -946,7 +936,7 @@ export default function SettingsScreen() {
               ),
             () =>
               handleRateChange(
-                Math.min(2.0, Number((settings.ttsRate + 0.1).toFixed(2)))
+                Math.min(12.0, Number((settings.ttsRate + 0.1).toFixed(2)))
               )
           )}
 
@@ -994,7 +984,6 @@ export default function SettingsScreen() {
               style={[
                 styles.controlLabel,
                 { fontSize: baseSize * scale },
-                HC && styles.textHC,
               ]}
               accessible={true}
               accessibilityRole="header"
@@ -1011,7 +1000,6 @@ export default function SettingsScreen() {
                     style={[
                       styles.voiceBtn,
                       isSelected && styles.voiceBtnSel,
-                      HC && isSelected && styles.voiceBtnSelHC,
                     ]}
                     onPress={() => handleVoiceChange(voice.id)}
                     accessible={true}
@@ -1026,7 +1014,6 @@ export default function SettingsScreen() {
                         styles.voiceTxt,
                         { fontSize: (baseSize - 2) * scale },
                         isSelected && styles.voiceTxtSel,
-                        HC && isSelected && styles.voiceTxtSelHC,
                       ]}
                     >
                       {voice.name}
@@ -1045,12 +1032,11 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        <View style={[styles.section, HC && styles.sectionHC]}>
+        <View style={styles.section}>
           <Text
             style={[
               styles.sectionTitle,
               { fontSize: (baseSize + 4) * scale },
-              HC && styles.textHC,
             ]}
             accessible={true}
             accessibilityRole="header"
@@ -1084,12 +1070,11 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        <View style={[styles.section, HC && styles.sectionHC]}>
+        <View style={styles.section}>
           <Text
             style={[
               styles.sectionTitle,
               { fontSize: (baseSize + 4) * scale },
-              HC && styles.textHC,
             ]}
             accessible={true}
             accessibilityRole="header"
@@ -1102,7 +1087,6 @@ export default function SettingsScreen() {
               style={[
                 styles.infoLabel,
                 { fontSize: (baseSize - 2) * scale },
-                HC && styles.textHC,
               ]}
             >
               버전
@@ -1111,7 +1095,6 @@ export default function SettingsScreen() {
               style={[
                 styles.infoValue,
                 { fontSize: (baseSize - 2) * scale },
-                HC && styles.textHC,
               ]}
             >
               1.0.0
@@ -1130,85 +1113,81 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background.default },
-  containerHC: { backgroundColor: COLORS.common.black },
+const createStyles = (colors: any, fontSize: (size: number) => number) => {
+  const isPrimaryColors = 'primary' in colors;
 
-  header: { borderBottomWidth: 3, borderBottomColor: COLORS.border.light },
-  headerHC: { borderBottomColor: COLORS.text.inverse },
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 32,
-    fontWeight: "bold",
-    color: COLORS.text.primary,
-  },
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background.default },
 
-  scroll: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 60, flexGrow: 1 },
+    header: { borderBottomWidth: 3, borderBottomColor: isPrimaryColors ? colors.border.light : colors.text.primary },
+    headerTitle: {
+      flex: 1,
+      textAlign: "center",
+      fontSize: 32,
+      fontWeight: "bold",
+      color: colors.text.primary,
+    },
 
-  section: {
-    marginBottom: 32,
-    padding: 20,
-    backgroundColor: COLORS.background.elevated,
-    borderRadius: 16,
-    borderWidth: 3,
-    borderColor: COLORS.border.light,
-  },
-  sectionHC: { backgroundColor: COLORS.gray[900], borderColor: COLORS.text.inverse },
-  sectionTitle: {
-    fontSize: 30,
-    fontWeight: "bold",
-    color: COLORS.text.primary,
-    marginBottom: 24,
-    paddingBottom: 12,
-    borderBottomWidth: 3,
-    borderBottomColor: COLORS.border.main,
-  },
+    scroll: { flex: 1 },
+    scrollContent: { padding: 20, paddingBottom: 60, flexGrow: 1 },
+
+    section: {
+      marginBottom: 32,
+      padding: 20,
+      backgroundColor: colors.background.elevated || colors.background.default,
+      borderRadius: 16,
+      borderWidth: 3,
+      borderColor: isPrimaryColors ? colors.border.light : colors.text.primary,
+    },
+    sectionTitle: {
+      fontSize: 30,
+      fontWeight: "bold",
+      color: colors.text.primary,
+      marginBottom: 24,
+      paddingBottom: 12,
+      borderBottomWidth: 3,
+      borderBottomColor: isPrimaryColors ? colors.border.main : colors.border.default,
+    },
 
   controlGroup: { marginBottom: 28 },
   controlLabel: {
     fontSize: 26,
     fontWeight: "700",
-    color: COLORS.text.primary,
+    color: colors.text.primary,
     marginBottom: 16,
   },
   btnRow: { flexDirection: "row", alignItems: "center", gap: 12 },
 
   valueBox: {
     flex: 1,
-    backgroundColor: COLORS.primary.lightest,
+    backgroundColor: isPrimaryColors ? colors.primary.lightest : colors.background.elevated,
     borderRadius: 12,
     paddingVertical: 20,
     paddingHorizontal: 16,
     borderWidth: 3,
-    borderColor: COLORS.primary.main,
+    borderColor: isPrimaryColors ? colors.primary.main : colors.accent.primary,
     flexDirection: "row",
     alignItems: "baseline",
     justifyContent: "center",
     minHeight: 80,
     gap: 6,
   },
-  valueBoxHC: { backgroundColor: COLORS.common.black, borderColor: COLORS.secondary.main },
-  valueNum: { fontSize: 30, fontWeight: "bold", color: COLORS.primary.dark },
-  valueNumHC: { color: COLORS.secondary.main },
-  valueUnit: { fontSize: 22, fontWeight: "600", color: COLORS.primary.dark },
+  valueNum: { fontSize: 30, fontWeight: "bold", color: isPrimaryColors ? colors.primary.dark : colors.accent.primary },
+  valueUnit: { fontSize: 22, fontWeight: "600", color: isPrimaryColors ? colors.primary.dark : colors.accent.primary },
 
   ctrlBtn: {
     width: 80,
     height: 80,
-    backgroundColor: COLORS.primary.main,
+    backgroundColor: isPrimaryColors ? colors.primary.main : colors.accent.primary,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: COLORS.primary.dark,
+    borderColor: isPrimaryColors ? colors.primary.dark : colors.border.focus,
   },
-  ctrlBtnHC: { backgroundColor: COLORS.secondary.main, borderColor: COLORS.secondary.dark },
-  ctrlBtnDisabled: { backgroundColor: COLORS.border.main, borderColor: COLORS.text.tertiary },
-  ctrlBtnTxt: { fontSize: 44, fontWeight: "bold", color: COLORS.text.inverse },
-  ctrlBtnTxtHC: { color: COLORS.text.primary },
-  ctrlBtnTxtDisabled: { color: COLORS.border.light },
+  ctrlBtnDisabled: { backgroundColor: isPrimaryColors ? colors.border.main : colors.border.default, borderColor: colors.text.tertiary || colors.text.secondary },
+  ctrlBtnTxt: { fontSize: 44, fontWeight: "bold", color: isPrimaryColors ? colors.text.inverse : colors.text.primary },
+  ctrlBtnTxtDisabled: { color: isPrimaryColors ? colors.border.light : colors.border.default },
 
   switchRow: {
     flexDirection: "row",
@@ -1220,26 +1199,24 @@ const styles = StyleSheet.create({
   voiceSection: { marginBottom: 20 },
   voiceList: {},
   voiceBtn: {
-    backgroundColor: COLORS.primary.lightest,
+    backgroundColor: isPrimaryColors ? colors.primary.lightest : colors.background.elevated,
     borderRadius: 12,
     paddingVertical: 18,
     paddingHorizontal: 20,
     marginTop: 12,
     borderWidth: 3,
-    borderColor: COLORS.primary.light,
+    borderColor: isPrimaryColors ? colors.primary.light : colors.border.default,
     minHeight: 70,
     justifyContent: "center",
   },
-  voiceBtnSel: { backgroundColor: COLORS.primary.main, borderColor: COLORS.primary.dark },
-  voiceBtnSelHC: { backgroundColor: COLORS.secondary.main, borderColor: COLORS.secondary.dark },
+  voiceBtnSel: { backgroundColor: isPrimaryColors ? colors.primary.main : colors.accent.primary, borderColor: isPrimaryColors ? colors.primary.dark : colors.border.focus },
   voiceTxt: {
     fontSize: 24,
-    color: COLORS.primary.dark,
+    color: isPrimaryColors ? colors.primary.dark : colors.text.secondary,
     fontWeight: "600",
     textAlign: "center",
   },
-  voiceTxtSel: { color: COLORS.text.inverse, fontWeight: "bold" },
-  voiceTxtSelHC: { color: COLORS.text.primary },
+  voiceTxtSel: { color: isPrimaryColors ? colors.text.inverse : colors.text.primary, fontWeight: "bold" },
 
   actionBtn: {
     paddingVertical: 20,
@@ -1251,17 +1228,14 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     minHeight: 70,
   },
-  actionBtnHC: { backgroundColor: COLORS.secondary.main, borderColor: COLORS.secondary.dark },
-  actionTxt: { fontSize: 26, fontWeight: "bold", color: COLORS.text.primary },
-  actionTxtHC: { color: COLORS.text.primary },
+  actionTxt: { fontSize: 26, fontWeight: "bold", color: colors.text.primary },
 
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  infoLabel: { fontSize: 24, color: COLORS.text.secondary, fontWeight: "600" },
-  infoValue: { fontSize: 24, color: COLORS.text.primary, fontWeight: "600" },
-
-  textHC: { color: COLORS.text.inverse },
-});
+  infoLabel: { fontSize: 24, color: colors.text.secondary, fontWeight: "600" },
+  infoValue: { fontSize: 24, color: colors.text.primary, fontWeight: "600" },
+  });
+};

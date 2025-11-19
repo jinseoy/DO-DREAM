@@ -24,12 +24,15 @@ import {
   deleteQuestionHistory,
   QuestionHistory,
 } from "../../services/questionStorage";
-import { COLORS } from "../../constants/colors";
+import { useTheme } from "../../contexts/ThemeContext";
 
 export default function QuestionListScreen() {
   const navigation = useNavigation<QuestionListScreenNavigationProp>();
   const route = useRoute<QuestionListScreenRouteProp>();
   const { material } = route.params;
+
+  const { colors, fontSize: themeFont } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors, themeFont), [colors, themeFont]);
 
   const [questions, setQuestions] = useState<QuestionHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -310,121 +313,125 @@ export default function QuestionListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background.default,
-  },
-  header: {
-    paddingHorizontal: 16,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "600",
-    color: COLORS.text.secondary,
-    flex: 1,
-    textAlign: "center",
-  },
-  infoSection: {
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    borderBottomWidth: 2,
-    borderBottomColor: COLORS.border.light,
-    backgroundColor: COLORS.background.elevated,
-  },
-  materialTitle: {
-    fontSize: 26,
-    fontWeight: "bold",
-    color: COLORS.text.primary,
-    marginBottom: 8,
-  },
-  questionCount: {
-    fontSize: 17,
-    color: COLORS.text.secondary,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    gap: 16,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 20,
-    color: COLORS.text.tertiary,
-    textAlign: "center",
-    lineHeight: 30,
-  },
-  questionCard: {
-    backgroundColor: COLORS.background.default,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: COLORS.border.light,
-    overflow: "hidden",
-    marginBottom: 16,
-  },
-  questionContent: {
-    padding: 16,
-  },
-  questionTextContainer: {
-    marginBottom: 12,
-  },
-  questionLabel: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.primary.main,
-    marginBottom: 4,
-  },
-  questionText: {
-    fontSize: 20,
-    lineHeight: 28,
-    color: COLORS.text.primary,
-    fontWeight: "600",
-  },
-  answerTextContainer: {
-    marginBottom: 12,
-    paddingTop: 12,
-    borderTopWidth: 2,
-    borderTopColor: COLORS.background.elevated,
-  },
-  answerLabel: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.status.success,
-    marginBottom: 4,
-  },
-  answerText: {
-    fontSize: 17,
-    lineHeight: 26,
-    color: COLORS.text.secondary,
-  },
-  metaContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 8,
-  },
-  metaText: {
-    fontSize: 14,
-    color: COLORS.text.tertiary,
-  },
-  deleteButton: {
-    backgroundColor: COLORS.status.error,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: "center",
-    borderTopWidth: 2,
-    borderTopColor: COLORS.border.light,
-  },
-  deleteButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: COLORS.text.inverse,
-  },
-});
+const createStyles = (colors: any, fontSize: (size: number) => number) => {
+  const isPrimaryColors = 'primary' in colors;
+
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.default,
+    },
+    header: {
+      paddingHorizontal: 16,
+    },
+    title: {
+      fontSize: fontSize(22),
+      fontWeight: "600",
+      color: colors.text.secondary,
+      flex: 1,
+      textAlign: "center",
+    },
+    infoSection: {
+      paddingHorizontal: 24,
+      paddingVertical: 20,
+      borderBottomWidth: 2,
+      borderBottomColor: isPrimaryColors ? colors.border.light : colors.border.default,
+      backgroundColor: colors.background.elevated || colors.background.default,
+    },
+    materialTitle: {
+      fontSize: fontSize(26),
+      fontWeight: "bold",
+      color: colors.text.primary,
+      marginBottom: 8,
+    },
+    questionCount: {
+      fontSize: fontSize(17),
+      color: colors.text.secondary,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: 16,
+      gap: 16,
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingVertical: 60,
+    },
+    emptyText: {
+      fontSize: fontSize(20),
+      color: colors.text.tertiary || colors.text.secondary,
+      textAlign: "center",
+      lineHeight: 30,
+    },
+    questionCard: {
+      backgroundColor: colors.background.default,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: isPrimaryColors ? colors.border.light : colors.border.default,
+      overflow: "hidden",
+      marginBottom: 16,
+    },
+    questionContent: {
+      padding: 16,
+    },
+    questionTextContainer: {
+      marginBottom: 12,
+    },
+    questionLabel: {
+      fontSize: fontSize(14),
+      fontWeight: "700",
+      color: isPrimaryColors ? colors.primary.main : colors.accent.primary,
+      marginBottom: 4,
+    },
+    questionText: {
+      fontSize: fontSize(20),
+      lineHeight: 28,
+      color: colors.text.primary,
+      fontWeight: "600",
+    },
+    answerTextContainer: {
+      marginBottom: 12,
+      paddingTop: 12,
+      borderTopWidth: 2,
+      borderTopColor: colors.background.elevated || colors.background.default,
+    },
+    answerLabel: {
+      fontSize: fontSize(14),
+      fontWeight: "700",
+      color: colors.status.success,
+      marginBottom: 4,
+    },
+    answerText: {
+      fontSize: fontSize(17),
+      lineHeight: 26,
+      color: colors.text.secondary,
+    },
+    metaContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 8,
+    },
+    metaText: {
+      fontSize: fontSize(14),
+      color: colors.text.tertiary || colors.text.secondary,
+    },
+    deleteButton: {
+      backgroundColor: colors.status.error,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      alignItems: "center",
+      borderTopWidth: 2,
+      borderTopColor: isPrimaryColors ? colors.border.light : colors.border.default,
+    },
+    deleteButtonText: {
+      fontSize: fontSize(16),
+      fontWeight: "700",
+      color: isPrimaryColors ? colors.text.inverse : colors.text.primary,
+    },
+  });
+};

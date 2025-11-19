@@ -26,13 +26,13 @@ import * as Haptics from "expo-haptics";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import BackButton from "../../components/BackButton";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
-import { commonStyles } from "../../styles/commonStyles";
+import { createCommonStyles } from "../../styles/commonStyles";
 import { buildChaptersFromMaterialJson } from "../../utils/materialJsonMapper";
 import type { Chapter } from "../../types/chapter";
 import { fetchAllBookmarks, toggleBookmark } from "../../api/bookmarkApi";
 import type { BookmarkListItem } from "../../types/api/bookmarkApiTypes";
 import SectionRenderer from "../../components/SectionRenderer";
-import { COLORS } from "../../constants/colors";
+import { useTheme } from "../../contexts/ThemeContext";
 import { parseDocument } from "htmlparser2";
 import { Element, Node, DataNode } from "domhandler";
 import { textContent, isTag, findOne } from "domutils";
@@ -143,6 +143,10 @@ export default function BookmarkListScreen() {
   const navigation = useNavigation<BookmarkListScreenNavigationProp>();
   const route = useRoute<BookmarkListScreenRouteProp>();
   const { material, chapterId } = route.params;
+
+  const { colors, fontSize: themeFont } = useTheme();
+  const styles = useMemo(() => createStyles(colors, themeFont), [colors, themeFont]);
+  const commonStyles = useMemo(() => createCommonStyles(colors), [colors]);
 
   // 뷰 모델 타입 확장
   type BookmarkViewItem = BookmarkListItem & {
@@ -660,19 +664,22 @@ export default function BookmarkListScreen() {
     </SafeAreaView>
   );
 }
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background.default,
-  },
+const createStyles = (colors: any, fontSize: (size: number) => number) => {
+  const isPrimaryColors = 'primary' in colors;
 
-  /* -------------------------
-   * Header
-   * ------------------------- */
-  header: {
-    borderBottomWidth: 3,
-    borderBottomColor: COLORS.border.light,
-  },
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.default,
+    },
+
+    /* -------------------------
+     * Header
+     * ------------------------- */
+    header: {
+      borderBottomWidth: 3,
+      borderBottomColor: isPrimaryColors ? colors.border.light : colors.border.default,
+    },
   headerTitle: {
     alignItems: "center",
   },
@@ -681,13 +688,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   titleText: {
-    fontSize: 28,
+    fontSize: fontSize(28),
     fontWeight: "bold",
-    color: COLORS.text.primary,
+    color: colors.text.primary,
   },
   countText: {
-    fontSize: 22,
-    color: COLORS.text.secondary,
+    fontSize: fontSize(22),
+    color: colors.text.secondary,
     marginTop: 4,
   },
 
@@ -697,19 +704,19 @@ const styles = StyleSheet.create({
   chapterInfo: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: COLORS.background.elevated,
+    backgroundColor: colors.background.elevated || colors.background.default,
     borderBottomWidth: 2,
-    borderBottomColor: COLORS.border.light,
+    borderBottomColor: isPrimaryColors ? colors.border.light : colors.border.default,
   },
   subjectText: {
-    fontSize: 22,
-    color: COLORS.text.secondary,
+    fontSize: fontSize(22),
+    color: colors.text.secondary,
     marginBottom: 4,
   },
   chapterTitle: {
-    fontSize: 26,
+    fontSize: fontSize(26),
     fontWeight: "bold",
-    color: COLORS.text.primary,
+    color: colors.text.primary,
   },
 
   /* -------------------------
@@ -732,14 +739,14 @@ const styles = StyleSheet.create({
     paddingVertical: 80,
   },
   emptyText: {
-    fontSize: 28,
+    fontSize: fontSize(28),
     fontWeight: "bold",
-    color: COLORS.text.tertiary,
+    color: colors.text.tertiary || colors.text.secondary,
     marginBottom: 12,
   },
   emptyHint: {
-    fontSize: 24,
-    color: COLORS.border.main,
+    fontSize: fontSize(24),
+    color: isPrimaryColors ? colors.border.main : colors.border.default,
     textAlign: "center",
     lineHeight: 34,
   },
@@ -748,18 +755,18 @@ const styles = StyleSheet.create({
    * Bookmark Card
    * ------------------------- */
   bookmarkCard: {
-    backgroundColor: COLORS.background.default,
+    backgroundColor: colors.background.default,
     borderRadius: 16,
     marginBottom: 20,
     borderWidth: 3,
-    borderColor: COLORS.secondary.main,
+    borderColor: isPrimaryColors ? colors.secondary.main : colors.accent.secondary,
     overflow: "hidden",
     flexDirection: "row",
     minHeight: 150,
   },
   activeBookmarkCard: {
-    borderColor: COLORS.status.success,
-    backgroundColor: COLORS.status.successLight,
+    borderColor: colors.status.success,
+    backgroundColor: isPrimaryColors ? colors.status.successLight : colors.background.elevated,
   },
 
   bookmarkContent: {
@@ -774,14 +781,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sectionNumber: {
-    fontSize: 24,
+    fontSize: fontSize(24),
     fontWeight: "bold",
-    color: COLORS.secondary.dark,
+    color: isPrimaryColors ? colors.secondary.dark : colors.accent.secondary,
   },
   sectionTypeBadge: {
-    fontSize: 18,
-    color: COLORS.text.secondary,
-    backgroundColor: COLORS.secondary.lightest,
+    fontSize: fontSize(18),
+    color: colors.text.secondary,
+    backgroundColor: isPrimaryColors ? colors.secondary.lightest : colors.background.elevated,
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 8,
@@ -789,9 +796,9 @@ const styles = StyleSheet.create({
   },
 
   bookmarkTitle: {
-    fontSize: 24,
+    fontSize: fontSize(24),
     fontWeight: "700",
-    color: COLORS.text.primary,
+    color: colors.text.primary,
     marginBottom: 8,
   },
 
@@ -802,9 +809,9 @@ const styles = StyleSheet.create({
   },
 
   bookmarkText: {
-    fontSize: 20,
+    fontSize: fontSize(20),
     lineHeight: 34,
-    color: COLORS.text.secondary,
+    color: colors.text.secondary,
     fontWeight: "500",
   },
 
@@ -814,8 +821,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   dateText: {
-    fontSize: 16,
-    color: COLORS.text.tertiary,
+    fontSize: fontSize(16),
+    color: colors.text.tertiary || colors.text.secondary,
   },
 
   /* -------------------------
@@ -823,14 +830,14 @@ const styles = StyleSheet.create({
    * ------------------------- */
   deleteButton: {
     width: 80,
-    backgroundColor: COLORS.status.error,
+    backgroundColor: colors.status.error,
     justifyContent: "center",
     alignItems: "center",
     minHeight: 150,
   },
   deleteButtonText: {
-    fontSize: 36,
-    color: COLORS.text.inverse,
+    fontSize: fontSize(36),
+    color: isPrimaryColors ? colors.text.inverse : colors.text.primary,
   },
 
   /* -------------------------
@@ -840,29 +847,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 20,
     borderTopWidth: 3,
-    borderTopColor: COLORS.border.light,
-    backgroundColor: COLORS.background.elevated,
+    borderTopColor: isPrimaryColors ? colors.border.light : colors.border.default,
+    backgroundColor: colors.background.elevated || colors.background.default,
   },
 
   reviewButton: {
-    backgroundColor: COLORS.status.success,
+    backgroundColor: colors.status.success,
     borderRadius: 16,
     padding: 24,
     alignItems: "center",
     minHeight: 100,
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: COLORS.status.success,
+    borderColor: colors.status.success,
   },
   reviewButtonText: {
-    fontSize: 30,
+    fontSize: fontSize(30),
     fontWeight: "bold",
-    color: COLORS.text.inverse,
+    color: isPrimaryColors ? colors.text.inverse : colors.text.primary,
     marginBottom: 8,
   },
   reviewButtonSubtext: {
-    fontSize: 22,
-    color: COLORS.status.successLight,
+    fontSize: fontSize(22),
+    color: isPrimaryColors ? colors.status.successLight : colors.text.secondary,
     fontWeight: "700",
   },
 
@@ -875,19 +882,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   reviewInfoText: {
-    fontSize: 26,
+    fontSize: fontSize(26),
     fontWeight: "bold",
-    color: COLORS.status.success,
+    color: colors.status.success,
     marginBottom: 6,
   },
   reviewSubText: {
-    fontSize: 22,
-    color: COLORS.text.secondary,
+    fontSize: fontSize(22),
+    color: colors.text.secondary,
     fontWeight: "600",
   },
 
   stopButton: {
-    backgroundColor: COLORS.status.error,
+    backgroundColor: colors.status.error,
     borderRadius: 12,
     paddingVertical: 20,
     paddingHorizontal: 28,
@@ -895,20 +902,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 3,
-    borderColor: COLORS.status.error,
+    borderColor: colors.status.error,
   },
   stopButtonText: {
-    fontSize: 26,
+    fontSize: fontSize(26),
     fontWeight: "bold",
-    color: COLORS.text.inverse,
+    color: isPrimaryColors ? colors.text.inverse : colors.text.primary,
   },
 
   /* -------------------------
    * Error text
    * ------------------------- */
   errorText: {
-    fontSize: 26,
-    color: COLORS.text.secondary,
+    fontSize: fontSize(26),
+    color: colors.text.secondary,
     fontWeight: "600",
   },
-});
+  });
+};

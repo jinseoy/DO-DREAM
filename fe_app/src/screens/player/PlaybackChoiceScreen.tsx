@@ -24,18 +24,22 @@ import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
 import BackButton from "../../components/BackButton";
 import SettingsButton from "../../components/SettingsButton";
-import { commonStyles } from "../../styles/commonStyles";
+import { createCommonStyles } from "../../styles/commonStyles";
 import ChoiceButton from "../../components/ChoiceButton";
 import { buildChaptersFromMaterialJson } from "../../utils/materialJsonMapper";
 import type { Chapter } from "../../types/chapter";
 import { fetchMaterialProgress } from "../../api/progressApi";
 import type { MaterialProgress } from "../../types/api/progressApiTypes";
-import { COLORS } from "../../constants/colors";
+import { useTheme } from "../../contexts/ThemeContext";
 
 export default function PlaybackChoiceScreen() {
   const navigation = useNavigation<PlaybackChoiceScreenNavigationProp>();
   const route = useRoute<PlaybackChoiceScreenRouteProp>();
   const { material } = route.params;
+
+  const { colors, fontSize: themeFont } = useTheme();
+  const styles = useMemo(() => createStyles(colors, themeFont), [colors, themeFont]);
+  const commonStyles = useMemo(() => createCommonStyles(colors), [colors]);
 
   // 백엔드에서 조회한 진행률 데이터
   const [progressData, setProgressData] = useState<MaterialProgress | null>(null);
@@ -85,7 +89,7 @@ export default function PlaybackChoiceScreen() {
   }, [material.id]);
 
   useEffect(() => {
-    const announcement = `${material.title}, ${material.currentChapter}챕터. 이어듣기, 처음부터, 저장 목록, 질문 목록, 설정, 퀴즈 중 선택하세요. 상단의 음성 명령 버튼을 두 번 탭하고, 이어서 듣기, 처음부터, 다음 챕터, 이전 챕터, 이 챕터 듣기, 저장 목록, 질문 목록, 설정, 퀴즈 풀기, 뒤로 가기처럼 말할 수 있습니다.`;
+    const announcement = `${material.title}, 이어듣기, 처음부터, 저장 목록, 질문 목록, 퀴즈 중 선택하세요. 상단의 말하기 버튼을 두 번 탭하고, 이어서 듣기, 처음부터, 다음 챕터, 이전 챕터, 이 챕터 듣기, 저장 목록, 질문 목록, 설정, 퀴즈 풀기, 뒤로 가기처럼 말할 수 있습니다.`;
     AccessibilityInfo.announceForAccessibility(announcement);
   }, [material.title, material.currentChapter]);
 
@@ -580,156 +584,159 @@ export default function PlaybackChoiceScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background.default,
-  },
-  header: {
-    paddingHorizontal: 24,
-    justifyContent: "space-between",
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    // gap: 8,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-  infoSection: {
-    marginBottom: 24,
-    alignItems: "center",
-    paddingTop: 8,
-  },
-  subjectText: {
-    fontSize: 40,
-    fontWeight: "bold",
-    color: COLORS.text.primary,
-    marginBottom: 8,
-  },
-  chapterText: {
-    fontSize: 22,
-    color: COLORS.text.secondary,
-  },
-  chapterSelectSection: {
-    backgroundColor: COLORS.background.elevated,
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 24,
-    borderWidth: 3,
-    borderColor: COLORS.primary.main,
-  },
-  progressSection: {
-    backgroundColor: COLORS.background.elevated,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  progressTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: COLORS.text.primary,
-    marginBottom: 12,
-  },
-  progressBarContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 8,
-  },
-  progressBarBackground: {
-    flex: 1,
-    height: 24,
-    backgroundColor: COLORS.border.light,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  progressBarFill: {
-    height: "100%",
-    backgroundColor: COLORS.status.success,
-    borderRadius: 12,
-  },
-  progressPercentage: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: COLORS.text.primary,
-    minWidth: 55,
-    textAlign: "right",
-  },
-  sectionCountText: {
-    fontSize: 15,
-    color: COLORS.text.secondary,
-    marginTop: 4,
-    textAlign: "center",
-  },
-  chapterNavigationContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 16,
-    marginBottom: 16,
-  },
-  navButton: {
-    width: 60,
-    height: 60,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: COLORS.primary.main,
-    borderRadius: 30,
-    borderWidth: 3,
-    borderColor: COLORS.primary.dark,
-  },
-  navButtonText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: COLORS.text.inverse,
-  },
-  chapterInfoCompact: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  chapterTitleCompact: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: COLORS.text.primary,
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  chapterStatusText: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: COLORS.text.secondary,
-    textAlign: "center",
-  },
-  chapterIndexText: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: COLORS.primary.main,
-    textAlign: "center",
-  },
-  goToChapterButton: {
-    backgroundColor: COLORS.status.success,
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    minHeight: 60,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: COLORS.status.success,
-  },
-  goToChapterButtonText: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: COLORS.text.inverse,
-  },
-  buttonSection: {
-    gap: 16,
-  },
-});
+const createStyles = (colors: any, fontSize: (size: number) => number) => {
+  const isPrimaryColors = 'primary' in colors;
+
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.default,
+    },
+    header: {
+      paddingHorizontal: 24,
+      justifyContent: "space-between",
+    },
+    headerRight: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingHorizontal: 24,
+      paddingBottom: 24,
+    },
+    infoSection: {
+      marginBottom: 24,
+      alignItems: "center",
+      paddingTop: 8,
+    },
+    subjectText: {
+      fontSize: fontSize(40),
+      fontWeight: "bold",
+      color: colors.text.primary,
+      marginBottom: 8,
+    },
+    chapterText: {
+      fontSize: fontSize(22),
+      color: colors.text.secondary,
+    },
+    chapterSelectSection: {
+      backgroundColor: colors.background.elevated || colors.background.default,
+      borderRadius: 16,
+      padding: 24,
+      marginBottom: 24,
+      borderWidth: 3,
+      borderColor: isPrimaryColors ? colors.primary.main : colors.accent.primary,
+    },
+    progressSection: {
+      backgroundColor: colors.background.elevated || colors.background.default,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 24,
+    },
+    progressTitle: {
+      fontSize: fontSize(20),
+      fontWeight: "bold",
+      color: colors.text.primary,
+      marginBottom: 12,
+    },
+    progressBarContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 8,
+    },
+    progressBarBackground: {
+      flex: 1,
+      height: 24,
+      backgroundColor: isPrimaryColors ? colors.border.light : colors.border.default,
+      borderRadius: 12,
+      overflow: "hidden",
+    },
+    progressBarFill: {
+      height: "100%",
+      backgroundColor: colors.status.success,
+      borderRadius: 12,
+    },
+    progressPercentage: {
+      fontSize: 16,
+      fontWeight: "bold",
+      color: colors.text.primary,
+      minWidth: 55,
+      textAlign: "right",
+    },
+    sectionCountText: {
+      fontSize: 15,
+      color: colors.text.secondary,
+      marginTop: 4,
+      textAlign: "center",
+    },
+    chapterNavigationContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 16,
+      marginBottom: 16,
+    },
+    navButton: {
+      width: 60,
+      height: 60,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: isPrimaryColors ? colors.primary.main : colors.accent.primary,
+      borderRadius: 30,
+      borderWidth: 3,
+      borderColor: isPrimaryColors ? colors.primary.dark : colors.border.focus,
+    },
+    navButtonText: {
+      fontSize: 24,
+      fontWeight: "bold",
+      color: isPrimaryColors ? colors.text.inverse : colors.text.primary,
+    },
+    chapterInfoCompact: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    chapterTitleCompact: {
+      fontSize: 24,
+      fontWeight: "bold",
+      color: colors.text.primary,
+      textAlign: "center",
+      marginBottom: 8,
+    },
+    chapterStatusText: {
+      fontSize: 20,
+      fontWeight: "600",
+      color: colors.text.secondary,
+      textAlign: "center",
+    },
+    chapterIndexText: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: isPrimaryColors ? colors.primary.main : colors.accent.primary,
+      textAlign: "center",
+    },
+    goToChapterButton: {
+      backgroundColor: colors.status.success,
+      borderRadius: 12,
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      minHeight: 60,
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 3,
+      borderColor: colors.status.success,
+    },
+    goToChapterButtonText: {
+      fontSize: 22,
+      fontWeight: "bold",
+      color: isPrimaryColors ? colors.text.inverse : colors.text.primary,
+    },
+    buttonSection: {
+      gap: 16,
+    },
+  });
+};

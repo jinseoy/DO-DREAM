@@ -1,11 +1,11 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import BackButton from "./BackButton";
 import VoiceCommandButton from "./VoiceCommandButton";
-import { commonStyles } from "../styles/commonStyles";
+import { createCommonStyles } from "../styles/commonStyles";
 import { Material } from "../types/material";
 import { Chapter } from "../types/chapter";
-import { COLORS } from "../constants/colors";
+import { useTheme } from "../contexts/ThemeContext";
 
 type PlayModeKey = "single" | "continuous" | "repeat";
 
@@ -34,6 +34,11 @@ export default function PlayerHeader({
   onToggleBookmark,
   onBeforeListen,
 }: PlayerHeaderProps) {
+  const { colors, fontSize } = useTheme();
+  const commonStyles = useMemo(() => createCommonStyles(colors), [colors]);
+
+  const styles = useMemo(() => createStyles(colors, fontSize), [colors, fontSize]);
+
   return (
     <View style={styles.header}>
       {/* 상단: 뒤로 / 음성 명령 / 저장하기 */}
@@ -52,10 +57,10 @@ export default function PlayerHeader({
             ]}
             onPress={onToggleBookmark}
             accessible
-            accessibilityLabel={isBookmarked ? "저장 해제하기" : "현재 위치 저장하기"}
+            accessibilityLabel={isBookmarked ? "저장 해제하기" : "현재 챕터 저장하기"}
             accessibilityHint={
               isBookmarked
-                ? "현재 위치의 저장을 해제합니다."
+                ? "현재 챕터의 저장을 해제합니다."
                 : "현재 학습 위치를 저장합니다."
             }
             accessibilityRole="button"
@@ -98,68 +103,75 @@ export default function PlayerHeader({
 
 const HEADER_BTN_MIN_HEIGHT = 52;
 
-const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: COLORS.border.light,
-    backgroundColor: COLORS.background.default,
-  },
-  headerTop: {
-    ...commonStyles.headerContainer,
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-    borderBottomWidth: 0,
-    minHeight: 56,
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  bookmarkHeaderButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 3,
-    borderColor: COLORS.status.info,
-    backgroundColor: COLORS.status.infoLight,
-    minHeight: HEADER_BTN_MIN_HEIGHT,
-    minWidth: 100,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  bookmarkHeaderButtonActive: {
-    borderColor: "#43A047",
-    backgroundColor: "#E8F5E9",
-  },
-  bookmarkHeaderButtonText: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#000000",
-  },
-  bookmarkHeaderButtonTextActive: {
-    color: "#1B5E20",
-  },
-  headerInfo: {
-    marginTop: 8,
-  },
-  subjectText: {
-    fontSize: 18,
-    color: "#666666",
-    marginBottom: 4,
-  },
-  chapterTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333333",
-    marginBottom: 6,
-  },
-  modeIndicator: {
-    fontSize: 15,
-    color: "#2196F3",
-    fontWeight: "600",
-  },
-});
+const createStyles = (colors: any, fontSize: (size: number) => number) => {
+  const isPrimaryColors = 'primary' in colors;
+  const isHighContrast = 'button' in colors;
+
+  return StyleSheet.create({
+    header: {
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 12,
+      borderBottomWidth: 2,
+      borderBottomColor: isPrimaryColors ? colors.border.light : colors.border.default,
+      backgroundColor: colors.background.default,
+    },
+    headerTop: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 0,
+      paddingVertical: 0,
+      borderBottomWidth: 0,
+      minHeight: 56,
+    },
+    headerRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    bookmarkHeaderButton: {
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 12,
+      borderWidth: 3,
+      borderColor: isPrimaryColors ? colors.status.info : colors.status.info,
+      backgroundColor: isPrimaryColors ? colors.status.infoLight : colors.background.elevated,
+      minHeight: HEADER_BTN_MIN_HEIGHT,
+      minWidth: 100,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    bookmarkHeaderButtonActive: {
+      borderColor: isPrimaryColors ? "#43A047" : colors.status.success,
+      backgroundColor: isPrimaryColors ? "#E8F5E9" : colors.background.elevated,
+    },
+    bookmarkHeaderButtonText: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.text.primary,
+    },
+    bookmarkHeaderButtonTextActive: {
+      color: isPrimaryColors ? "#1B5E20" : colors.status.success,
+    },
+    headerInfo: {
+      marginTop: 8,
+    },
+    subjectText: {
+      fontSize: 18,
+      color: colors.text.secondary,
+      marginBottom: 4,
+    },
+    chapterTitle: {
+      fontSize: fontSize(24),
+      fontWeight: "bold",
+      color: colors.text.primary,
+      marginBottom: 6,
+    },
+    modeIndicator: {
+      fontSize: fontSize(15),
+      color: isPrimaryColors ? colors.status.info : colors.status.info,
+      fontWeight: "600",
+    },
+  });
+};

@@ -194,12 +194,21 @@ class TTSService {
         await Tts.setDefaultLanguage(options.language);
       }
 
+      // 3.0배 이상 속도에서는 pitch를 함께 조절하여 체감 속도 향상
       if (options.rate !== undefined) {
-        await Tts.setDefaultRate(options.rate / 2);
+        const engineRate = Math.min(options.rate, 3.0);
+        await Tts.setDefaultRate(engineRate / 2);
       }
 
       if (options.pitch !== undefined) {
-        await Tts.setDefaultPitch(options.pitch);
+        let finalPitch = options.pitch;
+        if ((options.rate ?? 1.0) > 3.0) {
+          // 3.0배를 초과하는 속도에 대해 pitch를 추가로 높여 체감 속도 증가
+          // (rate - 3.0) 구간을 0.0 ~ 9.0 으로 보고, pitch 증가분을 0.0 ~ 0.5 로 매핑
+          const pitchBoost = ((options.rate ?? 1.0) - 3.0) / 18.0; // (12.0 - 3.0) / 18.0 = 0.5
+          finalPitch += pitchBoost;
+        }
+        await Tts.setDefaultPitch(finalPitch);
       }
 
       if (options.voice) {
@@ -303,8 +312,20 @@ class TTSService {
 
     await this.applyTtsOptions(this.options);
 
-    const rate = this.options.rate ?? 1.0;
+    const userRate = this.options.rate ?? 1.0;
     const volume = this.options.volume ?? 1.0;
+    const userPitch = this.options.pitch ?? 1.0;
+
+    // 실제 엔진에 전달할 값 계산
+    const engineRate = Math.min(userRate, 3.0);
+    let enginePitch = userPitch;
+    if (userRate > 3.0) {
+      const pitchBoost = (userRate - 3.0) / 18.0;
+      enginePitch += pitchBoost;
+    }
+
+    // speak() 전에 pitch를 전역으로 설정
+    await Tts.setDefaultPitch(enginePitch);
 
     /** 🔥 TypeScript 오류 해결:
      * react-native-tts의 speak 옵션은 다음 필드 필요:
@@ -314,7 +335,7 @@ class TTSService {
      */
     await Tts.speak(text, {
       iosVoiceId: this.options.voice || "",
-      rate: rate / 2,
+      rate: engineRate / 2,
       androidParams: {
         KEY_PARAM_STREAM: "STREAM_MUSIC",
         KEY_PARAM_VOLUME: volume,
@@ -618,6 +639,20 @@ class TTSService {
 
         finishSubscription = Tts.addEventListener('tts-finish', finishListener);
         errorSubscription = Tts.addEventListener('tts-error', errorListener);
+
+        // speakSample에서도 pitch를 적용하기 위해 speak 전에 전역 설정
+        const userRate = this.options.rate ?? 1.0;
+        const userPitch = this.options.pitch ?? 1.0;
+
+        // 실제 엔진에 전달할 값 계산
+        let enginePitch = userPitch;
+        if (userRate > 3.0) {
+          const pitchBoost = (userRate - 3.0) / 18.0;
+          enginePitch += pitchBoost;
+        }
+
+        // speak() 전에 pitch를 전역으로 설정
+        await Tts.setDefaultPitch(enginePitch);
 
         await Tts.speak(text, {
           iosVoiceId: this.options.voice || '',

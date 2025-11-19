@@ -1,4 +1,4 @@
-import React, { useCallback, useContext } from "react";
+import React, { useCallback, useContext, useMemo } from "react";
 import {
   TouchableOpacity,
   Text,
@@ -9,12 +9,13 @@ import {
   TextStyle,
 } from "react-native";
 import { TriggerContext } from "../triggers/TriggerContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { COLORS } from "../constants/colors";
 
 type VoiceCommandButtonProps = {
   /**
    * 버튼 레이블 (시각적으로 보이는 텍스트)
-   * 기본값: "🎤 음성 명령"
+   * 기본값: "말하기"
    */
   label?: string;
 
@@ -48,7 +49,7 @@ type VoiceCommandButtonProps = {
 };
 
 export default function VoiceCommandButton({
-  label = "🎤 음성 명령",
+  label = "말하기",
   listeningLabel = "듣는 중…",
   accessibilityHint,
   style,
@@ -60,6 +61,9 @@ export default function VoiceCommandButton({
     stopVoiceCommandListening,
     isVoiceCommandListening,
   } = useContext(TriggerContext);
+
+  const { colors, fontSize } = useTheme();
+  const styles = useMemo(() => createStyles(colors, fontSize), [colors, fontSize]);
 
   const handlePress = useCallback(async () => {
     // 이미 듣는 중이면 → 종료(토글)
@@ -100,11 +104,11 @@ export default function VoiceCommandButton({
       ]}
       onPress={handlePress}
       accessible={true}
-      accessibilityLabel="음성 명령"
+      accessibilityLabel="말하기"
       accessibilityRole="button"
       accessibilityHint={
         accessibilityHint ??
-        "두 번 탭한 후 화면에서 안내한 명령어를 말씀하세요. 예: 재생, 일시정지, 다음, 이전, 질문하기, 뒤로 가기 등."
+        "두 번 탭한 후 명령어를 말씀하세요. 예: 재생, 일시정지, 다음, 이전, 질문하기, 뒤로 가기 등."
       }
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
@@ -121,29 +125,34 @@ export default function VoiceCommandButton({
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 3, // 경계선 두께 증가 (접근성)
-    borderColor: COLORS.secondary.dark, // 진한 노란색
-    backgroundColor: COLORS.secondary.lightest, // 매우 밝은 노란색 배경
-    minHeight: 52, // 터치 영역 증가 (44px 이상)
-    minWidth: 120,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  buttonActive: {
-    borderColor: COLORS.status.error, // 빨간색 (활성 상태)
-    backgroundColor: COLORS.status.errorLight, // 밝은 빨간색 배경
-  },
-  buttonText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: COLORS.text.primary, // 검은색 텍스트
-  },
-  buttonTextActive: {
-    color: COLORS.status.error, // 빨간색 텍스트 (활성 상태)
-  },
-});
+const createStyles = (colors: any, fontSize: (size: number) => number) => {
+  const isPrimaryColors = 'primary' in colors;
+
+  return StyleSheet.create({
+    button: {
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      marginLeft: 16,
+      borderRadius: 12,
+      borderWidth: 3,
+      borderColor: isPrimaryColors ? COLORS.secondary.dark : colors.accent.primary,
+      backgroundColor: isPrimaryColors ? COLORS.secondary.lightest : colors.background.elevated,
+      minHeight: 52,
+      minWidth: 120,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    buttonActive: {
+      borderColor: COLORS.status.error,
+      backgroundColor: COLORS.status.errorLight,
+    },
+    buttonText: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: colors.text.primary,
+    },
+    buttonTextActive: {
+      color: COLORS.status.error,
+    },
+  });
+};

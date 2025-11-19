@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   TouchableOpacity,
   Text,
@@ -8,7 +8,7 @@ import {
   TextStyle,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { COLORS } from "../constants/colors";
+import { useTheme } from "../contexts/ThemeContext";
 
 type BackButtonProps = {
   /**
@@ -39,6 +39,8 @@ export default function BackButton({
   accessibilityHint = "이전 화면으로 돌아갑니다.",
 }: BackButtonProps) {
   const navigation = useNavigation();
+  const { colors, fontSize } = useTheme();
+  const styles = useMemo(() => createStyles(colors, fontSize), [colors, fontSize]);
   const handlePress = onPress || (() => navigation.goBack());
 
   return (
@@ -51,22 +53,26 @@ export default function BackButton({
       accessibilityHint={accessibilityHint}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
-      <Text style={[styles.backButtonText, textStyle]}>← 뒤로</Text>
+      <Text style={[styles.backButtonText, textStyle]}>←   뒤로</Text>
     </TouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
-  backButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignSelf: "flex-start",
-    minHeight: 48,
-    justifyContent: "center",
-  },
-  backButtonText: {
-    fontSize: 22, // 가독성 향상
-    color: COLORS.primary.main, // #192b55 메인 남색
-    fontWeight: "700",
-  },
-});
+const createStyles = (colors: any, fontSize: (size: number) => number) => {
+  const isPrimaryColors = 'primary' in colors;
+
+  return StyleSheet.create({
+    backButton: {
+      paddingVertical: 12,
+      paddingRight: 16,
+      alignSelf: "flex-start",
+      minHeight: 48,
+      justifyContent: "center",
+    },
+    backButtonText: {
+      fontSize: fontSize(22),
+      color: isPrimaryColors ? colors.primary.main : colors.accent.secondary,
+      fontWeight: "700",
+    },
+  });
+};

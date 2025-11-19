@@ -1,9 +1,13 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import type { Section } from "../types/chapter";
 import { COLORS } from "../constants/colors";
+import { useTheme } from "../contexts/ThemeContext";
 
 export default function SectionRenderer({ section }: {   section: Section  }) {
+  const { colors, fontSize } = useTheme();
+  const styles = useMemo(() => createStyles(colors, fontSize), [colors, fontSize]);
+
   if (!section) return null;
 
   const { type, text } = section;
@@ -56,45 +60,49 @@ export default function SectionRenderer({ section }: {   section: Section  }) {
   );
 }
 
-const styles = StyleSheet.create({
-  headingContainer: {
-    marginBottom: 20,
-  },
-  headingText: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: COLORS.text.primary,
-    lineHeight: 44,
-  },
+const createStyles = (colors: any, fontSize: (size: number) => number) => {
+  const isPrimaryColors = 'primary' in colors;
 
-  listContainer: {
-    marginBottom: 24,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: COLORS.secondary.main,
-    backgroundColor: COLORS.secondary.lightest,
-  },
-  listTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: COLORS.text.primary,
-    marginBottom: 6,
-  },
-  listBody: {
-    fontSize: 24,
-    lineHeight: 38,
-    fontWeight: "500",
-    color: COLORS.text.secondary,
-  },
+  return StyleSheet.create({
+    headingContainer: {
+      marginBottom: 20,
+    },
+    headingText: {
+      fontSize: fontSize(32),
+      fontWeight: "800",
+      color: colors.text.primary,
+      lineHeight: 44,
+    },
 
-  paragraphContainer: {
-    marginBottom: 24,
-  },
-  paragraphText: {
-    fontSize: 28,
-    lineHeight: 44,
-    fontWeight: "500",
-    color: COLORS.text.primary,
-  },
-});
+    listContainer: {
+      marginBottom: 24,
+      padding: 16,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: isPrimaryColors ? COLORS.secondary.main : colors.accent.secondary,
+      backgroundColor: isPrimaryColors ? COLORS.secondary.lightest : colors.background.elevated,
+    },
+    listTitle: {
+      fontSize: fontSize(28),
+      fontWeight: "800",
+      color: colors.text.primary,
+      marginBottom: 6,
+    },
+    listBody: {
+      fontSize: fontSize(24),
+      lineHeight: 38,
+      fontWeight: "500",
+      color: colors.text.secondary,
+    },
+
+    paragraphContainer: {
+      marginBottom: 24,
+    },
+    paragraphText: {
+      fontSize: fontSize(28),
+      lineHeight: 44,
+      fontWeight: "500",
+      color: colors.text.primary,
+    },
+  });
+};

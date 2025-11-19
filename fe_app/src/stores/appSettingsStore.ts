@@ -40,12 +40,12 @@ interface AppSettingsStore {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  ttsRate: 1.0,
+  ttsRate: 1.2,
   ttsPitch: 1.0,
   ttsVolume: 1.0,
   ttsVoiceId: null,
   highContrastMode: false,
-  fontSizeScale: 1.2, // 저시력 고려 기본값
+  fontSizeScale: 1.2,
 };
 
 export const useAppSettingsStore = create<AppSettingsStore>((set, get) => ({
@@ -59,7 +59,7 @@ export const useAppSettingsStore = create<AppSettingsStore>((set, get) => ({
   hydrate: () => {
     try {
       const settings: AppSettings = {
-        ttsRate: getTTSSpeed(),
+        ttsRate: getTTSSpeed() || 1.2,
         ttsPitch: getTTSPitch(),
         ttsVolume: getTTSVolume(),
         ttsVoiceId: getTTSVoiceId(),

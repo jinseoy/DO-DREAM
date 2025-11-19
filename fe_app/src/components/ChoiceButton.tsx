@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   TouchableOpacity,
   View,
@@ -7,7 +7,7 @@ import {
   StyleProp,
   ViewStyle,
 } from "react-native";
-import { COLORS } from "../constants/colors";
+import { useTheme } from "../contexts/ThemeContext";
 
 interface ChoiceButtonProps {
   onPress: () => void;
@@ -24,6 +24,9 @@ export default function ChoiceButton({
   accessibilityLabel,
   style,
 }: ChoiceButtonProps) {
+  const { colors, fontSize } = useTheme();
+  const styles = useMemo(() => createStyles(colors, fontSize), [colors, fontSize]);
+
   return (
     <TouchableOpacity
       style={[styles.choiceButton, style]}
@@ -40,30 +43,34 @@ export default function ChoiceButton({
   );
 }
 
-const styles = StyleSheet.create({
-  choiceButton: {
-    backgroundColor: COLORS.primary.lightest, // 매우 밝은 남색 배경
-    borderRadius: 12,
-    padding: 24, // 터치 영역 증가
-    borderWidth: 3, // 경계선 두께 증가 (접근성)
-    borderColor: COLORS.primary.main, // 메인 남색 테두리
-    minHeight: 100, // 최소 높이 증가
-  },
-  buttonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  buttonText: {
-    fontSize: 26, // 가독성 향상
-    fontWeight: "700",
-    color: COLORS.text.primary, // 검은색 텍스트 (충분한 대비)
-    flex: 1
-  },
-  buttonSubtext: {
-    fontSize: 20, // 가독성 향상
-    fontWeight: "600",
-    color: COLORS.text.secondary, // 회색 텍스트
-    marginLeft: 12
-  },
-});
+const createStyles = (colors: any, fontSize: (size: number) => number) => {
+  const isPrimaryColors = 'primary' in colors;
+
+  return StyleSheet.create({
+    choiceButton: {
+      backgroundColor: isPrimaryColors ? colors.primary.lightest : colors.background.elevated,
+      borderRadius: 12,
+      padding: 24,
+      borderWidth: 3,
+      borderColor: isPrimaryColors ? colors.primary.main : colors.accent.primary,
+      minHeight: 100,
+    },
+    buttonContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    buttonText: {
+      fontSize: fontSize(26),
+      fontWeight: "700",
+      color: colors.text.primary,
+      flex: 1
+    },
+    buttonSubtext: {
+      fontSize: fontSize(20),
+      fontWeight: "600",
+      color: colors.text.secondary,
+      marginLeft: 12
+    },
+  });
+};

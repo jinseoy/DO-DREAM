@@ -28,12 +28,14 @@ import { SharedMaterialSummary } from "../../types/api/materialApiTypes";
 import { fetchAllProgress } from "../../api/progressApi";
 import type { MaterialProgress } from "../../types/api/progressApiTypes";
 import { COLORS } from "../../constants/colors";
-import { commonStyles } from "../../styles/commonStyles";
+import { createCommonStyles } from "../../styles/commonStyles";
+import { useTheme } from "../../contexts/ThemeContext";
 
 export default function LibraryScreen() {
   const navigation = useNavigation<LibraryScreenNavigationProp>();
   const student = useAuthStore((state) => state.student);
   const settings = useAppSettingsStore((state) => state.settings);
+  const { colors, fontSize: themeFont, isHighContrast } = useTheme();
 
   const { setCurrentScreenId, registerVoiceHandlers } =
     useContext(TriggerContext);
@@ -473,8 +475,8 @@ export default function LibraryScreen() {
     );
   };
 
-  const HC = settings.highContrastMode;
-  const headerFontSize = 36 * settings.fontSizeScale;
+  const styles = React.useMemo(() => createStyles(colors, themeFont), [colors, themeFont]);
+  const headerFontSize = themeFont(36);
 
   // 핸들러를 ref로 저장하여 최신 버전 유지
   const handleLibraryVoiceCommandRef = useRef(handleLibraryVoiceCommand);
@@ -514,15 +516,14 @@ export default function LibraryScreen() {
 
   return (
     <SafeAreaView
-      style={[styles.container, HC && styles.containerHC]}
+      style={styles.container}
       edges={["top", "bottom"]}
     >
-      <View style={[styles.header, HC && styles.headerHC]}>
+      <View style={styles.header}>
         <Text
           style={[
             styles.studentName,
             { fontSize: headerFontSize },
-            HC && styles.textHC,
           ]}
           accessible={true}
           accessibilityRole="header"
@@ -552,7 +553,7 @@ export default function LibraryScreen() {
         accessible={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, HC && styles.textHC]}>
+            <Text style={styles.emptyText}>
               {loadingList
                 ? "학습 자료를 불러오는 중입니다..."
                 : error
@@ -566,106 +567,103 @@ export default function LibraryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background.default,
-  },
-  containerHC: {
-    backgroundColor: COLORS.common.black,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 24,
-    borderBottomWidth: 3,
-    borderBottomColor: COLORS.border.light,
-  },
-  headerHC: {
-    borderBottomColor: COLORS.text.inverse,
-  },
-  studentName: {
-    fontSize: 40,
-    fontWeight: "bold",
-    color: COLORS.text.primary,
-  },
-  textHC: {
-    color: COLORS.text.inverse,
-  },
-  // 오른쪽: 음성 명령 + 설정
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  listContent: {
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 40,
-  },
-  materialButton: {
-    backgroundColor: COLORS.background.elevated,
-    borderRadius: 16,
-    marginBottom: 20,
-    paddingVertical: 20,
-    paddingHorizontal: 24,
-    borderWidth: 3,
-    borderColor: COLORS.primary.main,
-    minHeight: 100,
-    justifyContent: "center",
-  },
-  materialButtonLoading: {
-    opacity: 0.7,
-  },
-  materialContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  materialTextContainer: {
-    flex: 1,
-  },
-  subjectText: {
-    fontSize: 26,
-    fontWeight: "600",
-    color: COLORS.text.primary,
-    marginBottom: 4,
-  },
-  chapterText: {
-    fontSize: 20,
-    color: COLORS.text.secondary,
-    marginBottom: 2,
-  },
-  sectionProgressText: {
-    fontSize: 15,
-    color: COLORS.text.tertiary,
-    marginTop: 2,
-  },
-  progressIndicator: {
-    backgroundColor: COLORS.status.success,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginLeft: 12,
-  },
-  progressText: {
-    fontSize: 14,
-    color: COLORS.text.inverse,
-    fontWeight: "600",
-  },
-  loadingText: {
-    marginTop: 8,
-    fontSize: 15,
-    color: COLORS.text.tertiary,
-  },
-  emptyContainer: {
-    paddingTop: 40,
-    alignItems: "center",
-  },
-  emptyText: {
-    fontSize: 20,
-    color: COLORS.text.secondary,
-  },
-});
+const createStyles = (colors: any, fontSize: (size: number) => number) => {
+  const isPrimaryColors = 'primary' in colors;
+
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.default,
+      
+    },
+    header: {
+      display: "flex",
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 24,
+      paddingTop: 12,
+      paddingBottom: 24,
+      borderBottomWidth: 3,
+      borderBottomColor: isPrimaryColors ? colors.border.light : colors.text.primary,
+    },
+    studentName: {
+      fontSize: 40,
+      fontWeight: "bold",
+      color: colors.text.primary,
+    },
+    // 오른쪽: 음성 명령 + 설정
+    headerRight: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    listContent: {
+      paddingHorizontal: 24,
+      paddingTop: 20,
+      paddingBottom: 40,
+    },
+    materialButton: {
+      backgroundColor: isPrimaryColors ? colors.background.elevated : colors.background.elevated,
+      borderRadius: 16,
+      marginBottom: 20,
+      paddingVertical: 20,
+      paddingHorizontal: 24,
+      borderWidth: 3,
+      borderColor: isPrimaryColors ? colors.primary.main : colors.accent.primary,
+      minHeight: 100,
+      justifyContent: "center",
+    },
+    materialButtonLoading: {
+      opacity: 0.7,
+    },
+    materialContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    materialTextContainer: {
+      flex: 1,
+    },
+    subjectText: {
+      fontSize: fontSize(26),
+      fontWeight: "600",
+      color: colors.text.primary,
+      marginBottom: 4,
+    },
+    chapterText: {
+      fontSize: fontSize(20),
+      color: colors.text.secondary,
+      marginBottom: 2,
+    },
+    sectionProgressText: {
+      fontSize: fontSize(15),
+      color: colors.text.tertiary || colors.text.secondary,
+      marginTop: 2,
+    },
+    progressIndicator: {
+      backgroundColor: colors.status.success,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      marginLeft: 12,
+    },
+    progressText: {
+      fontSize: fontSize(14),
+      color: isPrimaryColors ? colors.text.inverse : colors.text.primary,
+      fontWeight: "600",
+    },
+    loadingText: {
+      marginTop: 8,
+      fontSize: fontSize(15),
+      color: colors.text.tertiary || colors.text.secondary,
+    },
+    emptyContainer: {
+      paddingTop: 40,
+      alignItems: "center",
+    },
+    emptyText: {
+      fontSize: fontSize(20),
+      color: colors.text.secondary,
+    },
+  });
+};

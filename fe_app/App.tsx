@@ -5,6 +5,7 @@ import AppNavigator from "./src/navigation/AppNavigator";
 import { navigationRef } from "./src/navigation/RootNavigation";
 import GlobalVoiceTriggers from "./src/components/GlobalVoiceTriggers";
 import { TriggerProvider } from "./src/triggers/TriggerContext";
+import { ThemeProvider } from "./src/contexts/ThemeContext";
 
 import { useAppSettingsStore } from "./src/stores/appSettingsStore";
 import { useAuthStore } from "./src/stores/authStore";
@@ -43,14 +44,16 @@ export default function App() {
   }, []);
 
   return (
-    <TriggerProvider>
-      <AppNavigator />
-      <GlobalVoiceTriggers
-        onVoiceCommand={() => {
-          navigationRef.current?.navigate("Question" as never);
-        }}
-      />
-      <StatusBar style={Platform.OS === "ios" ? "light" : "auto"} />
-    </TriggerProvider>
+    <ThemeProvider>
+      <TriggerProvider>
+        <AppNavigator />
+        <GlobalVoiceTriggers
+          onVoiceCommand={() => {
+            navigationRef.current?.navigate("Question" as never);
+          }}
+        />
+        <StatusBar style={Platform.OS === "ios" ? "light" : "auto"} />
+      </TriggerProvider>
+    </ThemeProvider>
   );
 }

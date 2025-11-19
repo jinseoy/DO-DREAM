@@ -42,7 +42,7 @@ import {
   fetchBookmarksByMaterial,
 } from "../../api/bookmarkApi";
 import { updateProgress } from "../../api/progressApi";
-import { COLORS } from "../../constants/colors";
+import { useTheme } from "../../contexts/ThemeContext";
 
 type PlayModeKey = "single" | "continuous" | "repeat";
 
@@ -55,6 +55,9 @@ const UI_MODE_LABELS: Record<PlayModeKey, string> = {
 export default function PlayerScreen() {
   const navigation = useNavigation<PlayerScreenNavigationProp>();
   const route = useRoute<PlayerScreenRouteProp>() as any;
+
+  const { colors, fontSize: themeFont } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors, themeFont), [colors, themeFont]);
 
   const {
     material,
@@ -855,146 +858,146 @@ export default function PlayerScreen() {
 }
 const CONTROL_BTN_MIN_HEIGHT = 80;
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background.default,
-  },
+const createStyles = (colors: any, fontSize: (size: number) => number) => {
+  const isPrimaryColors = 'primary' in colors;
 
-  header: {
-    paddingHorizontal: 0,
-    paddingTop: 12,
-    paddingBottom: 12,
-  },
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.default,
+    },
 
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
+    header: {
+      paddingHorizontal: 0,
+      paddingTop: 12,
+      paddingBottom: 12,
+    },
 
-  contentBox: {
-    padding: 0, // SectionRenderer 내부 padding 사용
-    // borderRadius: 12,
-    marginBottom: 20,
-    // backgroundColor: COLORS.background.paper,
-    // borderWidth: 2,
-    // borderColor: COLORS.border.light,
-  },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingHorizontal: 20,
+      paddingTop: 20,
+    },
 
-  counterText: {
-    fontSize: 22,
-    color: COLORS.text.tertiary,
-    textAlign: "center",
-    fontWeight: "700",
-    marginBottom: 16,
-  },
+    contentBox: {
+      padding: 0,
+      marginBottom: 20,
+    },
 
-  controls: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 18,
-    paddingHorizontal: 12,
-    borderTopWidth: 3,
-    borderTopColor: COLORS.border.main,
-    backgroundColor: COLORS.background.elevated,
-    gap: 8,
-  },
+    counterText: {
+      fontSize: 22,
+      color: colors.text.tertiary || colors.text.secondary,
+      textAlign: "center",
+      fontWeight: "700",
+      marginBottom: 16,
+    },
 
-  controlButtonPrevNext: {
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    borderRadius: 14,
-    backgroundColor: COLORS.primary.main,
-    flex: 1,
-    minWidth: 100,
-    maxWidth: 110,
-    minHeight: CONTROL_BTN_MIN_HEIGHT,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 3,
-    borderColor: COLORS.primary.dark,
-  },
-  controlButtonText: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: COLORS.text.inverse,
-  },
+    controls: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      paddingVertical: 18,
+      paddingHorizontal: 12,
+      borderTopWidth: 3,
+      borderTopColor: isPrimaryColors ? colors.border.main : colors.border.default,
+      backgroundColor: colors.background.elevated || colors.background.default,
+      gap: 8,
+    },
 
-  controlButtonComplete: {
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    borderRadius: 14,
-    backgroundColor: COLORS.secondary.main,
-    flex: 1,
-    maxWidth: 110,
-    minHeight: CONTROL_BTN_MIN_HEIGHT,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 3,
-    borderColor: COLORS.secondary.dark,
-  },
-  controlButtonCompleteText: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: COLORS.text.primary,
-  },
+    controlButtonPrevNext: {
+      paddingVertical: 18,
+      paddingHorizontal: 20,
+      borderRadius: 14,
+      backgroundColor: isPrimaryColors ? colors.primary.main : colors.accent.primary,
+      flex: 1,
+      minWidth: 100,
+      maxWidth: 110,
+      minHeight: CONTROL_BTN_MIN_HEIGHT,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 3,
+      borderColor: isPrimaryColors ? colors.primary.dark : colors.border.focus,
+    },
+    controlButtonText: {
+      fontSize: 22,
+      fontWeight: "bold",
+      color: isPrimaryColors ? colors.text.inverse : colors.text.primary,
+    },
 
-  controlButtonPlay: {
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    borderRadius: 14,
-    backgroundColor: COLORS.status.success,
-    flex: 1,
-    maxWidth: 140,
-    minHeight: CONTROL_BTN_MIN_HEIGHT,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 3,
-    borderColor: COLORS.status.success,
-  },
-  playButtonText: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: COLORS.text.inverse,
-  },
+    controlButtonComplete: {
+      paddingVertical: 18,
+      paddingHorizontal: 20,
+      borderRadius: 14,
+      backgroundColor: isPrimaryColors ? colors.secondary.main : colors.accent.secondary,
+      flex: 1,
+      maxWidth: 110,
+      minHeight: CONTROL_BTN_MIN_HEIGHT,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 3,
+      borderColor: isPrimaryColors ? colors.secondary.dark : colors.border.focus,
+    },
+    controlButtonCompleteText: {
+      fontSize: 22,
+      fontWeight: "800",
+      color: colors.text.primary,
+    },
 
-  disabledButton: {
-    backgroundColor: COLORS.gray[400],
-    borderColor: COLORS.gray[500],
-    opacity: 0.6,
-  },
+    controlButtonPlay: {
+      paddingVertical: 18,
+      paddingHorizontal: 20,
+      borderRadius: 14,
+      backgroundColor: colors.status.success,
+      flex: 1,
+      maxWidth: 140,
+      minHeight: CONTROL_BTN_MIN_HEIGHT,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 3,
+      borderColor: colors.status.success,
+    },
+    playButtonText: {
+      fontSize: 22,
+      fontWeight: "900",
+      color: isPrimaryColors ? colors.text.inverse : colors.text.primary,
+    },
 
-  bottomButtons: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    paddingTop: 16,
-  },
+    disabledButton: {
+      backgroundColor: isPrimaryColors ? colors.border.main : colors.border.default,
+      borderColor: isPrimaryColors ? colors.border.main : colors.border.default,
+      opacity: 0.6,
+    },
 
-  askButton: {
-    backgroundColor: COLORS.secondary.main,
-    borderRadius: 16,
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    minHeight: 68,
-    justifyContent: "center",
-    borderWidth: 3,
-    borderColor: COLORS.secondary.dark,
-    alignItems: "center",
-  },
-  askButtonText: {
-    fontSize: 26,
-    fontWeight: "bold",
-    color: COLORS.text.primary,
-  },
+    bottomButtons: {
+      paddingHorizontal: 20,
+      paddingBottom: 20,
+      paddingTop: 16,
+    },
 
-  errorText: {
-    fontSize: 22,
-    color: COLORS.text.tertiary,
-    textAlign: "center",
-    marginTop: 40,
-  },
-});
+    askButton: {
+      backgroundColor: isPrimaryColors ? colors.secondary.main : colors.accent.secondary,
+      borderRadius: 16,
+      paddingVertical: 18,
+      paddingHorizontal: 20,
+      minHeight: 68,
+      justifyContent: "center",
+      borderWidth: 3,
+      borderColor: isPrimaryColors ? colors.secondary.dark : colors.border.focus,
+      alignItems: "center",
+    },
+    askButtonText: {
+      fontSize: fontSize(26),
+      fontWeight: "bold",
+      color: colors.text.primary,
+    },
+
+    errorText: {
+      fontSize: fontSize(22),
+      color: colors.text.tertiary || colors.text.secondary,
+      textAlign: "center",
+      marginTop: 40,
+    },
+  });
+};
