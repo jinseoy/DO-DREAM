@@ -56,10 +56,13 @@ const UI_MODE_LABELS: Record<PlayModeKey, string> = {
 
 export default function PlayerScreen() {
   const navigation = useNavigation<PlayerScreenNavigationProp>();
-  const route = useRoute<PlayerScreenRouteProp>() as any;
+  const route = useRoute<PlayerScreenRouteProp>();
 
   const { colors, fontSize: themeFont, isHighContrast } = useTheme();
-  const styles = React.useMemo(() => createStyles(colors, themeFont, isHighContrast), [colors, themeFont, isHighContrast]);
+  const styles = React.useMemo(
+    () => createStyles(colors, themeFont, isHighContrast),
+    [colors, themeFont, isHighContrast]
+  );
 
   const {
     material,
@@ -256,20 +259,23 @@ export default function PlayerScreen() {
       updateProgressToBackendRef.current(true);
       AccessibilityInfo.announceForAccessibility("챕터 학습을 완료했습니다.");
     }, [material.id, chapter]),
-    onSectionChange: useCallback((newIndex: number) => {
-      setTimeout(
-        () =>
-          scrollViewRef.current?.scrollTo({
-            y: 0,
-            animated: true,
-          }),
-        50
-      );
-      // 섹션 변경 시 로컬에 진행률 저장
-      saveProgressDataRef.current(false, newIndex);
-      // 섹션 변경 시 백엔드에 진행률 업데이트
-      updateProgressToBackendRef.current(false, newIndex);
-    }, [material.id, chapter]),
+    onSectionChange: useCallback(
+      (newIndex: number) => {
+        setTimeout(
+          () =>
+            scrollViewRef.current?.scrollTo({
+              y: 0,
+              animated: true,
+            }),
+          50
+        );
+        // 섹션 변경 시 로컬에 진행률 저장
+        saveProgressDataRef.current(false, newIndex);
+        // 섹션 변경 시 백엔드에 진행률 업데이트
+        updateProgressToBackendRef.current(false, newIndex);
+      },
+      [material.id, chapter]
+    ),
   });
 
   // 백엔드 진행률 업데이트 함수 (ref로 관리)
@@ -278,31 +284,52 @@ export default function PlayerScreen() {
   }, [currentSectionIndex, playMode]);
 
   // 백엔드에 진행률 업데이트 (API 호출)
-  const updateProgressToBackend = async (isCompleted: boolean = false, sectionIndexOverride?: number) => {
+  const updateProgressToBackend = async (
+    isCompleted: boolean = false,
+    sectionIndexOverride?: number
+  ) => {
     if (!chapter) return;
+
+    // --- 교재 전체 기준 페이지 계산 로직 추가 ---
+    // 현재 챕터 이전 챕터들의 총 페이지(섹션) 수 계산
+    const previousChaptersTotalPages = chaptersFromJson
+      .slice(0, currentChapterIndex)
+      .reduce((acc, chap) => acc + chap.sections.length, 0);
+
+    // 교재 전체의 총 페이지(섹션) 수
+    const materialTotalPages = chaptersFromJson.reduce(
+      (acc, chap) => acc + chap.sections.length,
+      0
+    );
+    // --- 로직 추가 끝 ---
 
     const newCurrentPage = (sectionIndexOverride ?? currentSectionIndex) + 1;
 
     // 챕터 완료가 아닌 경우, 진행률이 감소하는 것을 방지
     if (!isCompleted) {
-      const localProgress = getProgress(material.id.toString(), chapter.chapterId);
+      const localProgress = getProgress(
+        material.id.toString(),
+        chapter.chapterId
+      );
       const lastSavedPage = (localProgress?.currentSectionIndex ?? -1) + 1;
 
       // 로컬에 저장된 진행률보다 낮은 값으로 업데이트하려는 경우 API 호출을 막음
       if (newCurrentPage < lastSavedPage) {
-        console.log(`[PlayerScreen] 진행률 감소 방지: new=${newCurrentPage}, last=${lastSavedPage}`);
+        console.log(
+          `[PlayerScreen] 진행률 감소 방지: new=${newCurrentPage}, last=${lastSavedPage}`
+        );
         return;
       }
     }
-    
-    const totalPages = chapter.sections.length;
-  
+
     try {
       await updateProgress({
         materialId: material.id,
         // 완료 시에는 currentPage를 totalPages와 동일하게 보내 100%로 처리
-        currentPage: isCompleted ? totalPages : newCurrentPage,
-        totalPages,
+        currentPage: isCompleted
+          ? previousChaptersTotalPages + chapter.sections.length
+          : previousChaptersTotalPages + newCurrentPage,
+        totalPages: materialTotalPages,
       });
     } catch (error) {
       console.error("[PlayerScreen] 진행률 업데이트 실패:", error);
@@ -358,9 +385,7 @@ export default function PlayerScreen() {
         sectionIndex: currentSectionIndex,
       });
     }, 300);
-  }, [
-    navigation, material, chapterId, ttsActions
-  ]);
+  }, [navigation, material, chapterId, ttsActions]);
 
   // 설정 열기
   const handleOpenSettings = useCallback(async () => {
@@ -479,7 +504,8 @@ export default function PlayerScreen() {
       currentChapterIndex,
       chaptersFromJson,
       material,
-      navigation, ttsActions
+      navigation,
+      ttsActions,
     ]
   );
 
@@ -496,8 +522,15 @@ export default function PlayerScreen() {
   const handleBackPress = useCallback(async () => {
     saveProgressDataRef.current(false);
     await updateProgressToBackendRef.current(false);
-    navigation.goBack();
-  }, [navigation]);
+    // goBack() 대신 navigate를 사용하여 마지막 챕터 ID를 전달
+    navigation.navigate(
+      "PlaybackChoice" as any,
+      {
+        material: material,
+        lastChapterId: chapterId,
+      } as any
+    );
+  }, [navigation, material, chapterId]);
 
   // 챕터 완료 처리
   const handleChapterComplete = useCallback(async () => {
@@ -571,7 +604,7 @@ export default function PlayerScreen() {
 
   // Player 화면 전용 음성 명령(rawText) 처리
   const handlePlayerVoiceRaw = useCallback(
-    (spoken: string) => {
+    (spoken: string): boolean => {
       const t = spoken.trim().toLowerCase();
 
       // 0) 챕터 이동
@@ -581,7 +614,7 @@ export default function PlayerScreen() {
         t.includes("다음 장")
       ) {
         handleNextChapter();
-        return;
+        return true;
       }
 
       if (
@@ -590,20 +623,20 @@ export default function PlayerScreen() {
         t.includes("이전 장")
       ) {
         handlePrevChapter();
-        return;
+        return true;
       }
 
       // 1) 재생 모드 변경
       const modeFromVoice = parseModeVoice(spoken);
       if (modeFromVoice) {
         handlePlayModeChange(modeFromVoice);
-        return;
+        return true;
       }
 
       // 2) 저장 / 북마크
       if (t.includes("저장") || t.includes("북마크")) {
         handleToggleBookmark();
-        return;
+        return true;
       }
 
       // 3) 설정 / 속도 / 모드 / 목소리
@@ -614,7 +647,7 @@ export default function PlayerScreen() {
         t.includes("목소리")
       ) {
         handleOpenSettings();
-        return;
+        return true;
       }
 
       // 4) 질문하기
@@ -625,7 +658,7 @@ export default function PlayerScreen() {
         t.includes("알려줘")
       ) {
         handleQuestionPress();
-        return;
+        return true;
       }
 
       // 5) 퀴즈
@@ -633,13 +666,14 @@ export default function PlayerScreen() {
         AccessibilityInfo.announceForAccessibility(
           "퀴즈 기능이 아직 준비 중입니다."
         );
-        return;
+        return true;
       }
 
       console.log("[VoiceCommands][Player] 처리할 수 없는 rawText:", spoken);
       AccessibilityInfo.announceForAccessibility(
         "이 화면에서 사용할 수 없는 음성 명령입니다. 재생, 일시정지, 다음, 이전, 질문하기, 저장하기, 설정 열기, 하나씩 모드, 연속 모드, 반복 모드, 다음 챕터, 이전 챕터처럼 말해 주세요."
       );
+      return false;
     },
     [
       handleNextChapter,
@@ -687,6 +721,7 @@ export default function PlayerScreen() {
       prev: ttsActions.playPrevious,
       openQuestion: () => handleQuestionPressRef.current(),
       goBack: () => handleBackPressRef.current(),
+      openLibrary: () => handleBackPressRef.current(),
       // Player 전용 rawText 명령 (챕터 이동 포함)
       rawText: (text: string) => handlePlayerVoiceRawRef.current(text),
     });
@@ -718,7 +753,6 @@ export default function PlayerScreen() {
     ttsActions.pause,
   ]);
 
-
   // 챕터 검증
   if (!chapter) {
     return (
@@ -749,14 +783,27 @@ export default function PlayerScreen() {
           importantForAccessibility={isPlaying ? "no-hide-descendants" : "yes"}
         >
           <PlayerHeader
-            material={material}
-            chapter={chapter}
-            playMode={playMode as PlayModeKey}
             isBookmarked={bookmarked}
             onBackPress={handleBackPress}
             onToggleBookmark={handleToggleBookmark}
             onBeforeListen={() => ttsActions.pause()}
           />
+        </View>
+        {/* 하단: 과목 / 챕터 제목 / 모드 표시 */}
+        <View style={styles.infoSection}>
+          <Text style={styles.subjectText}>{material.subject}</Text>
+          <Text
+            style={styles.chapterTitle}
+            accessibilityRole="header"
+            accessibilityLabel={`${material.subject} ${
+              chapter.title
+            }, 현재 모드 ${UI_MODE_LABELS[playMode as PlayModeKey]} 모드`}
+          >
+            {chapter.title}
+          </Text>
+          <Text style={styles.modeIndicator}>
+            모드: {UI_MODE_LABELS[playMode as PlayModeKey]}
+          </Text>
         </View>
 
         {/* 콘텐츠 영역 */}
@@ -877,8 +924,12 @@ export default function PlayerScreen() {
 }
 const CONTROL_BTN_MIN_HEIGHT = 80;
 
-const createStyles = (colors: any, fontSize: (size: number) => number, isHighContrast: boolean) => {
-  const isPrimaryColors = 'primary' in colors;
+const createStyles = (
+  colors: any,
+  fontSize: (size: number) => number,
+  isHighContrast: boolean
+) => {
+  const isPrimaryColors = "primary" in colors;
 
   return StyleSheet.create({
     container: {
@@ -888,8 +939,37 @@ const createStyles = (colors: any, fontSize: (size: number) => number, isHighCon
 
     header: {
       paddingHorizontal: 0,
-      paddingTop: 12,
-      paddingBottom: 12,
+      paddingTop: 0,
+      paddingBottom: 0,
+    },
+
+    infoSection: {
+      paddingHorizontal: 20,
+      paddingTop: 0,
+      paddingBottom: 16,
+      borderBottomWidth: 2,
+      borderBottomColor: isPrimaryColors
+        ? colors.border.light
+        : colors.border.default,
+      backgroundColor: colors.background.elevated || colors.background.default,
+    },
+    subjectText: {
+      fontSize: fontSize(24),
+      fontWeight: "600",
+      color: colors.text.primary,
+      marginBottom: 4,
+    },
+    chapterTitle: {
+      fontSize: fontSize(32),
+      lineHeight: fontSize(32) + 6,
+      fontWeight: "bold",
+      color: colors.text.primary,
+      marginBottom: 6,
+    },
+    modeIndicator: {
+      fontSize: fontSize(20),
+      color: colors.text.secondary,
+      fontWeight: "600",
     },
 
     scrollView: {
@@ -920,7 +1000,11 @@ const createStyles = (colors: any, fontSize: (size: number) => number, isHighCon
       paddingVertical: 12,
       paddingHorizontal: 12,
       borderTopWidth: 3,
-      borderTopColor: isHighContrast ? COLORS.secondary.main : (isPrimaryColors ? colors.border.main : colors.border.default),
+      borderTopColor: isHighContrast
+        ? COLORS.secondary.main
+        : isPrimaryColors
+        ? colors.border.main
+        : colors.border.default,
       gap: 8,
     },
 
@@ -928,7 +1012,9 @@ const createStyles = (colors: any, fontSize: (size: number) => number, isHighCon
       paddingVertical: 18,
       paddingHorizontal: 20,
       borderRadius: 14,
-      backgroundColor: isPrimaryColors ? colors.primary.main : colors.accent.primary,
+      backgroundColor: isPrimaryColors
+        ? colors.primary.main
+        : colors.accent.primary,
       flex: 1,
       minWidth: 100,
       maxWidth: 110,
@@ -948,14 +1034,18 @@ const createStyles = (colors: any, fontSize: (size: number) => number, isHighCon
       paddingVertical: 18,
       paddingHorizontal: 20,
       borderRadius: 14,
-      backgroundColor: isPrimaryColors ? colors.secondary.main : colors.accent.secondary,
+      backgroundColor: isPrimaryColors
+        ? colors.secondary.main
+        : colors.accent.secondary,
       flex: 1,
       maxWidth: 110,
       minHeight: CONTROL_BTN_MIN_HEIGHT,
       alignItems: "center",
       justifyContent: "center",
       borderWidth: 3,
-      borderColor: isPrimaryColors ? colors.secondary.dark : colors.border.focus,
+      borderColor: isPrimaryColors
+        ? colors.secondary.dark
+        : colors.border.focus,
     },
     controlButtonCompleteText: {
       fontSize: 22,
@@ -976,7 +1066,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number, isHighCon
       borderWidth: 3,
       borderColor: colors.status.success,
     },
-    
+
     playButtonText: {
       fontSize: 22,
       fontWeight: "900",
@@ -984,7 +1074,9 @@ const createStyles = (colors: any, fontSize: (size: number) => number, isHighCon
     },
 
     disabledButton: {
-      backgroundColor: isPrimaryColors ? colors.border.main : colors.border.default,
+      backgroundColor: isPrimaryColors
+        ? colors.border.main
+        : colors.border.default,
       borderColor: isPrimaryColors ? colors.border.main : colors.border.default,
       opacity: 0.6,
     },
@@ -996,14 +1088,18 @@ const createStyles = (colors: any, fontSize: (size: number) => number, isHighCon
     },
 
     askButton: {
-      backgroundColor: isPrimaryColors ? colors.secondary.main : colors.accent.secondary,
+      backgroundColor: isPrimaryColors
+        ? colors.secondary.main
+        : colors.accent.secondary,
       borderRadius: 16,
       paddingVertical: 18,
       paddingHorizontal: 20,
       minHeight: 68,
       justifyContent: "center",
       borderWidth: 3,
-      borderColor: isPrimaryColors ? colors.secondary.dark : colors.border.focus,
+      borderColor: isPrimaryColors
+        ? colors.secondary.dark
+        : colors.border.focus,
       alignItems: "center",
     },
     askButtonText: {

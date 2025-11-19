@@ -42,7 +42,9 @@ import {
 
 export default function PlaybackChoiceScreen() {
   const navigation = useNavigation<PlaybackChoiceScreenNavigationProp>();
-  const route = useRoute<PlaybackChoiceScreenRouteProp>();
+  const route = useRoute<
+    PlaybackChoiceScreenRouteProp & { params: { lastChapterId?: number | string } }
+  >();
   const { material } = route.params;
 
   const { colors, fontSize: themeFont, isHighContrast } = useTheme();
@@ -105,6 +107,17 @@ export default function PlaybackChoiceScreen() {
       loadProgress();
     }, [])
   );
+
+  // PlayerScreen에서 돌아왔을 때 마지막 챕터를 선택하도록 설정
+  useEffect(() => {
+    if (route.params?.lastChapterId) {
+      const lastChapterId = route.params.lastChapterId;
+      const index = chapters.findIndex((c) => c.chapterId === lastChapterId);
+      if (index !== -1) {
+        setCurrentChapterIndex(index);
+      }
+    }
+  }, [route.params?.lastChapterId, chapters]);
 
   useEffect(() => {
     const announcement = `${material.title}, 이어듣기, 처음부터, 저장 목록, 질문 목록, 퀴즈 중 선택하세요. 상단의 말하기 버튼을 두 번 탭하고, 이어서 듣기, 처음부터, 다음 챕터, 이전 챕터, 이 챕터 듣기, 저장 목록, 질문 목록, 설정, 퀴즈 풀기, 뒤로 가기처럼 말할 수 있습니다.`;
@@ -266,7 +279,7 @@ export default function PlaybackChoiceScreen() {
 
   // PlaybackChoice 전용 음성 명령(rawText) 처리
   const handlePlaybackVoiceRaw = useCallback(
-    (spoken: string) => {
+    (spoken: string): boolean => {
       const t = spoken.trim().toLowerCase();
 
       // 이어서 듣기
@@ -284,7 +297,7 @@ export default function PlaybackChoiceScreen() {
             "아직 학습 기록이 없습니다. 처음부터 듣기를 사용해 주세요."
           );
         }
-        return;
+        return true;
       }
 
       // 처음부터 듣기
@@ -296,7 +309,7 @@ export default function PlaybackChoiceScreen() {
         t.includes("처음부터 듣기")
       ) {
         handleFromStart();
-        return;
+        return true;
       }
 
       // 저장 목록
@@ -308,7 +321,7 @@ export default function PlaybackChoiceScreen() {
         (t.includes("저장") && t.includes("목록"))
       ) {
         handleBookmarkPress();
-        return;
+        return true;
       }
 
       // 질문 목록
@@ -320,7 +333,7 @@ export default function PlaybackChoiceScreen() {
         t.includes("질문보기")
       ) {
         handleQuestionPress();
-        return;
+        return true;
       }
 
       // 챕터 이동 (음성 명령으로 선택된 챕터로 이동)
@@ -332,19 +345,19 @@ export default function PlaybackChoiceScreen() {
         t.includes("이 챕터 듣기")
       ) {
         handleGoToSelectedChapter();
-        return;
+        return true;
       }
 
       // 다음 챕터 보기
       if (t.includes("다음 챕터") || t.includes("챕터 다음")) {
         handleNextChapter();
-        return;
+        return true;
       }
 
       // 이전 챕터 보기
       if (t.includes("이전 챕터") || t.includes("챕터 이전")) {
         handlePrevChapter();
-        return;
+        return true;
       }
 
       // 퀴즈 풀기
@@ -361,7 +374,7 @@ export default function PlaybackChoiceScreen() {
             "이 교재에서는 바로 풀 수 있는 퀴즈가 없습니다."
           );
         }
-        return;
+        return true;
       }
 
       // 그 외: 안내
@@ -372,6 +385,7 @@ export default function PlaybackChoiceScreen() {
       AccessibilityInfo.announceForAccessibility(
         "이 화면에서 사용할 수 없는 음성 명령입니다. 이어서 듣기, 처음부터, 저장 목록, 질문 목록, 다음 챕터, 이전 챕터, 이 챕터 듣기, 설정, 퀴즈 풀기, 뒤로 가기처럼 말해 주세요."
       );
+      return false;
     },
     [
       material.hasProgress,
@@ -395,6 +409,7 @@ export default function PlaybackChoiceScreen() {
 
       registerVoiceHandlers("PlaybackChoice", {
         goBack: handleGoBack,
+        openLibrary: handleGoBack,
         openSettings: handleSettingsPress,
         openQuiz: showQuizButton ? handleQuizPress : undefined,
         rawText: handlePlaybackVoiceRaw,
@@ -743,6 +758,9 @@ const createStyles = (
       fontSize: 24,
       fontWeight: "bold",
       color: isPrimaryColors ? colors.text.inverse : colors.text.primary,
+      lineHeight: 28,
+      textAlignVertical: "center",
+      includeFontPadding: false,
     },
     chapterInfoCompact: {
       flex: 1,
