@@ -3,7 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 # SQLite DB 파일 경로 설정 (예: fastapi-rag-server/rag.db)
-SQLALCHEMY_DATABASE_URL = "sqlite:///./rag.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:////app/db_data/rag.db"
 
 # SQLite 엔진 생성
 engine = create_engine(
