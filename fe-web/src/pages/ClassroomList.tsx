@@ -9,6 +9,7 @@ import {
   Trash2,
   Tag,
   Send,
+  Download,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, useRef, ChangeEvent } from 'react';
 import { useGlobalMemo } from '@/contexts/MemoContext';
@@ -613,6 +614,228 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         text: '파일에서 텍스트를 추출하지 못했습니다. 다시 시도해 주세요.',
         confirmButtonColor: '#192b55',
         heightAuto: false,
+      });
+    }
+  };
+
+  const handleDownloadWord = async (materialId: string) => {
+    try {
+      const material = materials.find((m) => m.id === materialId);
+      if (!material) {
+        await Swal.fire({
+          icon: 'error',
+          title: '자료를 찾을 수 없습니다',
+          confirmButtonColor: '#192b55',
+        });
+        return;
+      }
+
+      const pdfId = material.uploadedFileId;
+      if (!pdfId) {
+        await Swal.fire({
+          icon: 'error',
+          title: '자료 정보가 부족합니다',
+          text: '파일 ID를 찾을 수 없습니다.',
+          confirmButtonColor: '#192b55',
+        });
+        return;
+      }
+
+      void Swal.fire({
+        title: '워드 파일을 생성하는 중입니다',
+        html: `
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+        <div style="width: 50px; height: 50px; border: 4px solid #192b55; border-top: 4px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <p style="color: #192b55; font-size: 18px;">파일을 생성하는 중입니다...</p>
+      </div>
+      <style>
+      @keyframes spin { to { transform: rotate(360deg); } }
+      </style>
+    `,
+        allowOutsideClick: false,
+        showConfirmButton: false,
+      });
+
+      const accessToken = localStorage.getItem('accessToken');
+
+      // JSON 데이터 가져오기
+      const pdfRes = await fetch(`${API_BASE}/api/pdf/${pdfId}/json`, {
+        method: 'GET',
+        headers: {
+          accept: '*/*',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        credentials: 'include',
+      });
+
+      if (!pdfRes.ok) {
+        const text = await pdfRes.text().catch(() => '');
+        throw new Error(
+          text || `자료 내용을 불러오지 못했습니다. (status: ${pdfRes.status})`,
+        );
+      }
+
+      const parsedData = await pdfRes.json();
+
+      // chapters 추출 (기존 로직 재사용)
+      let chapters: any[] = [];
+      if (parsedData.chapters && Array.isArray(parsedData.chapters)) {
+        chapters = parsedData.chapters;
+      } else if (
+        parsedData.parsedData?.chapters &&
+        Array.isArray(parsedData.parsedData.chapters)
+      ) {
+        chapters = parsedData.parsedData.chapters;
+      } else if (
+        parsedData.editedJson?.chapters &&
+        Array.isArray(parsedData.editedJson.chapters)
+      ) {
+        chapters = parsedData.editedJson.chapters;
+      } else if (
+        parsedData.chapters &&
+        typeof parsedData.chapters === 'object'
+      ) {
+        chapters = Object.values(parsedData.chapters);
+      } else if (
+        parsedData.parsedData?.chapters &&
+        typeof parsedData.parsedData.chapters === 'object'
+      ) {
+        chapters = Object.values(parsedData.parsedData.chapters);
+      } else if (
+        parsedData.editedJson?.chapters &&
+        typeof parsedData.editedJson.chapters === 'object'
+      ) {
+        chapters = Object.values(parsedData.editedJson.chapters);
+      }
+
+      if (chapters.length === 0) {
+        await Swal.close();
+        await Swal.fire({
+          icon: 'warning',
+          title: '내용이 없습니다',
+          text: '이 자료에는 표시할 내용이 없습니다.',
+          confirmButtonColor: '#192b55',
+        });
+        return;
+      }
+
+      // docx 라이브러리 동적 import
+      const {
+        Document,
+        Packer,
+        Paragraph,
+        TextRun,
+        HeadingLevel,
+        AlignmentType,
+      } = await import('docx');
+
+      // 워드 문서 생성
+      const docChildren: any[] = [
+        new Paragraph({
+          text: material.title,
+          heading: HeadingLevel.TITLE,
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 400 },
+        }),
+      ];
+
+      chapters.forEach((chapter: any, index: number) => {
+        // 챕터 제목
+        docChildren.push(
+          new Paragraph({
+            text: chapter.title || `챕터 ${index + 1}`,
+            heading: HeadingLevel.HEADING_1,
+            spacing: { before: 400, after: 200 },
+          }),
+        );
+
+        // 챕터 내용 (HTML 태그 제거 및 정리)
+        const content = (chapter.content || '')
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/<\/p>/gi, '\n\n')
+          .replace(/<\/h[1-6]>/gi, '\n')
+          .replace(/<\/li>/gi, '\n')
+          .replace(/<[^>]*>/g, '')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&amp;/g, '&')
+          .trim();
+
+        if (content) {
+          // 줄바꿈을 기준으로 문단 분리
+          const paragraphs = content.split('\n').filter((p) => p.trim());
+
+          paragraphs.forEach((para) => {
+            docChildren.push(
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: para.trim(),
+                    size: 24, // 12pt
+                  }),
+                ],
+                spacing: { after: 200 },
+              }),
+            );
+          });
+        }
+
+        // 챕터 사이 구분선 (마지막 챕터 제외)
+        if (index < chapters.length - 1) {
+          docChildren.push(
+            new Paragraph({
+              text: '',
+              spacing: { after: 200 },
+              border: {
+                bottom: {
+                  color: 'CCCCCC',
+                  space: 1,
+                  style: 'single',
+                  size: 6,
+                },
+              },
+            }),
+          );
+        }
+      });
+
+      const doc = new Document({
+        sections: [
+          {
+            properties: {},
+            children: docChildren,
+          },
+        ],
+      });
+
+      // 문서 생성 및 다운로드
+      const blob = await Packer.toBlob(doc);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${material.title}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      await Swal.close();
+      await Swal.fire({
+        icon: 'success',
+        title: '다운로드 완료!',
+        text: `${material.title}.docx 파일이 다운로드되었습니다.`,
+        confirmButtonColor: '#192b55',
+        timer: 2000,
+      });
+    } catch (err: any) {
+      console.error('워드 다운로드 실패', err);
+      await Swal.close();
+      await Swal.fire({
+        icon: 'error',
+        title: '워드 파일 생성에 실패했습니다',
+        text: err?.message ?? '잠시 후 다시 시도해 주세요.',
+        confirmButtonColor: '#192b55',
       });
     }
   };
@@ -1431,37 +1654,47 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
 
                     {/* ✅ 액션 버튼들은 이벤트 전파 방지 */}
                     <div className="cl-material-actions">
-                      <button
-                        className="cl-material-action-btn send-btn"
-                        onClick={(e) => {
-                          e.stopPropagation(); // 부모 클릭 이벤트 방지
-                          handleSendMaterial(material.id);
-                        }}
-                        title="자료 공유"
-                      >
-                        <Send size={16} />
-                      </button>
-                      <button
-                        className="cl-material-action-btn label-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleLabelMaterial(material.id, material.label);
-                        }}
-                        title="라벨 편집"
-                      >
-                        <Tag size={16} />
-                      </button>
-                      <button
-                        className="cl-material-action-btn delete-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteMaterial(material.id);
-                        }}
-                        title="삭제"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
+  <button
+    className="cl-material-action-btn download-btn"
+    onClick={(e) => {
+      e.stopPropagation();
+      handleDownloadWord(material.id);
+    }}
+    title="워드 파일 다운로드"
+  >
+    <Download size={16} />
+  </button>
+  <button
+    className="cl-material-action-btn send-btn"
+    onClick={(e) => {
+      e.stopPropagation();
+      handleSendMaterial(material.id);
+    }}
+    title="자료 공유"
+  >
+    <Send size={16} />
+  </button>
+  <button
+    className="cl-material-action-btn label-btn"
+    onClick={(e) => {
+      e.stopPropagation();
+      handleLabelMaterial(material.id, material.label);
+    }}
+    title="라벨 편집"
+  >
+    <Tag size={16} />
+  </button>
+  <button
+    className="cl-material-action-btn delete-btn"
+    onClick={(e) => {
+      e.stopPropagation();
+      handleDeleteMaterial(material.id);
+    }}
+    title="삭제"
+  >
+    <Trash2 size={16} />
+  </button>
+</div>
                   </div>
                 ))
               )}
