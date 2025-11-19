@@ -11,7 +11,7 @@ class PDFParser:
     def __init__(
         self,
         api_key: str | None = None,
-        model: str = "gpt-4o",  # 필요시 gpt-4.1 / gpt-4o 등으로 변경
+        model: str = "gpt-5-mini",  # 필요시 gpt-4.1 / gpt-4o 등으로 변경
     ) -> None:
         self.client = OpenAI(api_key=api_key or OPENAI_API_KEY)
         self.model = model
@@ -128,7 +128,7 @@ class PDFParser:
 - 각 페이지의 개념 Check는 해당 페이지가 속한 index의 data 항목 안에 포함되어야 합니다!
 - questions 배열 안의 각 항목은 {{"question": "...", "answer": "..."}} 형태의 객체여야 하며, 문자열 배열이 아닙니다!
 
-**반드시 JSON만 출력**하고, JSON 외의 다른 텍스트는 절대 포함하지 마세요.
+위 형식을 정확히 따라 JSON만 출력해주세요.
 """
 
         try:
@@ -230,7 +230,18 @@ class PDFParser:
     ]
 }}
 
-위 형식을 정확히 따라 **JSON만** 출력해주세요.
+**예시:**
+입력:
+- contents: "1. 다양한 학문 간의 교류를 통해 사회·문화 현상을 총 체적으로 연구하는 경향을 (  ) 연구 경향이라고 한다."
+- answer: "1. 간학문적"
+
+출력:
+{{
+    "question": "다양한 학문 간의 교류를 통해 사회·문화 현상을 총 체적으로 연구하는 경향을 무엇이라고 하는가?",
+    "answer": "간학문적 연구 경향"
+}}
+
+위 형식을 정확히 따라 JSON만 출력해주세요.
 """
 
         try:
