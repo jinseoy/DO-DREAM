@@ -225,21 +225,33 @@ export default function AdvancedEditor({
   }, [materialTitle, initialTitle]);
 
   const handleAddChapter = () => {
-    const maxId = chapters.reduce(
-      (max, ch) => Math.max(max, parseInt(ch.id, 10) || 0),
-      0,
-    );
-    const newId = String(maxId + 1);
+    // ✅ 본문 챕터만 필터링
+    const contentChapters = chapters.filter((ch) => ch.type === 'content');
+
+    // ✅ 단순하게 개수 + 1
+    const newChapterNum = contentChapters.length + 1;
 
     const newChapter: Chapter = {
-      id: newId,
-      title: `챕터 ${newId}`,
+      id: `content_${Date.now()}`, // ✅ 고유한 ID 생성
+      title: `챕터 ${newChapterNum}`,
       content: '<p>새 챕터의 내용을 입력하세요...</p>',
       type: 'content',
     };
 
-    setChapters((prev) => [...prev, newChapter]);
-    setActiveChapterId(newId);
+    // ✅ 퀴즈 챕터의 인덱스 찾기
+    const firstQuizIndex = chapters.findIndex((ch) => ch.type === 'quiz');
+
+    setChapters((prev) => {
+      if (firstQuizIndex === -1) {
+        return [...prev, newChapter];
+      } else {
+        const updated = [...prev];
+        updated.splice(firstQuizIndex, 0, newChapter);
+        return updated;
+      }
+    });
+
+    setActiveChapterId(newChapter.id);
   };
 
   const handleDeleteChapter = (id: string) => {
@@ -397,9 +409,13 @@ export default function AdvancedEditor({
       }
     };
 
+    // ✅ 본문 챕터만 카운트하도록 수정
+    const contentChapters = chapters.filter((ch) => ch.type === 'content');
     const baseIndex =
-      chapters.reduce((max, ch) => Math.max(max, parseInt(ch.id, 10) || 0), 0) +
-      1;
+      contentChapters.reduce(
+        (max, ch) => Math.max(max, parseInt(ch.id, 10) || 0),
+        0,
+      ) + 1;
 
     const first = parts[0];
     const rest = parts.slice(1);
@@ -441,7 +457,15 @@ export default function AdvancedEditor({
         };
       });
 
-      return [...updated, ...newOnes];
+      // ✅ 새 챕터를 퀴즈 앞에 삽입
+      const firstQuizIndex = updated.findIndex((ch) => ch.type === 'quiz');
+      if (firstQuizIndex === -1) {
+        return [...updated, ...newOnes];
+      } else {
+        const result = [...updated];
+        result.splice(firstQuizIndex, 0, ...newOnes);
+        return result;
+      }
     });
 
     setIsSplitMode(false);
@@ -1254,11 +1278,7 @@ export default function AdvancedEditor({
                   />
                 ) : (
                   <>
-                    {mergeMode && (
-                      <div className="ae-chapter-checkbox">
-                        {selectedChapters.has(ch.id) ? '☑' : '☐'}
-                      </div>
-                    )}
+                    {mergeMode && <div className="ae-chapter-checkbox"></div>}
                     <span className="ae-chapter-title">{ch.title}</span>
                     {!mergeMode && (
                       <div className="ae-chapter-actions">
@@ -1352,7 +1372,7 @@ export default function AdvancedEditor({
                   title="API에서 문제 불러오기"
                 >
                   <Download size={18} />
-                  <span>퀴즈 뽑기</span>
+                  <span>AI 퀴즈 생성</span>
                 </button>
               )}
               <button

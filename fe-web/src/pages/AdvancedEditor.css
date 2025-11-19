@@ -1,5 +1,5 @@
 /* ================================
-   AdvancedEditor.css (v2 Final)
+   AdvancedEditor.css (v2 Final + Merge Enhancement)
    ================================ */
 
 :root {
@@ -264,6 +264,7 @@
   background: var(--ae-primary);
 }
 
+/* ===== Chapter Item Styles ===== */
 .ae-chapter-item {
   display: flex;
   align-items: center;
@@ -276,6 +277,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
+  position: relative;
 }
 
 .ae-chapter-item[draggable='true'] {
@@ -287,19 +289,38 @@
 }
 
 .ae-chapter-item.dragging {
-  opacity: 0.5;
-  transform: scale(0.95);
+  opacity: 0.4;
+  transform: scale(0.98);
 }
 
-.ae-chapter-item.drag-over {
-  border-color: var(--ae-primary);
-  background: rgba(25, 43, 85, 0.1);
-  transform: scale(1.02);
+.ae-chapter-item.drag-over::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -4px;
+  height: 4px;
+  background: var(--ae-primary);
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(25, 43, 85, 0.5);
+  animation: pulse 1s ease-in-out infinite;
 }
 
-.ae-chapter-item:hover {
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scaleX(0.95);
+  }
+}
+
+/* ✅ 선택되지 않은 챕터만 호버 효과 적용 */
+.ae-chapter-item:hover:not(.dragging):not(.active):not(.selected) {
   background: var(--ae-border);
-  border-color: var(--ae-primary);
+  border-color: none;
 }
 
 .ae-chapter-item.active {
@@ -320,16 +341,79 @@
   border-color: var(--ae-quiz);
 }
 
-.ae-chapter-item.selected {
-  background: #dbeafe !important;
-  border-color: var(--ae-info) !important;
-  color: #000 !important;
-  box-shadow: 0 0 0 2px var(--ae-info);
+/* ===== 병합 모드 체크박스 ===== */
+.ae-chapter-checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 2px solid var(--ae-primary);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  position: relative;
 }
 
-.ae-chapter-checkbox {
-  font-size: 18px;
-  font-weight: bold;
+.ae-chapter-checkbox:hover {
+  border-color: #2563eb;
+  transform: scale(1.05);
+}
+
+/* ✅ 퀴즈 챕터용 체크박스 - 보라색 */
+.ae-chapter-item.quiz-item .ae-chapter-checkbox {
+  border-color: var(--ae-quiz);
+}
+
+.ae-chapter-item.quiz-item .ae-chapter-checkbox:hover {
+  border-color: #7c3aed;
+}
+
+/* ✅ 일반 챕터 선택 시 */
+.ae-chapter-item.selected .ae-chapter-checkbox {
+  background: var(--ae-info);
+  border-color: var(--ae-info);
+}
+
+/* ✅ 퀴즈 챕터 선택 시 */
+.ae-chapter-item.quiz-item.selected .ae-chapter-checkbox {
+  border-color: var(--ae-quiz);
+  background: var(--ae-quiz);
+}
+
+/* ✅ 체크 아이콘 (애니메이션 제거) */
+.ae-chapter-item.selected .ae-chapter-checkbox::after {
+  content: '✓';
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ===== 선택된 챕터 스타일 ===== */
+.ae-chapter-item.selected {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
+  border: 2px solid var(--ae-info) !important;
+  color: #1e40af !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.ae-chapter-item.selected:hover {
+  border: 2px solid var(--ae-info) !important;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
+}
+
+.ae-chapter-item.quiz-item.selected {
+  background: linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%) !important;
+  border: 2px solid var(--ae-quiz) !important;
+  color: #6d28d9 !important;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);
+}
+
+.ae-chapter-item.quiz-item.selected:hover {
+  border: 2px solid var(--ae-quiz) !important;
+  background: linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%) !important;
 }
 
 .ae-chapter-title {
@@ -440,7 +524,6 @@
   opacity: 0.6;
 }
 
-/* 개선된 버튼 스타일 */
 .ae-tool-btn-new {
   display: flex;
   align-items: center;
@@ -456,33 +539,28 @@
   white-space: nowrap;
 }
 
-/* 공통 hover: 살짝 떠오르는 효과만 */
 .ae-tool-btn-new:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
-/* 비활성화 */
 .ae-tool-btn-new:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-/* 분할 버튼 - 주황색 */
 .ae-tool-btn-new.split {
   background: rgba(245, 158, 11, 0.12);
   color: #b45309;
   border-color: rgba(245, 158, 11, 0.35);
 }
 
-/* 🔥 hover 시 더 진한 주황 계열 */
 .ae-tool-btn-new.split:hover:not(:disabled) {
   background: #d97706;
   border-color: #b45309;
   color: #fff;
 }
 
-/* active 시 완전 주황 */
 .ae-tool-btn-new.split.active {
   background: #f59e0b;
   color: #fff;
@@ -490,21 +568,18 @@
   font-weight: 700;
 }
 
-/* 병합 버튼 - 파랑색 */
 .ae-tool-btn-new.merge {
   background: rgba(59, 130, 246, 0.12);
   color: #1d4ed8;
   border-color: rgba(59, 130, 246, 0.35);
 }
 
-/* 🔥 hover 시 더 진한 파랑 계열 */
 .ae-tool-btn-new.merge:hover:not(:disabled) {
   background: #2563eb;
   border-color: #1d4ed8;
   color: #fff;
 }
 
-/* active 시 진한 파랑 */
 .ae-tool-btn-new.merge.active {
   background: #3b82f6;
   color: #fff;
@@ -512,21 +587,18 @@
   font-weight: 700;
 }
 
-/* 퀴즈 버튼 - 보라색 */
 .ae-tool-btn-new.quiz {
   background: rgba(139, 92, 246, 0.12);
   color: #6d28d9;
   border-color: rgba(139, 92, 246, 0.35);
 }
 
-/* 🔥 hover 시 더 진한 보라 계열 */
 .ae-tool-btn-new.quiz:hover:not(:disabled) {
   background: #7c3aed;
   border-color: #6d28d9;
   color: #fff;
 }
 
-/* active 시 진한 보라 */
 .ae-tool-btn-new.quiz.active {
   background: #8b5cf6;
   color: #fff;
@@ -878,12 +950,10 @@
   color: #9ca3af;
 }
 
-/* SweetAlert 버튼 영역 – 아래/좌우 여백 추가 */
 .swal2-actions {
   gap: 12px !important;
 }
 
-/* 퀴즈 모달용 버튼 커스텀 */
 .ae-quiz-btn {
   border-radius: 8px !important;
   padding: 12px 28px !important;
@@ -930,7 +1000,6 @@
   border-color: #a855f7;
   color: #ffffff;
 }
-
 
 .swal2-validation-message {
   background: #fef2f2 !important;
@@ -1048,7 +1117,6 @@
   }
 }
 
-/* ===== Swal2 Custom Styles ===== */
 .swal2-textarea {
   font-family: inherit;
   font-size: 14px;
