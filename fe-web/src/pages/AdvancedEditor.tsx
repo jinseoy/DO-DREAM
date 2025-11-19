@@ -1016,12 +1016,27 @@ export default function AdvancedEditor({
       return;
     }
 
+    // 퀴즈 챕터들을 API 스펙에 맞게 변환
+    const quizzes = chapters
+      .filter((ch) => ch.type === 'quiz' && ch.qa && ch.qa.length > 0)
+      .flatMap((ch, chapterIndex) =>
+        ch.qa!.map((qa, qaIndex) => ({
+          title: ch.title,
+          content: qa.question,
+          question_number: chapterIndex * 10 + qaIndex + 1,
+          question_type: 'CUSTOM', // 직접 추가한 퀴즈는 CUSTOM 타입
+          correct_answer: qa.answer,
+          chapter_reference: ch.title,
+        })),
+      );
+
     const payload = {
       materialTitle,
       labelColor: selectedLabel ? selectedLabel.toUpperCase() : null,
       editedJson: {
         chapters,
       },
+      quizzes: quizzes.length > 0 ? quizzes : undefined,
     };
 
     try {
