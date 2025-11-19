@@ -703,12 +703,20 @@ public class PdfService {
    * ]
    */
   private List<Map<String, Object>> filterConceptCheckFromJson(Map<String, Object> jsonData) {
-    // data 배열에서 concept_checks 추출
+    // JSON 구조에 따라 분기 처리
+    // 1. data 배열 (upload-and-parse 응답) -> concept_checks 필터링
+    // 2. chapters 배열 (publish 응답) -> type == "quiz" 필터링
 
-    // ===== 디버깅: data 키 확인 =====
+    // ===== 1. chapters 배열 구조 (발행된 자료) 처리 =====
+    if (jsonData.containsKey("chapters")) {
+      log.info("📋 발행된 자료 형태 감지 (chapters 배열)");
+      return filterQuizFromChapters(jsonData);
+    }
+
+    // ===== 2. data 배열 구조 (파싱된 자료) 처리 =====
     if (!jsonData.containsKey("data")) {
-      log.error("❌ JSON에 'data' 키가 없습니다. 사용 가능한 키: {}", jsonData.keySet());
-      throw new RuntimeException("data 배열이 없습니다. 사용 가능한 키: " + jsonData.keySet());
+      log.error("❌ JSON에 'data' 또는 'chapters' 키가 없습니다. 사용 가능한 키: {}", jsonData.keySet());
+      throw new RuntimeException("data 또는 chapters 배열이 없습니다. 사용 가능한 키: " + jsonData.keySet());
     }
 
     Object dataObj = jsonData.get("data");
@@ -1172,5 +1180,87 @@ public class PdfService {
 
     String result = text.toString().trim();
     return result.isEmpty() ? "추출된 텍스트가 없습니다." : result;
+  }
+
+  /**
+   * chapters 배열에서 type == "quiz"인 항목만 필터링
+   * (발행된 자료용)
+   *
+   * @param jsonData chapters 배열을 포함한 JSON 데이터
+   * @return 퀴즈 데이터 목록
+   */
+  private List<Map<String, Object>> filterQuizFromChapters(Map<String, Object> jsonData) {
+    Object chaptersObj = jsonData.get("chapters");
+
+    if (!(chaptersObj instanceof List)) {
+      log.error("❌ 'chapters'가 배열이 아닙니다. 타입: {}", chaptersObj.getClass().getName());
+      throw new RuntimeException("chapters가 배열 형식이 아닙니다.");
+    }
+
+    List<Map<String, Object>> chapters = (List<Map<String, Object>>) chaptersObj;
+    if (chapters.isEmpty()) {
+      log.warn("⚠️ chapters 배열이 비어있습니다.");
+      throw new RuntimeException("chapters 배열이 비어있습니다.");
+    }
+
+    log.info("🔍 chapters 배열 크기: {}", chapters.size());
+
+    List<Map<String, Object>> quizItems = new ArrayList<>();
+
+    for (Map<String, Object> chapter : chapters) {
+      Object typeObj = chapter.get("type");
+      String type = (typeObj != null) ? typeObj.toString() : "";
+
+      // type == "quiz"인 항목만 추출
+      if ("quiz".equals(type)) {
+        log.info("✅ quiz 타입 챕터 발견! id={}", chapter.get("id"));
+
+        // qa 배열에서 question과 answer 추출
+        Object qaObj = chapter.get("qa");
+        List<Map<String, Object>> qaList = null;
+
+        if (qaObj instanceof List) {
+          qaList = (List<Map<String, Object>>) qaObj;
+        }
+
+        if (qaList != null && !qaList.isEmpty()) {
+          // 각 qa 항목을 questions 형태로 변환
+          List<Map<String, Object>> questions = new ArrayList<>();
+
+          for (Map<String, Object> qaItem : qaList) {
+            Map<String, Object> question = new HashMap<>();
+
+            Object questionObj = qaItem.get("question");
+            Object answerObj = qaItem.get("answer");
+
+            String questionValue = (questionObj != null) ? questionObj.toString() : "";
+            String answerValue = (answerObj != null) ? answerObj.toString() : "";
+
+            question.put("question", questionValue);
+            question.put("answer", answerValue);
+
+            questions.add(question);
+          }
+
+          // 챕터 제목을 index_title로 사용
+          Object titleObj = chapter.get("title");
+          String title = (titleObj != null) ? titleObj.toString() : "";
+
+          // 결과 항목 생성
+          Map<String, Object> quizItem = new java.util.LinkedHashMap<>();
+          quizItem.put("index", chapter.get("id"));  // id를 index로 사용
+          quizItem.put("index_title", title);
+          quizItem.put("questions", questions);
+
+          quizItems.add(quizItem);
+
+          log.info("✅ quiz 항목 추가 완료: {} questions", questions.size());
+        }
+      }
+    }
+
+    log.info("✅ 총 {} 개의 quiz 항목 추출 완료", quizItems.size());
+
+    return quizItems;
   }
 }
