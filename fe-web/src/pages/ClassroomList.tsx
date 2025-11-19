@@ -229,6 +229,16 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
     Record<string, StudentLite[]>
   >({});
 
+  const [activeLabels, setActiveLabels] = useState<string[]>([]);
+
+  const toggleLabel = (id: string) => {
+    setActiveLabels((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const clearLabels = () => setActiveLabels([]);
+
   const simulateExtract = async (file: File): Promise<string> => {
     const name = file.name.toLowerCase();
     if (name.endsWith('.txt')) {
@@ -995,6 +1005,13 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
     void fetchPublishedMaterials();
   }, [API_BASE]);
 
+  const filteredMaterials = useMemo(() => {
+    if (activeLabels.length === 0) {
+      return materials;
+    }
+    return materials.filter((m) => m.label && activeLabels.includes(m.label));
+  }, [materials, activeLabels]);
+
   // 담당 반 / 학생 목록 조회
   useEffect(() => {
     if (!API_BASE) return;
@@ -1621,11 +1638,47 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
           {/* 자료함 */}
           <div className="cl-materials-section">
             <div className="cl-materials-header">
-              <div className="cl-section-header" style={{ flex: 1 }}>
+              {/* ✅ 첫 번째 줄: 제목 + 라벨 필터 + 업데이트 시간 */}
+              <div
+                className="cl-section-header"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  flex: 1,
+                }}
+              >
                 <h2 className="cl-section-title">
-                  내 자료 ({materials.length}개)
+                  내 자료 ({filteredMaterials.length}개)
                 </h2>
+
+                {/* ✅ 라벨 필터 칩 */}
+                <div
+                  className="cl-filter-chips"
+                  style={{
+                    padding: 0,
+                    margin: 0,
+                    flex: 1,
+                  }}
+                >
+                  {LABEL_OPTIONS.map((l) => (
+                    <button
+                      key={l.id}
+                      className={`cl-chip ${activeLabels.includes(l.id) ? 'active' : ''}`}
+                      style={{ '--chip-color': l.color } as React.CSSProperties}
+                      onClick={() => toggleLabel(l.id)}
+                    >
+                      {l.name}
+                    </button>
+                  ))}
+                  {activeLabels.length > 0 && (
+                    <button className="cl-chip reset" onClick={clearLabels}>
+                      초기화
+                    </button>
+                  )}
+                </div>
               </div>
+
               <div className="cl-last-updated">
                 최근 업데이트: {formatKST(lastUpdatedAt, true)}
               </div>
@@ -1660,16 +1713,26 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
             </div>
 
             <div className="cl-materials-list">
-              {materials.length === 0 ? (
-                <div className="cl-empty-materials">
-                  <FileText size={48} />
-                  <p>자료가 없습니다</p>
-                  <p className="cl-empty-hint">
-                    "새 자료 만들기" 버튼을 눌러 시작하세요
-                  </p>
-                </div>
+              {filteredMaterials.length === 0 ? (
+                activeLabels.length > 0 ? (
+                  <div className="cl-empty-materials">
+                    <FileText size={48} />
+                    <p>선택한 라벨의 자료가 없습니다</p>
+                    <p className="cl-empty-hint">
+                      다른 라벨을 선택하거나 초기화하세요
+                    </p>
+                  </div>
+                ) : (
+                  <div className="cl-empty-materials">
+                    <FileText size={48} />
+                    <p>자료가 없습니다</p>
+                    <p className="cl-empty-hint">
+                      "새 자료 만들기" 버튼을 눌러 시작하세요
+                    </p>
+                  </div>
+                )
               ) : (
-                materials.map((material) => (
+                filteredMaterials.map((material) => (
                   // 기존 코드에서 수정
                   <div key={material.id} className="cl-material-item">
                     {material.label && (

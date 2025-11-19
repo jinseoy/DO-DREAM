@@ -972,3 +972,49 @@
   }
 }
 
+/* ===== 라벨 필터 칩 ===== */
+.cl-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.cl-chip {
+  --chip-color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cl-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.cl-chip.active {
+  background-color: var(--chip-color);
+  color: #fff;
+  border-color: var(--chip-color);
+}
+
+.cl-chip.reset {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #e2e8f0;
+}
+
+.cl-chip.reset:hover {
+  background: #e2e8f0;
+  color: #334155;
+}
