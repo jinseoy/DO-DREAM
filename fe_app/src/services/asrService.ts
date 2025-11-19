@@ -12,6 +12,8 @@ export type ASRConfig = {
 };
 
 export type Listener = (text: string, isFinal: boolean) => void;
+export type StartListener = () => void;
+export type EndListener = () => void;
 
 class ASRService {
   private listeners = new Set<Listener>();
@@ -20,6 +22,8 @@ class ASRService {
   private sessionStartedAt = 0;
   private cfg: Required<ASRConfig>;
   private subs: { remove: () => void }[] = [];
+  private startListeners = new Set<StartListener>();
+  private endListeners = new Set<EndListener>();
 
   constructor() {
     this.cfg = {
@@ -39,10 +43,28 @@ class ASRService {
     };
   }
 
+  /** 음성 인식 시작 이벤트 리스너 */
+  onStart(fn: StartListener) {
+    this.startListeners.add(fn);
+    return () => this.startListeners.delete(fn);
+  }
+
+  /** 음성 인식 종료 이벤트 리스너 */
+  onEnd(fn: EndListener) {
+    this.endListeners.add(fn);
+    return () => this.endListeners.delete(fn);
+  }
+
   private emit(text: string, isFinal: boolean) {
     for (const fn of this.listeners) {
       fn(text, isFinal);
     }
+  }
+  private emitStart() {
+    for (const fn of this.startListeners) fn();
+  }
+  private emitEnd() {
+    for (const fn of this.endListeners) fn();
   }
 
   /** Expo 이벤트 리스너 붙이기 */
@@ -77,6 +99,8 @@ class ASRService {
     };
 
     const onEnd = () => {
+      this.emitEnd(); // 인식 종료 이벤트 발생
+
       if (!this.recognizing) return;
 
       const elapsed = Date.now() - this.sessionStartedAt;
@@ -97,6 +121,8 @@ class ASRService {
     };
 
     const onError = () => {
+      this.emitEnd(); // 에러 발생 시에도 종료로 간주
+
       if (!this.recognizing) return;
       if (this.cfg.autoRestart) {
         ASR.abort();
@@ -147,6 +173,7 @@ class ASRService {
     });
 
     this.recognizing = true;
+    this.emitStart();
   }
 
   /** 정상 종료 */
@@ -157,6 +184,7 @@ class ASRService {
       await ASR.stop();
     } finally {
       this.detachEvents();
+      this.emitEnd();
     }
   }
 
