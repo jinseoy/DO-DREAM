@@ -122,8 +122,8 @@ export default function QuestionScreen() {
       if (!mounted) return;
 
       const announcement = currentQuestionId
-        ? "질문하기 화면입니다. 이전 대화를 이어서 계속할 수 있습니다. 화면 상단 오른쪽의 음성 명령 버튼을 누르거나, 아래 입력창에 질문을 작성하세요."
-        : "질문하기 화면입니다. 화면 상단 오른쪽의 음성 명령 버튼을 누르거나, 아래 입력창에 질문을 작성하세요.";
+        ? "질문하기 화면입니다. 이전 대화를 이어서 계속할 수 있습니다. 화면 상단 오른쪽의 말하기 버튼을 누르거나, 아래 입력창에 질문을 작성하세요."
+        : "질문하기 화면입니다. 화면 상단 오른쪽의 말하기 버튼을 누르거나, 아래 입력창에 질문을 작성하세요.";
 
       AccessibilityInfo.announceForAccessibility(announcement);
       const tag = micBtnRef.current ? findNodeHandle(micBtnRef.current) : null;
@@ -459,9 +459,8 @@ export default function QuestionScreen() {
   // VoiceCommand(rawText)
   // =========================
   const handleQuestionVoiceCommand = useCallback(
-    (spoken: string) => {
-      const raw = spoken.trim();
-      if (!raw) return;
+    (spoken: string): boolean => {
+      const raw = spoken.trim();      if (!raw) return false;
       const t = raw.toLowerCase();
 
       console.log("[QuestionScreen] rawText 핸들러 호출:", raw);
@@ -473,7 +472,7 @@ export default function QuestionScreen() {
         t.includes("질문 보내")
       ) {
         handleSend();
-        return;
+        return true;
       }
 
       if (
@@ -491,7 +490,7 @@ export default function QuestionScreen() {
         AccessibilityInfo.announceForAccessibility(
           "대화 내용을 모두 지웠습니다."
         );
-        return;
+        return true;
       }
 
       if (
@@ -503,19 +502,20 @@ export default function QuestionScreen() {
         AccessibilityInfo.announceForAccessibility(
           "질문 입력창에 포커스를 맞췄습니다."
         );
-        return;
+        return true;
       }
 
       if (isLoadingResponse) {
         AccessibilityInfo.announceForAccessibility(
           "질문을 처리 중입니다. 잠시만 기다려주세요."
         );
-        return;
+        return true;
       }
 
       console.log("[QuestionScreen] 질문으로 처리:", raw);
       pushUserMessage(raw);
       sendQuestionToRAG(raw);
+      return true;
     },
     [handleSend, isLoadingResponse, sendQuestionToRAG]
   );
@@ -538,6 +538,7 @@ export default function QuestionScreen() {
 
     registerVoiceHandlers("Question", {
       goBack: () => handleBackRef.current(),
+      openLibrary: () => handleBackRef.current(),
       rawText: (text: string) => handleQuestionVoiceCommandRef.current(text),
     });
 
@@ -688,7 +689,7 @@ export default function QuestionScreen() {
             {messages.length === 0 ? (
               <View style={styles.welcomeBubble} accessibilityRole="text">
                 <Text style={styles.welcomeTxt}>
-                  두드림 AI에게 물어보세요. 오른쪽 위 음성 명령 버튼으로 질문을
+                  두드림 AI에게 물어보세요. 오른쪽 위 말하기 버튼으로 질문을
                   말하거나, 아래 입력창에 질문을 적고 확인을 눌러 주세요.
                 </Text>
                 <Text
