@@ -382,7 +382,8 @@ export default function SettingsScreen() {
   const renderAction = (
     label: string,
     onPress: () => void,
-    bg: string,
+    bg: string, // 배경색
+    textColor: string, // 텍스트 색상
     border: string
   ) => {
     const baseSize = 24;
@@ -392,7 +393,7 @@ export default function SettingsScreen() {
       <TouchableOpacity
         style={[
           styles.actionBtn,
-          { backgroundColor: bg, borderColor: border },
+          { backgroundColor: bg, borderColor: border, },
         ]}
         onPress={onPress}
         accessible={true}
@@ -402,7 +403,7 @@ export default function SettingsScreen() {
         <Text
           style={[
             styles.actionTxt,
-            { fontSize: baseSize * scale },
+            { fontSize: baseSize * scale, color: textColor },
           ]}
         >
           {label}
@@ -1028,7 +1029,8 @@ export default function SettingsScreen() {
           {renderAction(
             isTestingTts ? "재생 중..." : "테스트",
             handleTestTTS,
-            isTestingTts ? COLORS.status.success : COLORS.secondary.main, // 재생 중일 때 녹색, 평상시 노란색
+            isTestingTts ? COLORS.status.success : COLORS.secondary.main,
+            colors.text.primary,
             isTestingTts ? COLORS.status.success : COLORS.secondary.dark
           )}
         </View>
@@ -1105,7 +1107,8 @@ export default function SettingsScreen() {
           {renderAction(
             "기본값으로 되돌리기",
             handleResetSettings,
-            COLORS.status.error,
+            COLORS.status.error, // 배경색
+            COLORS.common.white, // 텍스트 색상
             COLORS.status.error
           )}
         </View>
@@ -1234,7 +1237,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
     borderWidth: 3,
     minHeight: 70,
   },
-  actionTxt: { fontSize: 26, fontWeight: "bold", color: colors.text.primary },
+  actionTxt: { fontSize: 26, fontWeight: "bold" },
 
   infoRow: {
     flexDirection: "row",
