@@ -11,6 +11,7 @@ import {
   SortDesc,
   SortAsc,
 } from 'lucide-react';
+import Swal from 'sweetalert2';
 import './StudentRoom.css';
 
 type Student = {
@@ -28,6 +29,7 @@ type ReceivedMaterial = {
   receivedDate: string;
   status: 'not-started' | 'in-progress' | 'completed';
   progressRate: number;
+  pdfId?: number;
 };
 
 type QuizResult = {
@@ -65,6 +67,7 @@ type SharedMaterialItemDto = {
   sharedAt: string;
   accessedAt: string | null;
   accessed: boolean;
+  pdfId?: number;
 };
 
 type StudentSharedMaterialsDto = {
@@ -221,6 +224,7 @@ export default function StudentRoom() {
                 receivedDate: m.sharedAt, // 정렬은 ISO 문자열 그대로 사용
                 status,
                 progressRate: percent,
+                pdfId: m.pdfId,
               };
             },
           );
@@ -273,6 +277,128 @@ export default function StudentRoom() {
   }, [receivedMaterials]);
 
   const weakInsights = [];
+
+  const handleViewMaterial = async (materialId: string) => {
+    try {
+      const material = receivedMaterials.find((m) => m.id === materialId);
+      if (!material) {
+        await Swal.fire({
+          icon: 'error',
+          title: '자료를 찾을 수 없습니다',
+          confirmButtonColor: '#192b55',
+        });
+        return;
+      }
+
+      const pdfId = material.pdfId;
+      if (!pdfId) {
+        await Swal.fire({
+          icon: 'error',
+          title: '자료 정보가 부족합니다',
+          text: '파일 ID를 찾을 수 없습니다.',
+          confirmButtonColor: '#192b55',
+        });
+        return;
+      }
+
+      void Swal.fire({
+        title: '자료를 불러오는 중입니다',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading(),
+      });
+
+      const accessToken = localStorage.getItem('accessToken');
+      const pdfRes = await fetch(`${API_BASE}/api/pdf/${pdfId}/json`, {
+        method: 'GET',
+        headers: {
+          accept: '*/*',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        credentials: 'include',
+      });
+
+      if (!pdfRes.ok) {
+        const text = await pdfRes.text().catch(() => '');
+        throw new Error(
+          text || `자료 내용을 불러오지 못했습니다. (status: ${pdfRes.status})`,
+        );
+      }
+
+      const parsedData = await pdfRes.json();
+      console.log('📄 StudentRoom parsedData:', parsedData);
+
+      let chapters: any[] = [];
+      if (parsedData.chapters && Array.isArray(parsedData.chapters)) {
+        chapters = parsedData.chapters;
+      } else if (
+        parsedData.parsedData?.chapters &&
+        Array.isArray(parsedData.parsedData.chapters)
+      ) {
+        chapters = parsedData.parsedData.chapters;
+      } else if (
+        parsedData.editedJson?.chapters &&
+        Array.isArray(parsedData.editedJson.chapters)
+      ) {
+        chapters = parsedData.editedJson.chapters;
+      } else if (
+        parsedData.chapters &&
+        typeof parsedData.chapters === 'object'
+      ) {
+        chapters = Object.values(parsedData.chapters);
+      } else if (
+        parsedData.parsedData?.chapters &&
+        typeof parsedData.parsedData.chapters === 'object'
+      ) {
+        chapters = Object.values(parsedData.parsedData.chapters);
+      } else if (
+        parsedData.editedJson?.chapters &&
+        typeof parsedData.editedJson.chapters === 'object'
+      ) {
+        chapters = Object.values(parsedData.editedJson.chapters);
+      }
+
+      let labelColor: string | undefined;
+      if (parsedData.labelColor) {
+        labelColor = parsedData.labelColor.toLowerCase();
+      } else if (parsedData.label) {
+        labelColor = parsedData.label.toLowerCase();
+      }
+
+      await Swal.close();
+
+      if (!chapters || chapters.length === 0) {
+        await Swal.fire({
+          icon: 'warning',
+          title: '내용이 없습니다',
+          text: '이 자료에는 표시할 내용이 없습니다.',
+          confirmButtonColor: '#192b55',
+        });
+        return;
+      }
+
+      navigate('/editor', {
+        state: {
+          fileName: material.title,
+          chapters,
+          pdfId,
+          materialId,
+          mode: 'edit',
+          from: 'student-room',
+          initialLabel: labelColor,
+        },
+      });
+    } catch (err: any) {
+      console.error('자료 조회 실패', err);
+      await Swal.close();
+      await Swal.fire({
+        icon: 'error',
+        title: '자료를 불러올 수 없습니다',
+        text: err?.message ?? '잠시 후 다시 시도해 주세요.',
+        confirmButtonColor: '#192b55',
+      });
+    }
+  };
 
   const getStatusBadge = (status: string) =>
     status === 'completed'
@@ -439,7 +565,12 @@ export default function StudentRoom() {
                   </div>
                 ) : (
                   filteredMaterials.map((m) => (
-                    <div key={m.id} className="cl-material-item">
+                    <div
+                      key={m.id}
+                      className="cl-material-item"
+                      onClick={() => handleViewMaterial(m.id)}
+                      style={{ cursor: 'pointer' }}
+                    >
                       <div className="cl-material-icon">
                         <FileText size={18} />
                       </div>
