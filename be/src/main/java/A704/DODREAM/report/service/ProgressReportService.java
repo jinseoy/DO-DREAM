@@ -262,11 +262,9 @@ public class ProgressReportService {
             StudentMaterialProgress progress) {
         
         List<ChapterProgressDto> result = new ArrayList<>();
-        int currentPage = progress != null ? progress.getCurrentPage() : 1;
-        
-        // currentPage를 콘텐츠 페이지로 변환 (퀴즈 챕터 제외)
-        int contentCurrentPage = convertToContentPage(chapters, currentPage);
-        log.info("전체 currentPage: {}, 콘텐츠 currentPage: {}", currentPage, contentCurrentPage);
+        // DB에 저장된 currentPage는 이미 콘텐츠 페이지 기준 (퀴즈 제외)
+        int contentCurrentPage = progress != null ? progress.getCurrentPage() : 1;
+        log.info("콘텐츠 페이지 기준 currentPage: {}", contentCurrentPage);
         
         int cumulativeSections = 0;
 
@@ -480,20 +478,31 @@ public class ProgressReportService {
 
         Material material = share.getMaterial();
 
-        // 3. totalPages 자동 계산 (제공되지 않은 경우)
-        if (totalPages == null) {
-            try {
-                Map<String, Object> jsonData = getMaterialJsonFromS3(material);
-                List<Map<String, Object>> chapters = extractChapters(jsonData);
+        // 3. chapters 정보 가져오기 및 totalPages 자동 계산
+        List<Map<String, Object>> chapters = null;
+        try {
+            Map<String, Object> jsonData = getMaterialJsonFromS3(material);
+            chapters = extractChapters(jsonData);
+            
+            if (totalPages == null) {
                 totalPages = calculateTotalSections(chapters);
-            } catch (Exception e) {
-                log.error("총 페이지 수 계산 실패: materialId={}", materialId, e);
-                // totalPages를 계산할 수 없으면 현재 페이지를 totalPages로 설정
+            }
+        } catch (Exception e) {
+            log.error("총 페이지 수 계산 실패: materialId={}", materialId, e);
+            if (totalPages == null) {
                 totalPages = currentPage;
             }
         }
 
-        // 4. 진행 상태 조회 또는 생성
+        // 4. currentPage를 콘텐츠 페이지로 변환 (퀴즈 제외)
+        int contentCurrentPage = currentPage;
+        if (chapters != null && !chapters.isEmpty()) {
+            contentCurrentPage = convertToContentPage(chapters, currentPage);
+            log.info("진행률 업데이트: 전체 챕터 {} → 콘텐츠 페이지 {} (totalPages: {})", 
+                    currentPage, contentCurrentPage, totalPages);
+        }
+
+        // 5. 진행 상태 조회 또는 생성
         StudentMaterialProgress progress = progressRepository
                 .findByStudentIdAndMaterialId(studentId, materialId)
                 .orElse(null);
@@ -503,25 +512,25 @@ public class ProgressReportService {
             progress = StudentMaterialProgress.builder()
                     .student(student)
                     .material(material)
-                    .currentPage(currentPage)
-                    .totalPages(totalPages)
+                    .currentPage(contentCurrentPage)  // 콘텐츠 페이지로 저장
+                    .totalPages(totalPages)  // 콘텐츠 섹션 수 (퀴즈 제외)
                     .progressPercentage(0)
                     .build();
         }
 
-        // 5. 진행률 업데이트
-        progress.updateProgress(currentPage);
+        // 6. 진행률 업데이트 (콘텐츠 페이지 기준)
+        progress.updateProgress(contentCurrentPage);
         
         // totalPages가 변경된 경우 업데이트
         if (!totalPages.equals(progress.getTotalPages())) {
             // Reflection 또는 Setter가 필요한데, 일단 로그만
-            log.warn("totalPages 불일치: DB={}, 요청={}", progress.getTotalPages(), totalPages);
+            log.warn("totalPages 불일치: DB={}, 계산된 값={}", progress.getTotalPages(), totalPages);
         }
 
-        // 6. 저장
+        // 7. 저장
         StudentMaterialProgress saved = progressRepository.save(progress);
 
-        // 7. 응답 생성
+        // 8. 응답 생성
         String message = saved.getCompletedAt() != null 
                 ? "🎉 축하합니다! 모든 학습을 완료했습니다!"
                 : String.format("진행률 업데이트 완료 (%d%%)", saved.getProgressPercentage());
