@@ -96,13 +96,10 @@ public class QuizService {
 		User student = userRepository.findById(studentId)
 			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-		// 1. DB에서 해당 자료의 정답 데이터 조회
 		List<Quiz> quizzes = quizRepository.findAllByMaterialIdOrderByQuestionNumber(materialId);
 		Map<Long, Quiz> quizMap = quizzes.stream()
 			.collect(Collectors.toMap(Quiz::getId, q -> q));
 
-		// 2. FastAPI 요청 바디 생성
-		// Python의 grade_quiz_answers 함수 시그니처에 맞게 데이터 구성
 		List<Map<String, Object>> questionList = quizzes.stream()
 			.map(q -> Map.<String, Object>of(
 				"id", q.getId(),
@@ -123,10 +120,9 @@ public class QuizService {
 			"student_answers", studentAnswerList
 		);
 
-		// 3. FastAPI 채점 요청 (일괄 채점)
 		log.info("🤖 FastAPI 채점 요청 중... 학생 ID: {}", studentId);
 		List<GradingResultDto> results = webClient.post()
-			.uri(fastApiUrl + "/rag/quiz/grade-batch") // (주의) FastAPI에 이 엔드포인트 추가 필요
+			.uri(fastApiUrl + "/rag/quiz/grade-batch")
 			.header("Authorization", token)
 			.bodyValue(fastApiRequest)
 			.retrieve()
@@ -137,7 +133,6 @@ public class QuizService {
 			throw new RuntimeException("FastAPI 채점 응답이 비어있습니다.");
 		}
 
-		// 4. 채점 결과 DB 저장 (Log)
 		List<StudentQuizLog> logs = results.stream().map(res -> {
 			Quiz quiz = quizMap.get(res.getQuizId());
 			return StudentQuizLog.builder()
@@ -175,50 +170,47 @@ public class QuizService {
 	 */
 	@Transactional(readOnly = true)
 	public List<StudentMaterialStatsDto> getStudentStatsByMaterialList(Long studentId) {
-		// 1. 학생의 모든 풀이 로그 조회 (Material 정보 포함 Fetch Join 필수)
 		List<StudentQuizLog> logs = studentQuizLogRepository.findAllByStudentIdWithMaterial(studentId);
 
 		if (logs.isEmpty()) {
 			return new ArrayList<>();
 		}
 
-		// 2. 자료(Material) ID를 기준으로 로그 그룹화
-		// Key: MaterialId, Value: List<StudentQuizLog>
 		Map<Long, List<StudentQuizLog>> logsByMaterial = logs.stream()
 			.collect(Collectors.groupingBy(log -> log.getQuiz().getMaterial().getId()));
 
 		List<StudentMaterialStatsDto> resultList = new ArrayList<>();
 
-		// 3. 각 자료별 통계 계산
 		for (Map.Entry<Long, List<StudentQuizLog>> entry : logsByMaterial.entrySet()) {
 			Long materialId = entry.getKey();
 			List<StudentQuizLog> materialLogs = entry.getValue();
-
-			// 자료 정보 추출 (로그 중 하나에서 가져옴)
 			Material material = materialLogs.get(0).getQuiz().getMaterial();
-
-			// 해당 자료의 전체 퀴즈 개수 조회 (분모)
-			// (Loop 내 쿼리가 발생하지만, 학생이 푼 자료의 종류가 수백 개가 아니므로 수용 가능.
-			//  성능 최적화가 필요하면 materialId 리스트로 count를 한 번에 가져오는 쿼리 작성 필요)
 			int totalQuizCount = quizRepository.countByMaterialId(materialId);
 
 			if (totalQuizCount > 0) {
-				// 맞춘 개수
-				long correctCount = materialLogs.stream()
+				// [로직 변경] 퀴즈 ID별로 가장 최근(Latest) 로그만 필터링
+				Map<Long, StudentQuizLog> latestLogsByQuiz = materialLogs.stream()
+					.collect(Collectors.toMap(
+						log -> log.getQuiz().getId(), // Key: Quiz ID
+						log -> log,                   // Value: Log 객체
+						// Merge Function: 기존값과 새로운값 중 solvedAt이 더 늦은(큰) 것을 선택
+						(existing, replacement) -> existing.getSolvedAt().isAfter(replacement.getSolvedAt()) ? existing : replacement
+					));
+
+				// 필터링된 최신 로그들 중에서 정답 개수 카운트
+				long correctCount = latestLogsByQuiz.values().stream()
 					.filter(StudentQuizLog::isCorrect)
 					.count();
 
-				// 정답률 계산 (맞춘 개수 / 전체 퀴즈 개수 * 100)
 				double correctRate = (double) correctCount / totalQuizCount * 100.0;
 
-				// DTO 생성 및 추가
 				resultList.add(StudentMaterialStatsDto.builder()
 					.materialId(materialId)
-					.materialTitle(material.getTitle()) // 자료 제목 설정
+					.materialTitle(material.getTitle())
 					.correctCount((int) correctCount)
-					.tryCount(materialLogs.size())
+					.tryCount(materialLogs.size()) // 시도 횟수는 전체 로그 수 그대로 유지 (노력 지표)
 					.totalQuizCount(totalQuizCount)
-					.correctRate(Math.round(correctRate * 10) / 10.0) // 소수점 첫째자리 반올림
+					.correctRate(Math.round(correctRate * 10) / 10.0)
 					.build());
 			}
 		}
@@ -232,7 +224,6 @@ public class QuizService {
 	 */
 	@Transactional(readOnly = true)
 	public StudentOverallStatsDto getStudentOverallStats(Long studentId) {
-		// 1. 학생의 모든 풀이 로그 조회 (Material 정보 포함)
 		List<StudentQuizLog> logs = studentQuizLogRepository.findAllByStudentIdWithMaterial(studentId);
 
 		if (logs.isEmpty()) {
@@ -243,34 +234,35 @@ public class QuizService {
 				.build();
 		}
 
-		// 2. 자료(Material) ID별로 로그 그룹화
 		Map<Long, List<StudentQuizLog>> logsByMaterial = logs.stream()
 			.collect(Collectors.groupingBy(log -> log.getQuiz().getMaterial().getId()));
 
 		double sumOfRates = 0.0;
 		int materialCount = 0;
 
-		// 3. 각 자료별 정답률 계산 후 합산
 		for (Long materialId : logsByMaterial.keySet()) {
-			// 해당 자료의 전체 퀴즈 개수 (DB 조회)
-			// (최적화 팁: 자료가 매우 많다면 loop 안에서 count 쿼리보다 미리 map으로 가져오는 것이 좋으나,
-			//  일반적인 학생 학습량에서는 현재 방식도 무방함)
 			int totalQuizInMaterial = quizRepository.countByMaterialId(materialId);
 
 			if (totalQuizInMaterial > 0) {
-				long correctCount = logsByMaterial.get(materialId).stream()
+				List<StudentQuizLog> materialLogs = logsByMaterial.get(materialId);
+
+				// [로직 변경] 퀴즈 ID별로 가장 최근 로그만 필터링
+				long correctCount = materialLogs.stream()
+					.collect(Collectors.toMap(
+						log -> log.getQuiz().getId(),
+						log -> log,
+						(existing, replacement) -> existing.getSolvedAt().isAfter(replacement.getSolvedAt()) ? existing : replacement
+					))
+					.values().stream()
 					.filter(StudentQuizLog::isCorrect)
 					.count();
 
-				// 자료별 정답률 = (맞춘 개수 / 해당 자료 총 퀴즈 수) * 100
 				double materialRate = (double) correctCount / totalQuizInMaterial * 100.0;
-
 				sumOfRates += materialRate;
 				materialCount++;
 			}
 		}
 
-		// 4. 전체 평균 정답률 (자료별 정답률의 합 / 자료 개수)
 		double averageRate = materialCount > 0 ? sumOfRates / materialCount : 0.0;
 
 		return StudentOverallStatsDto.builder()
