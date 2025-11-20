@@ -219,6 +219,41 @@ public class ProgressReportService {
     }
 
     /**
+     * currentPage를 콘텐츠 페이지로 변환 (퀴즈 챕터 제외)
+     * 예: 챕터 1-3(콘텐츠), 4(퀴즈), 5-6(콘텐츠) → currentPage=5 → contentPage=4
+     */
+    private int convertToContentPage(List<Map<String, Object>> chapters, int currentPage) {
+        int quizCountBeforeCurrent = 0;
+        
+        // currentPage 이전에 나온 퀴즈 챕터 개수 계산
+        for (int i = 0; i < Math.min(currentPage, chapters.size()); i++) {
+            Map<String, Object> chapter = chapters.get(i);
+            
+            // 챕터 타입 확인
+            String chapterType;
+            if (chapter.containsKey("index")) {
+                // 이전 구조
+                List<Map<String, Object>> conceptChecks = (List<Map<String, Object>>) chapter.get("concept_checks");
+                chapterType = (conceptChecks != null && !conceptChecks.isEmpty()) ? "quiz" : "content";
+            } else {
+                // 새로운 구조
+                chapterType = (String) chapter.getOrDefault("type", "content");
+            }
+            
+            if ("quiz".equals(chapterType)) {
+                quizCountBeforeCurrent++;
+            }
+        }
+        
+        // 전체 페이지에서 퀴즈 개수를 빼서 콘텐츠 페이지 반환
+        int contentPage = currentPage - quizCountBeforeCurrent;
+        log.debug("퀴즈 개수: {}, 전체 페이지: {} → 콘텐츠 페이지: {}", 
+                quizCountBeforeCurrent, currentPage, contentPage);
+        
+        return Math.max(1, contentPage);
+    }
+
+    /**
      * 챕터별 진행률 계산
      * 두 가지 JSON 구조를 모두 지원
      */
@@ -228,6 +263,11 @@ public class ProgressReportService {
         
         List<ChapterProgressDto> result = new ArrayList<>();
         int currentPage = progress != null ? progress.getCurrentPage() : 1;
+        
+        // currentPage를 콘텐츠 페이지로 변환 (퀴즈 챕터 제외)
+        int contentCurrentPage = convertToContentPage(chapters, currentPage);
+        log.info("전체 currentPage: {}, 콘텐츠 currentPage: {}", currentPage, contentCurrentPage);
+        
         int cumulativeSections = 0;
 
         for (int i = 0; i < chapters.size(); i++) {
@@ -282,13 +322,13 @@ public class ProgressReportService {
                 int chapterStartPage = cumulativeSections + 1;
                 int chapterEndPage = cumulativeSections + totalSections;
 
-                if (currentPage > chapterEndPage) {
+                if (contentCurrentPage > chapterEndPage) {
                     // 이 챕터는 완료됨
                     completedSections = totalSections;
                     isCompleted = true;
-                } else if (currentPage >= chapterStartPage) {
+                } else if (contentCurrentPage >= chapterStartPage) {
                     // 현재 이 챕터를 학습 중
-                    completedSections = currentPage - chapterStartPage + 1;
+                    completedSections = contentCurrentPage - chapterStartPage + 1;
                     isCompleted = false;
                 } else {
                     // 아직 시작하지 않음
