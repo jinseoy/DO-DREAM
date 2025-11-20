@@ -791,7 +791,7 @@ export default function QuestionScreen() {
             accessibilityLabel="확인"
             accessibilityHint="입력한 질문을 전송합니다"
           >
-            <Text style={styles.sendTxt}>확인</Text>
+            <Text style={[styles.sendTxt, !inputText.trim() && styles.sendTxtDisabled]}>확인</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -950,7 +950,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number, isHighCon
       minHeight: HEADER_BTN_HEIGHT,
       maxHeight: 220,
       backgroundColor: isPrimaryColors ? colors.background.elevated : colors.background.elevated,
-      borderRadius: 24,
+      borderRadius: 12,
       paddingHorizontal: 20,
       paddingVertical: 12,
       fontSize: fontSize(18),
@@ -962,7 +962,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number, isHighCon
     sendBtn: {
       height: HEADER_BTN_HEIGHT,
       backgroundColor: isPrimaryColors ? colors.primary.main : colors.accent.primary,
-      borderRadius: 24,
+      borderRadius: 12,
       paddingHorizontal: 20,
       paddingVertical: 12,
       minWidth: 88,
@@ -976,9 +976,12 @@ const createStyles = (colors: any, fontSize: (size: number) => number, isHighCon
       borderColor: isPrimaryColors ? colors.border.main : colors.border.default,
     },
     sendTxt: {
-      color: colors.text.primary,
+      color: "#FFFFFF",
       fontSize: fontSize(16),
       fontWeight: "700",
+    },
+    sendTxtDisabled: {
+      color: "#000000",
     },
   });
 };
