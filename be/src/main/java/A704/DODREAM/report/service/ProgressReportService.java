@@ -140,9 +140,18 @@ public class ProgressReportService {
                 .mapToInt(ChapterProgressDto::getCompletedSections)
                 .sum();
 
-        double overallProgress = totalSections > 0
-                ? (double) completedSections / totalSections * 100.0
-                : 0.0;
+        // DB에 저장된 진행률 사용 (실시간 계산이 부정확할 수 있음)
+        double overallProgress;
+        if (progress != null && progress.getProgressPercentage() != null) {
+            overallProgress = progress.getProgressPercentage().doubleValue();
+            log.info("DB 진행률 사용: {}%", overallProgress);
+        } else {
+            // DB 값이 없으면 실시간 계산
+            overallProgress = totalSections > 0
+                    ? (double) completedSections / totalSections * 100.0
+                    : 0.0;
+            log.info("실시간 계산 진행률: {}%", overallProgress);
+        }
 
         // 7. 현재 학습 중인 챕터 찾기
         ChapterProgressDto currentChapter = findCurrentChapter(chapterProgressList);
