@@ -1,10 +1,12 @@
-# 📱 DO:DREAM - AI기반 시각장애인 음성 학습 플랫폼
+# 📱 DO:DREAM - AI 기반 시각장애인 음성 학습 플랫폼
 
-![img](./img/DODREAM_main_page.png)
+![web-main](./img/DODREAM_main_page.png)
+![app-main](./img/DODREAM_app_library.jpg)|![app-main](./img/DODREAM_app_player.jpg)
+---|---|
 
 ## 프로젝트 소개
 
-- 장애를 가진 학생들이 공평하게 학습할 수 있도록, AI 기반 맞춤형 학습 자료를 제공하는 교육 플랫폼입니다.
+- 시각장애를 가진 학생들이 공평하게 학습할 수 있도록, AI 기반 맞춤형 학습 자료를 제공하는 교육 플랫폼입니다.
 - RAG(Retrieval-Augmented Generation) 기술과 ChromaDB 벡터 데이터베이스를 활용하여 학습 자료에서 핵심 개념을 추출하고, Cross-EncoderReranker로 최적화된 정보를 기반으로 학생 수준에 맞는 퀴즈를 자동 생성하며 AI가 답안을 즉시 채점합니다.
 - 교실 관리 페이지에서 학생별 학습 진행률과 통계를 확인하고, 공유한 학습 자료와 퀴즈 결과를 실시간으로 모니터링할 수 있습니다.
 - PDF OCR 기술로 교재를 업로드하면 자동으로 텍스트를 추출하고, LangChain 기반 대화형 AI를 통해 학생이 학습 내용에 대해 질문하면 TTS로 음성 답변을 제공받을 수 있으며, Firebase 푸시 알림과 JWT 인증, AWS S3 파일 관리로 안전하고 편리한 학습 환경을 제공합니다.
@@ -13,13 +15,13 @@
 
 <div align="center">
 
-|                                                                  팀장 / FE                                                                  |                                                                  FE                                                                  |                                                                BE                                                                |
-|:-----------------------------------------------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------:|
+|                                                                  팀장 / FE                                                                  |                                                            FE                                                             |                                                                BE                                                                |
+|:-----------------------------------------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------:|
 |    [<img src="https://avatars.githubusercontent.com/u/195054777?v=4" height=150 width=150> <br/> @jinseoy](https://github.com/jinseoy)  | [<img src="https://avatars.githubusercontent.com/u/78808933?v=4" height=150 width=150> <br/> @sehee-xx](https://github.com/sehee-xx) | [<img src="https://avatars.githubusercontent.com/u/83768801?v=4" height=150 width=150> <br/> @rladbstn1000](https://github.com/rladbstn1000) |
-|                                                                  **양진서**                                                                  |                                                               **양세희**                                                                |                                                                  **김윤수**                                                                  |
-|                                                                  **BE**                                                                   |                                                                **BE**                                                                |                                                                 **Infra**                                                                 |
-| [<img src="https://avatars.githubusercontent.com/u/128020138?v=4" height=150 width=150> <br/> @justlikesh](https://github.com/justlikesh) |   [<img src="https://avatars.githubusercontent.com/u/157487365?v=4" height=150 width=150> <br/> @Eun31](https://github.com/Eun31)    |   [<img src="https://avatars.githubusercontent.com/u/172126044?v=4" height=150 width=150> <br/> @jgm0327](https://github.com/jgm0327)   |
-|                                                                  **김승호**                                                                  |                                                                **이은**                                                                |                                                                  **장규민**                                                                  |
+|                                                                  **양진서**                                                                  |                                                              **양세희**                                                               |                                                                  **김윤수**                                                                  |
+|                                                                  **BE**                                                                   |                                                               **BE**                                                               |                                                                 **Infra**                                                                 |
+| [<img src="https://avatars.githubusercontent.com/u/128020138?v=4" height=150 width=150> <br/> @justlikesh](https://github.com/justlikesh) | [<img src="https://avatars.githubusercontent.com/u/157487365?v=4" height=150 width=150> <br/> @Eun31](https://github.com/Eun31)  |   [<img src="https://avatars.githubusercontent.com/u/172126044?v=4" height=150 width=150> <br/> @jgm0327](https://github.com/jgm0327)   |
+|                                                                  **김승호**                                                                  |                                                              **이은**                                                               |                                                                  **장규민**                                                                  |
 
 </div>
 
@@ -27,7 +29,7 @@
 
 - Frontend
    - Web: React, Vite, TypeScript
-   - App: React Native, TypeScript
+   - App: React Native, Expo, TypeScript
 - Backend: Spring Boot 3.5.7, Spring Data JPA, Spring Security, MySQL 8.x, Redis
 - AI: FastAPI, Python, LangChain, ChromaDB, HuggingFace
 - 버전 및 이슈관리: GitLab, Jira
